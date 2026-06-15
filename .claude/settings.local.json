@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(npm run *)",
+      "PowerShell(npx vite build 2>&1)",
+      "PowerShell(npm install *)",
+      "PowerShell(curl *)",
+      "PowerShell(npx supabase --version)",
+      "Skill(run)",
+      "PowerShell(npx playwright install chromium --with-deps 2>&1 | Select-Object -Last 5)",
+      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:5173\" -TimeoutSec 3 -UseBasicParsing\\).StatusCode } catch { \"offline\" })"
+    ]
+  }
+}
