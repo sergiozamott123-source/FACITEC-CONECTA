@@ -2,16 +2,28 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ClipboardCheck } from 'lucide-react'
 import { useAvaliador } from '@/contexts/AvaliadorContext'
+import { supabase } from '@/lib/supabase'
+
+const REDIRECT_URL = 'http://localhost:5173/avaliador/redefinir-senha'
 
 export function LoginAvaliador() {
   const { login } = useAvaliador()
   const navigate = useNavigate()
+
+  // view: 'login' | 'forgot'
+  const [view, setView] = useState('login')
+
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
-  const handleSubmit = async (e) => {
+  const [forgotEmail, setForgotEmail] = useState('')
+  const [forgotLoading, setForgotLoading] = useState(false)
+  const [forgotError, setForgotError] = useState(null)
+  const [forgotSent, setForgotSent] = useState(false)
+
+  const handleLogin = async (e) => {
     e.preventDefault()
     setError(null)
     setLoading(true)
@@ -23,6 +35,31 @@ export function LoginAvaliador() {
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleForgot = async (e) => {
+    e.preventDefault()
+    setForgotError(null)
+    setForgotLoading(true)
+    const { error } = await supabase.auth.resetPasswordForEmail(forgotEmail, {
+      redirectTo: REDIRECT_URL,
+    })
+    setForgotLoading(false)
+    if (error) { setForgotError(error.message); return }
+    setForgotSent(true)
+  }
+
+  const switchToForgot = () => {
+    setView('forgot')
+    setForgotEmail(email) // aproveita e-mail já digitado, se houver
+    setForgotError(null)
+    setForgotSent(false)
+    setError(null)
+  }
+
+  const switchToLogin = () => {
+    setView('login')
+    setError(null)
   }
 
   return (
@@ -49,50 +86,117 @@ export function LoginAvaliador() {
           </div>
 
           <div className="bg-white rounded-xl shadow-2xl p-6 space-y-4">
-            {error && (
-              <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
-                {error}
-              </div>
+            {view === 'login' ? (
+              <>
+                {error && (
+                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                    {error}
+                  </div>
+                )}
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      E-mail <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="email"
+                      value={email}
+                      onChange={e => setEmail(e.target.value)}
+                      placeholder="seu@email.com"
+                      required
+                      autoFocus
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="block text-sm font-medium text-gray-700">
+                      Senha <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      placeholder="Sua senha"
+                      required
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {loading ? 'Entrando...' : 'Entrar'}
+                  </button>
+                </form>
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={switchToForgot}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <div>
+                  <h2 className="text-base font-semibold text-gray-800">Recuperar senha</h2>
+                  <p className="text-sm text-gray-500 mt-0.5">
+                    Informe seu e-mail cadastrado e enviaremos um link para redefinir a senha.
+                  </p>
+                </div>
+
+                {forgotSent ? (
+                  <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                    E-mail enviado! Verifique sua caixa de entrada e clique no link recebido.
+                    O link expira em 1 hora.
+                  </div>
+                ) : (
+                  <>
+                    {forgotError && (
+                      <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                        {forgotError}
+                      </div>
+                    )}
+                    <form onSubmit={handleForgot} className="space-y-4">
+                      <div className="space-y-1">
+                        <label className="block text-sm font-medium text-gray-700">
+                          E-mail <span className="text-red-500">*</span>
+                        </label>
+                        <input
+                          type="email"
+                          value={forgotEmail}
+                          onChange={e => setForgotEmail(e.target.value)}
+                          placeholder="seu@email.com"
+                          required
+                          autoFocus
+                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        />
+                      </div>
+                      <button
+                        type="submit"
+                        disabled={forgotLoading}
+                        className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      >
+                        {forgotLoading ? 'Enviando...' : 'Enviar link de recuperação'}
+                      </button>
+                    </form>
+                  </>
+                )}
+
+                <div className="text-center">
+                  <button
+                    type="button"
+                    onClick={switchToLogin}
+                    className="text-sm text-blue-600 hover:underline"
+                  >
+                    ← Voltar ao login
+                  </button>
+                </div>
+              </>
             )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">
-                  E-mail <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={e => setEmail(e.target.value)}
-                  placeholder="seu@email.com"
-                  required
-                  autoFocus
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="block text-sm font-medium text-gray-700">
-                  Senha <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={e => setPassword(e.target.value)}
-                  placeholder="Sua senha"
-                  required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-              >
-                {loading ? 'Entrando...' : 'Entrar'}
-              </button>
-            </form>
           </div>
         </div>
       </main>

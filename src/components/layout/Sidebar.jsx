@@ -11,6 +11,7 @@ import {
   DollarSign,
   History,
   FileUp,
+  Trophy,
   ChevronLeft,
   ChevronRight,
   Building2,
@@ -53,6 +54,11 @@ const navItems = [
     label: 'Financeiro',
     href: '/financeiro',
     icon: DollarSign,
+  },
+  {
+    label: 'Classificação',
+    href: '/classificacao',
+    icon: Trophy,
   },
   {
     label: 'Histórico e Relatórios',

@@ -9,6 +9,7 @@ import { Contratos } from '@/pages/Contratos'
 import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
+import { Classificacao } from '@/pages/Classificacao'
 import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
@@ -17,6 +18,7 @@ import { AvaliadorProvider, useAvaliador } from '@/contexts/AvaliadorContext'
 import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
 import { ProjetosAvaliador } from '@/pages/avaliador/ProjetosAvaliador'
 import { FichaAvaliacao } from '@/pages/avaliador/FichaAvaliacao'
+import { RedefinirSenhaAvaliador } from '@/pages/avaliador/RedefinirSenhaAvaliador'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -44,6 +46,7 @@ function App() {
           <AvaliadorProvider>
             <Routes>
               <Route path="login" element={<LoginAvaliador />} />
+              <Route path="redefinir-senha" element={<RedefinirSenhaAvaliador />} />
               <Route path="projetos" element={<ProtectedAvaliador><ProjetosAvaliador /></ProtectedAvaliador>} />
               <Route path="projeto/:avaliacaoId" element={<ProtectedAvaliador><FichaAvaliacao /></ProtectedAvaliador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
@@ -66,6 +69,7 @@ function App() {
                 <Route path="/bolsistas" element={<Bolsistas />} />
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/historico" element={<Historico />} />
+                <Route path="/classificacao" element={<Classificacao />} />
                 <Route path="/importacao" element={<Importacao />} />
               </Routes>
             </Layout>
