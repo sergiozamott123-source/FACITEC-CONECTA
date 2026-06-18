@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable } from '@/hooks/useTable'
 import { edicaoService } from '@/lib/db'
+import { ClassificacaoDetalhe } from './ClassificacaoDetalhe'
 
 const CONSENSO_VARIANT = {
   'Aprovado':               'success',
@@ -104,9 +105,11 @@ export function Classificacao() {
 
   const [edicaoId, setEdicaoId] = useState(null)
   const [ranking, setRanking] = useState([])
+  const [criterios, setCriterios] = useState([])
   const [notaMaxTotal, setNotaMaxTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [selectedItem, setSelectedItem] = useState(null)
 
   useEffect(() => {
     if (edicoes.length > 0 && !edicaoId) {
@@ -131,6 +134,7 @@ export function Classificacao() {
 
       const notaMax = (criterios ?? []).reduce((s, c) => s + Number(c.nota_maxima ?? 0), 0)
       setNotaMaxTotal(notaMax)
+      setCriterios(criterios ?? [])
 
       const { data: projetos, error: ep } = await supabase
         .from('projeto')
@@ -201,6 +205,16 @@ export function Classificacao() {
 
       <ErrorAlert message={error} />
 
+      {selectedItem && (
+        <ClassificacaoDetalhe
+          item={selectedItem.item}
+          pos={selectedItem.pos}
+          notaMaxTotal={notaMaxTotal}
+          criterios={criterios}
+          onClose={() => setSelectedItem(null)}
+        />
+      )}
+
       {loading ? <LoadingState /> : ranking.length === 0 ? (
         <EmptyState message="Nenhuma avaliação enviada encontrada para esta edição." />
       ) : (
@@ -210,7 +224,8 @@ export function Classificacao() {
             return (
               <Card
                 key={item.projeto.id}
-                className={`hover:shadow-sm transition-shadow ${pos <= 3 ? 'border-primary/40' : ''}`}
+                onClick={() => setSelectedItem({ item, pos })}
+                className={`hover:shadow-md transition-shadow cursor-pointer ${pos <= 3 ? 'border-primary/40' : ''}`}
               >
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-center gap-4">
