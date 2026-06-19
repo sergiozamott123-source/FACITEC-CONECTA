@@ -10,6 +10,7 @@ import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
 import { Classificacao } from '@/pages/Classificacao'
+import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
 import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
@@ -98,6 +99,7 @@ function App() {
                 <Route path="/financeiro" element={<Financeiro />} />
                 <Route path="/historico" element={<Historico />} />
                 <Route path="/classificacao" element={<Classificacao />} />
+                <Route path="/recursos" element={<ConvocacaoRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
               </Routes>
             </Layout>

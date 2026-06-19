@@ -5,6 +5,7 @@ const pageTitles = {
   '/': 'Dashboard',
   '/edicoes': 'Edições',
   '/avaliacoes': 'Avaliações',
+  '/recursos': 'Convocação de Recursos',
   '/equipes': 'Equipes e Documentos',
   '/contratos': 'Contratos e Termos',
   '/bolsistas': 'Bolsistas e Orientadores',

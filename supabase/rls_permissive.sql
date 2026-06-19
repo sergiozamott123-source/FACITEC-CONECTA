@@ -157,6 +157,36 @@ CREATE POLICY "recurso_update"  ON recurso FOR UPDATE USING (true) WITH CHECK (t
 CREATE POLICY "recurso_delete"  ON recurso FOR DELETE USING (true);
 
 -- -----------------------------------------------------------------------------
+-- recurso_criterio
+-- -----------------------------------------------------------------------------
+ALTER TABLE recurso_criterio ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "recurso_criterio_select"  ON recurso_criterio;
+DROP POLICY IF EXISTS "recurso_criterio_insert"  ON recurso_criterio;
+DROP POLICY IF EXISTS "recurso_criterio_update"  ON recurso_criterio;
+DROP POLICY IF EXISTS "recurso_criterio_delete"  ON recurso_criterio;
+
+CREATE POLICY "recurso_criterio_select"  ON recurso_criterio FOR SELECT USING (true);
+CREATE POLICY "recurso_criterio_insert"  ON recurso_criterio FOR INSERT WITH CHECK (true);
+CREATE POLICY "recurso_criterio_update"  ON recurso_criterio FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "recurso_criterio_delete"  ON recurso_criterio FOR DELETE USING (true);
+
+-- -----------------------------------------------------------------------------
+-- criterio_avaliacao
+-- -----------------------------------------------------------------------------
+ALTER TABLE criterio_avaliacao ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "criterio_avaliacao_select"  ON criterio_avaliacao;
+DROP POLICY IF EXISTS "criterio_avaliacao_insert"  ON criterio_avaliacao;
+DROP POLICY IF EXISTS "criterio_avaliacao_update"  ON criterio_avaliacao;
+DROP POLICY IF EXISTS "criterio_avaliacao_delete"  ON criterio_avaliacao;
+
+CREATE POLICY "criterio_avaliacao_select"  ON criterio_avaliacao FOR SELECT USING (true);
+CREATE POLICY "criterio_avaliacao_insert"  ON criterio_avaliacao FOR INSERT WITH CHECK (true);
+CREATE POLICY "criterio_avaliacao_update"  ON criterio_avaliacao FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "criterio_avaliacao_delete"  ON criterio_avaliacao FOR DELETE USING (true);
+
+-- -----------------------------------------------------------------------------
 -- relatorio_mensal
 -- -----------------------------------------------------------------------------
 ALTER TABLE relatorio_mensal ENABLE ROW LEVEL SECURITY;
@@ -201,6 +231,7 @@ WHERE schemaname = 'public'
   AND tablename IN (
     'edicao', 'projeto', 'orientador', 'bolsista', 'contrato',
     'termo_adesao', 'pagamento', 'avaliacao', 'avaliador',
-    'recurso', 'relatorio_mensal', 'importacao_log'
+    'recurso', 'recurso_criterio', 'criterio_avaliacao',
+    'relatorio_mensal', 'importacao_log'
   )
 ORDER BY tablename, cmd;

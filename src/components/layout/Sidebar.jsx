@@ -12,6 +12,7 @@ import {
   History,
   FileUp,
   Trophy,
+  Inbox,
   ChevronLeft,
   ChevronRight,
   Building2,
@@ -34,6 +35,11 @@ const navItems = [
     label: 'Avaliações',
     href: '/avaliacoes',
     icon: ClipboardList,
+  },
+  {
+    label: 'Recursos',
+    href: '/recursos',
+    icon: Inbox,
   },
   {
     label: 'Equipes e Documentos',
