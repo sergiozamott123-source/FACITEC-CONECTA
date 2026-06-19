@@ -19,6 +19,10 @@ import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
 import { ProjetosAvaliador } from '@/pages/avaliador/ProjetosAvaliador'
 import { FichaAvaliacao } from '@/pages/avaliador/FichaAvaliacao'
 import { RedefinirSenhaAvaliador } from '@/pages/avaliador/RedefinirSenhaAvaliador'
+import { OrientadorProvider, useOrientador } from '@/contexts/OrientadorContext'
+import { LoginCandidato } from '@/pages/candidato/LoginCandidato'
+import { MeusRecursos } from '@/pages/candidato/MeusRecursos'
+import { RecursoWizard } from '@/pages/candidato/RecursoWizard'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -30,6 +34,19 @@ function ProtectedAvaliador({ children }) {
     )
   }
   if (!avaliador) return <Navigate to="/avaliador/login" replace />
+  return children
+}
+
+function ProtectedCandidato({ children }) {
+  const { orientador, loading } = useOrientador()
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400 text-sm">Verificando acesso...</p>
+      </div>
+    )
+  }
+  if (!orientador) return <Navigate to="/candidato/login" replace />
   return children
 }
 
@@ -52,6 +69,17 @@ function App() {
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
           </AvaliadorProvider>
+        } />
+        {/* Portal do candidato — recursos */}
+        <Route path="/candidato/*" element={
+          <OrientadorProvider>
+            <Routes>
+              <Route path="login" element={<LoginCandidato />} />
+              <Route path="meus-recursos" element={<ProtectedCandidato><MeusRecursos /></ProtectedCandidato>} />
+              <Route path="recurso/:projetoId" element={<ProtectedCandidato><RecursoWizard /></ProtectedCandidato>} />
+              <Route path="*" element={<Navigate to="login" replace />} />
+            </Routes>
+          </OrientadorProvider>
         } />
         {/* Painel conceitual FACITEC CONECTA */}
         <Route path="/painel" element={<FacitecConecta />} />
