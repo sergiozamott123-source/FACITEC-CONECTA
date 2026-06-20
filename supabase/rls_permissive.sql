@@ -216,6 +216,81 @@ CREATE POLICY "importacao_log_insert"  ON importacao_log FOR INSERT WITH CHECK (
 CREATE POLICY "importacao_log_update"  ON importacao_log FOR UPDATE USING (true) WITH CHECK (true);
 CREATE POLICY "importacao_log_delete"  ON importacao_log FOR DELETE USING (true);
 
+-- -----------------------------------------------------------------------------
+-- convocacao
+-- Acesso total permissivo — mesmo padrão das demais tabelas admin.
+-- O controle de quem pode criar convocações é feito na camada de aplicação.
+-- -----------------------------------------------------------------------------
+ALTER TABLE convocacao ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "convocacao_select" ON convocacao;
+DROP POLICY IF EXISTS "convocacao_insert" ON convocacao;
+DROP POLICY IF EXISTS "convocacao_update" ON convocacao;
+DROP POLICY IF EXISTS "convocacao_delete" ON convocacao;
+
+CREATE POLICY "convocacao_select" ON convocacao FOR SELECT USING (true);
+CREATE POLICY "convocacao_insert" ON convocacao FOR INSERT WITH CHECK (true);
+CREATE POLICY "convocacao_update" ON convocacao FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "convocacao_delete" ON convocacao FOR DELETE USING (true);
+
+-- -----------------------------------------------------------------------------
+-- convocacao_criterio
+--
+-- TRADE-OFF TEMPORÁRIO: o admin não possui sessão Supabase Auth hoje — acessa
+-- o banco direto via anon key sem autenticar, portanto auth.uid() IS NULL.
+-- Usamos isso como proxy de "é admin" para INSERT e DELETE.
+-- Quando o admin ganhar sessão própria com role no JWT, substituir por:
+--   (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+--
+-- Admin  (auth.uid() IS NULL)    → SELECT, INSERT, UPDATE, DELETE totais
+-- Avaliador (auth.uid() NOT NULL) → SELECT e UPDATE apenas nas próprias linhas
+--                                   INSERT e DELETE bloqueados
+-- -----------------------------------------------------------------------------
+ALTER TABLE convocacao_criterio ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "convocacao_criterio_select" ON convocacao_criterio;
+DROP POLICY IF EXISTS "convocacao_criterio_insert" ON convocacao_criterio;
+DROP POLICY IF EXISTS "convocacao_criterio_update" ON convocacao_criterio;
+DROP POLICY IF EXISTS "convocacao_criterio_delete" ON convocacao_criterio;
+
+-- SELECT: admin (sem sessão) OU avaliador vendo apenas as próprias linhas
+CREATE POLICY "convocacao_criterio_select" ON convocacao_criterio
+  FOR SELECT USING (
+    auth.uid() IS NULL
+    OR avaliador_id = (
+      SELECT id FROM avaliador WHERE auth_user_id = auth.uid()
+    )
+  );
+
+-- INSERT: somente admin (avaliador não cria convocações)
+CREATE POLICY "convocacao_criterio_insert" ON convocacao_criterio
+  FOR INSERT WITH CHECK (
+    auth.uid() IS NULL
+  );
+
+-- UPDATE: admin OU avaliador atualizando apenas as próprias linhas
+-- Restrição de quais colunas o avaliador pode alterar é validada no front-end
+CREATE POLICY "convocacao_criterio_update" ON convocacao_criterio
+  FOR UPDATE
+  USING (
+    auth.uid() IS NULL
+    OR avaliador_id = (
+      SELECT id FROM avaliador WHERE auth_user_id = auth.uid()
+    )
+  )
+  WITH CHECK (
+    auth.uid() IS NULL
+    OR avaliador_id = (
+      SELECT id FROM avaliador WHERE auth_user_id = auth.uid()
+    )
+  );
+
+-- DELETE: somente admin
+CREATE POLICY "convocacao_criterio_delete" ON convocacao_criterio
+  FOR DELETE USING (
+    auth.uid() IS NULL
+  );
+
 -- =============================================================================
 -- Verificação — lista as políticas criadas
 -- =============================================================================
@@ -232,6 +307,7 @@ WHERE schemaname = 'public'
     'edicao', 'projeto', 'orientador', 'bolsista', 'contrato',
     'termo_adesao', 'pagamento', 'avaliacao', 'avaliador',
     'recurso', 'recurso_criterio', 'criterio_avaliacao',
-    'relatorio_mensal', 'importacao_log'
+    'relatorio_mensal', 'importacao_log',
+    'convocacao', 'convocacao_criterio'
   )
 ORDER BY tablename, cmd;
