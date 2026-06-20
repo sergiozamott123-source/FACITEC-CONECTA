@@ -1,4 +1,4 @@
-import FacitecConecta from './FacitecConecta';
+import PortalAdmin from '@/pages/PortalAdmin';
 import HubProgramas from '@/pages/HubProgramas';
 import PibicJr from '@/pages/PibicJr';
 import SelecaoM1 from '@/pages/SelecaoM1';
@@ -85,8 +85,10 @@ function App() {
             </Routes>
           </OrientadorProvider>
         } />
-        {/* Hub de programas — tela raiz */}
-        <Route path="/" element={<HubProgramas />} />
+        {/* Portal de entrada */}
+        <Route path="/" element={<PortalAdmin />} />
+        {/* Hub de programas */}
+        <Route path="/hub" element={<HubProgramas />} />
         {/* PIBIC Jr — visão geral e módulos */}
         <Route path="/pibic-jr" element={<PibicJr />} />
         <Route path="/pibic-jr/selecao" element={<SelecaoM1 />} />

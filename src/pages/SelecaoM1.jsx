@@ -1,5 +1,8 @@
 import { Link, useNavigate } from "react-router-dom"
-import { ClipboardList, Trophy, Scale } from "lucide-react"
+import { ClipboardList } from "lucide-react"
+import avaliacoesImg from "../assets/programas/avaliacoes_square.png"
+import classificacaoImg from "../assets/programas/classificacao_square.png"
+import convocacaoImg from "../assets/programas/convocacao_square.png"
 
 const C = {
   navy: "#0D1F3C",
@@ -10,21 +13,21 @@ const C = {
 
 const FERRAMENTAS = [
   {
-    Icon: ClipboardList,
+    img: avaliacoesImg,
     titulo: "Avaliações",
     desc: "Painel de progresso dos avaliadores e status das avaliações por projeto",
     cor: C.purple, corBg: C.purpleBg,
     rota: "/avaliacoes",
   },
   {
-    Icon: Trophy,
+    img: classificacaoImg,
     titulo: "Classificação",
     desc: "Ranking geral dos projetos com notas, consenso e classificação detalhada",
     cor: C.teal, corBg: C.tealBg,
     rota: "/classificacao",
   },
   {
-    Icon: Scale,
+    img: convocacaoImg,
     titulo: "Convocação de Recursos",
     desc: "Gestão dos recursos interpostos pelos candidatos após o resultado",
     cor: C.coral, corBg: C.coralBg,
@@ -34,7 +37,6 @@ const FERRAMENTAS = [
 
 function FerramentaCard({ f }) {
   const navigate = useNavigate()
-  const { Icon } = f
 
   return (
     <div
@@ -53,10 +55,10 @@ function FerramentaCard({ f }) {
     >
       <div style={{
         width: 44, height: 44, borderRadius: 10,
-        background: f.corBg, color: f.cor,
-        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+        background: f.corBg,
+        overflow: "hidden", flexShrink: 0,
       }}>
-        <Icon size={22} />
+        <img src={f.img} alt={f.titulo} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
       </div>
 
       <div style={{ flex: 1 }}>

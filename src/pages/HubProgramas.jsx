@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
-import logoFacitec from "@/assets/logo-facitec.png.png"
+import logoFacitec from "@/assets/facitec_logo_cropped.png"
 import logoCdtiv from "@/assets/logo-cdtiv.jpg.jpg"
 
 import pibicJrImg from "@/assets/programas/pibic-jr.jpg"
@@ -192,8 +192,8 @@ export default function HubProgramas() {
           display: "flex", alignItems: "center", justifyContent: "space-between",
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div style={{ background: "#000", borderRadius: 6, padding: "3px 8px", display: "flex", alignItems: "center" }}>
-              <img src={logoFacitec} alt="FACITEC" style={{ height: 32, display: "block" }} />
+            <div style={{ background: "#fff", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center" }}>
+              <img src={logoFacitec} alt="FACITEC" style={{ height: 26, display: "block" }} />
             </div>
             <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.2)" }} />
             <div style={{ background: "#fff", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center" }}>
