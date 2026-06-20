@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { supabase } from "./lib/supabase";
 
 const C = {
@@ -163,6 +164,14 @@ function Header({ pagina, setPagina }) {
         </div>
       </div>
       <div style={{ background:C.navy2, display:"flex", padding:"0 24px", borderBottom:"1px solid rgba(255,255,255,0.08)", overflowX:"auto" }}>
+        <Link to="/"
+          style={{ display:"flex", alignItems:"center", gap:4, textDecoration:"none",
+                   color:"rgba(255,255,255,0.4)", fontSize:12, padding:"10px 14px",
+                   borderBottom:"2px solid transparent", whiteSpace:"nowrap",
+                   paddingRight:16, marginRight:4,
+                   borderRight:"1px solid rgba(255,255,255,0.08)" }}>
+          ← Programas
+        </Link>
         {nav.map(item => (
           <button key={item.id} className="fc-nav-item" onClick={() => setPagina(item.id)}
             style={{ background:"none", border:"none", cursor:"pointer", fontSize:12, padding:"10px 14px", whiteSpace:"nowrap",

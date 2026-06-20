@@ -1,4 +1,5 @@
 import FacitecConecta from './FacitecConecta';
+import HubProgramas from '@/pages/HubProgramas';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
@@ -82,8 +83,12 @@ function App() {
             </Routes>
           </OrientadorProvider>
         } />
-        {/* Painel conceitual FACITEC CONECTA */}
-        <Route path="/painel" element={<FacitecConecta />} />
+        {/* Hub de programas — tela raiz */}
+        <Route path="/" element={<HubProgramas />} />
+        {/* PIBIC Jr — painel de módulos */}
+        <Route path="/pibic-jr" element={<FacitecConecta />} />
+        {/* redirect de URL antiga */}
+        <Route path="/painel" element={<Navigate to="/pibic-jr" replace />} />
         {/* Área administrativa */}
         <Route
           path="/*"
