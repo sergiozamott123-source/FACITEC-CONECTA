@@ -1,5 +1,7 @@
 import FacitecConecta from './FacitecConecta';
 import HubProgramas from '@/pages/HubProgramas';
+import PibicJr from '@/pages/PibicJr';
+import SelecaoM1 from '@/pages/SelecaoM1';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
 import { Dashboard } from '@/pages/Dashboard'
@@ -85,8 +87,9 @@ function App() {
         } />
         {/* Hub de programas — tela raiz */}
         <Route path="/" element={<HubProgramas />} />
-        {/* PIBIC Jr — painel de módulos */}
-        <Route path="/pibic-jr" element={<FacitecConecta />} />
+        {/* PIBIC Jr — visão geral e módulos */}
+        <Route path="/pibic-jr" element={<PibicJr />} />
+        <Route path="/pibic-jr/selecao" element={<SelecaoM1 />} />
         {/* redirect de URL antiga */}
         <Route path="/painel" element={<Navigate to="/pibic-jr" replace />} />
         {/* Área administrativa */}
