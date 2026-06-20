@@ -4,9 +4,10 @@ import { supabase } from "@/lib/supabase"
 import logoFacitec from "@/assets/logo-facitec.png.png"
 import logoCdtiv from "@/assets/logo-cdtiv.jpg.jpg"
 
-// To add a real cover image: import the file into the slug's `image` field below.
-// Example: import pibicJrImg from "@/assets/programas/pibic-jr.jpg"
-// Then set  image: pibicJrImg  in the PIBIC Jr entry.
+import pibicJrImg from "@/assets/programas/pibic-jr.jpg"
+import proficJrImg from "@/assets/programas/profic-jr.jpg"
+import proficJovemImg from "@/assets/programas/profic-jovem.jpg"
+import posGraduacaoImg from "@/assets/programas/pos-graduacao.jpg"
 const PROGRAMAS = [
   {
     slug: "pibic-jr",
@@ -18,7 +19,7 @@ const PROGRAMAS = [
     corBg: "#EEEDFE",
     ativo: true,
     rota: "/pibic-jr",
-    image: null,
+    image: pibicJrImg,
   },
   {
     slug: "profic-jr",
@@ -30,7 +31,7 @@ const PROGRAMAS = [
     corBg: "#E1F5EE",
     ativo: false,
     rota: null,
-    image: null,
+    image: proficJrImg,
   },
   {
     slug: "profic-jovem",
@@ -42,7 +43,7 @@ const PROGRAMAS = [
     corBg: "#FAECE7",
     ativo: false,
     rota: null,
-    image: null,
+    image: proficJovemImg,
   },
   {
     slug: "pos-graduacao",
@@ -54,7 +55,7 @@ const PROGRAMAS = [
     corBg: "#FAEEDA",
     ativo: false,
     rota: null,
-    image: null,
+    image: posGraduacaoImg,
   },
 ]
 
@@ -226,7 +227,7 @@ export default function HubProgramas() {
             Facitec Conecta
           </h1>
           <p style={{ fontSize: 15, color: "rgba(255,255,255,0.5)", margin: "0 auto", maxWidth: 460 }}>
-            Plataforma integrada de gestão dos programas de fomento científico de Vitória
+            Plataforma integrada de gestão dos programas de fomento científico da Cia de Desenvolvimento e Turismo de Vitória
           </p>
         </div>
       </div>
