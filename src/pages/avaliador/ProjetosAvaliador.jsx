@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardCheck, LogOut, ChevronRight } from 'lucide-react'
+import { AlertTriangle, ClipboardCheck, LogOut, ChevronRight } from 'lucide-react'
 import { useAvaliador } from '@/contexts/AvaliadorContext'
 import { supabase } from '@/lib/supabase'
 
@@ -22,28 +22,45 @@ function StatusBadge({ status }) {
 export function ProjetosAvaliador() {
   const { avaliador, logout } = useAvaliador()
   const navigate = useNavigate()
-  const [avaliacoes, setAvaliacoes] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
+  const [avaliacoes,   setAvaliacoes]   = useState([])
+  const [loading,      setLoading]      = useState(true)
+  const [error,        setError]        = useState(null)
+  const [pendencias,   setPendencias]   = useState([])
+  const [showPendencias, setShowPendencias] = useState(false)
 
   useEffect(() => {
     if (!avaliador) return
-    fetchAvaliacoes()
+    fetchTudo()
   }, [avaliador])
 
-  async function fetchAvaliacoes() {
+  async function fetchTudo() {
     setLoading(true)
-    const { data, error } = await supabase
-      .from('avaliacao')
-      .select(`
-        id, status, nota_total, recomendacao_final,
-        projeto:projeto_id ( id, titulo, area_conhecimento )
-      `)
-      .eq('avaliador_id', avaliador.id)
-      .order('created_at', { ascending: true })
 
-    if (error) setError('Não foi possível carregar os projetos. Tente recarregar a página.')
-    else setAvaliacoes(data ?? [])
+    const [{ data: avData, error: e1 }, { data: ccData, error: e2 }] = await Promise.all([
+      supabase
+        .from('avaliacao')
+        .select('id, status, nota_total, recomendacao_final, projeto:projeto_id(id, titulo, area_conhecimento)')
+        .eq('avaliador_id', avaliador.id)
+        .order('created_at', { ascending: true }),
+      supabase
+        .from('convocacao_criterio')
+        .select(`
+          id,
+          criterio:criterio_id (codigo, nome),
+          convocacao:convocacao_id (
+            recurso:recurso_id (
+              codigo_recurso,
+              projeto:projeto_id (titulo)
+            )
+          )
+        `)
+        .eq('avaliador_id', avaliador.id)
+        .eq('status', 'convocado'),
+    ])
+
+    if (e1) setError('Não foi possível carregar os projetos. Tente recarregar a página.')
+    else setAvaliacoes(avData ?? [])
+    setPendencias(ccData ?? [])
     setLoading(false)
   }
 
@@ -81,6 +98,62 @@ export function ProjetosAvaliador() {
 
       <main className="flex-1 px-4 py-6">
         <div className="max-w-2xl mx-auto space-y-5">
+
+          {/* Banner de pendências de recurso */}
+          {!loading && pendencias.length > 0 && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-amber-800">
+                    {pendencias.length} pendência(s) de recurso aguardando sua resposta
+                  </p>
+                  <p className="text-xs text-amber-600 mt-0.5">
+                    Você foi convocado para reavaliar critérios contestados por candidatos.
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowPendencias(v => !v)}
+                  className="text-xs font-semibold text-amber-700 hover:text-amber-900 shrink-0 underline underline-offset-2"
+                >
+                  {showPendencias ? 'Ocultar' : 'Ver pendências'}
+                </button>
+              </div>
+
+              {showPendencias && (
+                <div className="space-y-2 pt-1">
+                  {pendencias.map(cc => {
+                    const recurso = cc.convocacao?.recurso
+                    return (
+                      <button
+                        key={cc.id}
+                        onClick={() => navigate(`/avaliador/recurso/${cc.id}`)}
+                        className="w-full text-left bg-white rounded-lg border border-amber-200 px-3 py-2.5 hover:border-amber-400 hover:shadow-sm transition-all flex items-center justify-between gap-3"
+                      >
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                            {recurso?.codigo_recurso && (
+                              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                                {recurso.codigo_recurso}
+                              </span>
+                            )}
+                            <span className="text-xs font-bold text-amber-700 bg-amber-100 border border-amber-200 px-1.5 py-0.5 rounded">
+                              {cc.criterio?.codigo}
+                            </span>
+                          </div>
+                          <p className="text-sm font-medium text-gray-800 truncate">
+                            {recurso?.projeto?.titulo ?? '—'}
+                          </p>
+                          <p className="text-xs text-gray-500 truncate">{cc.criterio?.nome}</p>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-amber-500 shrink-0" />
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Boas-vindas */}
           <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">

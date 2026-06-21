@@ -14,6 +14,7 @@ import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
 import { Classificacao } from '@/pages/Classificacao'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
+import { PainelConsolidadoRecurso } from '@/pages/admin/PainelConsolidadoRecurso'
 import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
@@ -22,6 +23,7 @@ import { AvaliadorProvider, useAvaliador } from '@/contexts/AvaliadorContext'
 import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
 import { ProjetosAvaliador } from '@/pages/avaliador/ProjetosAvaliador'
 import { FichaAvaliacao } from '@/pages/avaliador/FichaAvaliacao'
+import { RespostaRecursoAvaliador } from '@/pages/avaliador/RespostaRecursoAvaliador'
 import { RedefinirSenhaAvaliador } from '@/pages/avaliador/RedefinirSenhaAvaliador'
 import { OrientadorProvider, useOrientador } from '@/contexts/OrientadorContext'
 import { LoginCandidato } from '@/pages/candidato/LoginCandidato'
@@ -70,6 +72,7 @@ function App() {
               <Route path="redefinir-senha" element={<RedefinirSenhaAvaliador />} />
               <Route path="projetos" element={<ProtectedAvaliador><ProjetosAvaliador /></ProtectedAvaliador>} />
               <Route path="projeto/:avaliacaoId" element={<ProtectedAvaliador><FichaAvaliacao /></ProtectedAvaliador>} />
+              <Route path="recurso/:ccId" element={<ProtectedAvaliador><RespostaRecursoAvaliador /></ProtectedAvaliador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
           </AvaliadorProvider>
@@ -110,6 +113,7 @@ function App() {
                 <Route path="/historico" element={<Historico />} />
                 <Route path="/classificacao" element={<Classificacao />} />
                 <Route path="/recursos" element={<ConvocacaoRecurso />} />
+                <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
               </Routes>
             </Layout>

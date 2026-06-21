@@ -32,7 +32,7 @@ export function ConvocacaoRecurso() {
   const [detailLoading,   setDetailLoading]   = useState(false)
   const [detailError,     setDetailError]     = useState(null)
   const [convocacaoId,    setConvocacaoId]    = useState(null)
-  const [convocados,      setConvocados]      = useState(new Set())
+  const [convocadosMap,   setConvocadosMap]   = useState(new Map())
   const [convocando,      setConvocando]      = useState(new Set())
   const [convocarError,   setConvocarError]   = useState(null)
   const [gruposBExpanded, setGruposBExpanded] = useState(new Set())
@@ -63,7 +63,7 @@ export function ConvocacaoRecurso() {
     setDetailError(null)
     setDetailLoading(true)
     setConvocacaoId(null)
-    setConvocados(new Set())
+    setConvocadosMap(new Map())
     setConvocando(new Set())
     setConvocarError(null)
     setGruposBExpanded(new Set())
@@ -88,7 +88,7 @@ export function ConvocacaoRecurso() {
         .eq('status', 'concluida'),
       supabase
         .from('convocacao')
-        .select('id, convocacao_criterio(criterio_id, avaliador_id)')
+        .select('id, convocacao_criterio(criterio_id, avaliador_id, status, resposta, nova_nota)')
         .eq('recurso_id', rec.id)
         .maybeSingle(),
     ])
@@ -101,9 +101,15 @@ export function ConvocacaoRecurso() {
 
     if (convData) {
       setConvocacaoId(convData.id)
-      setConvocados(new Set(
-        (convData.convocacao_criterio ?? []).map(r => `${r.criterio_id}:${r.avaliador_id}`)
-      ))
+      const map = new Map()
+      ;(convData.convocacao_criterio ?? []).forEach(r => {
+        map.set(`${r.criterio_id}:${r.avaliador_id}`, {
+          status:    r.status,
+          resposta:  r.resposta,
+          nova_nota: r.nova_nota,
+        })
+      })
+      setConvocadosMap(map)
     }
 
     setGrupos(buildCriterioGroups(rcList ?? [], avList ?? []))
@@ -147,7 +153,7 @@ export function ConvocacaoRecurso() {
         throw new Error('Erro ao registrar convocação: ' + errI.message)
       }
 
-      setConvocados(prev => new Set([...prev, key]))
+      setConvocadosMap(prev => new Map(prev).set(key, { status: 'convocado', resposta: null, nova_nota: null }))
     } catch (err) {
       setConvocarError(err.message)
     } finally {
@@ -164,8 +170,25 @@ export function ConvocacaoRecurso() {
   }
 
   function renderBotaoConvocar(criterioId, avaliadorId) {
-    const key = `${criterioId}:${avaliadorId}`
-    if (convocados.has(key)) {
+    const key    = `${criterioId}:${avaliadorId}`
+    const entry  = convocadosMap.get(key)
+
+    if (entry?.status === 'respondido') {
+      const tooltip = entry.resposta === 'sim'
+        ? `Alterou para ${entry.nova_nota}`
+        : 'Manteve a nota'
+      return (
+        <span
+          title={tooltip}
+          className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded shrink-0 cursor-default"
+        >
+          <Check className="w-3 h-3" />
+          Respondido
+        </span>
+      )
+    }
+
+    if (entry?.status === 'convocado') {
       return (
         <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded shrink-0">
           <Check className="w-3 h-3" />
@@ -173,6 +196,7 @@ export function ConvocacaoRecurso() {
         </span>
       )
     }
+
     const busy = convocando.has(key)
     return (
       <Button
