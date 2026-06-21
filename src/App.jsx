@@ -15,6 +15,7 @@ import { Historico } from '@/pages/Historico'
 import { Classificacao } from '@/pages/Classificacao'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
 import { PainelConsolidadoRecurso } from '@/pages/admin/PainelConsolidadoRecurso'
+import { DecisaoFinalRecurso } from '@/pages/admin/DecisaoFinalRecurso'
 import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
@@ -114,6 +115,7 @@ function App() {
                 <Route path="/classificacao" element={<Classificacao />} />
                 <Route path="/recursos" element={<ConvocacaoRecurso />} />
                 <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
+                <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
               </Routes>
             </Layout>
