@@ -127,6 +127,21 @@ CREATE POLICY "avaliacao_update"  ON avaliacao FOR UPDATE USING (true) WITH CHEC
 CREATE POLICY "avaliacao_delete"  ON avaliacao FOR DELETE USING (true);
 
 -- -----------------------------------------------------------------------------
+-- avaliacao_criterio
+-- -----------------------------------------------------------------------------
+ALTER TABLE avaliacao_criterio ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "avaliacao_criterio_select" ON avaliacao_criterio;
+DROP POLICY IF EXISTS "avaliacao_criterio_insert" ON avaliacao_criterio;
+DROP POLICY IF EXISTS "avaliacao_criterio_update" ON avaliacao_criterio;
+DROP POLICY IF EXISTS "avaliacao_criterio_delete" ON avaliacao_criterio;
+
+CREATE POLICY "avaliacao_criterio_select" ON avaliacao_criterio FOR SELECT USING (true);
+CREATE POLICY "avaliacao_criterio_insert" ON avaliacao_criterio FOR INSERT WITH CHECK (true);
+CREATE POLICY "avaliacao_criterio_update" ON avaliacao_criterio FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "avaliacao_criterio_delete" ON avaliacao_criterio FOR DELETE USING (true);
+
+-- -----------------------------------------------------------------------------
 -- avaliador
 -- -----------------------------------------------------------------------------
 ALTER TABLE avaliador ENABLE ROW LEVEL SECURITY;
