@@ -141,15 +141,38 @@ function FileUploadInput({ label, accept, currentUrl, onFile, uploading, hint })
   )
 }
 
+// ── Utilitário de força de senha ──────────────────────────────────────────
+
+function passwordStrength(pw) {
+  if (!pw) return { level: 0, label: '' }
+  const hasLetter  = /[a-zA-Z]/.test(pw)
+  const hasNumber  = /[0-9]/.test(pw)
+  const hasSpecial = /[^a-zA-Z0-9]/.test(pw)
+  if (pw.length < 6) return { level: 1, label: 'Fraca' }
+  if (pw.length >= 8 && hasLetter && hasNumber && hasSpecial) return { level: 4, label: 'Forte' }
+  if (pw.length >= 8 && hasLetter && hasNumber) return { level: 3, label: 'Boa' }
+  return { level: 2, label: 'Razoável' }
+}
+
+const STRENGTH_COLORS = ['', 'bg-red-500', 'bg-orange-400', 'bg-yellow-400', 'bg-green-500']
+const STRENGTH_TEXT   = ['', 'text-red-600', 'text-orange-500', 'text-yellow-600', 'text-green-600']
+
 // ── Passos ────────────────────────────────────────────────────────────────
 
-function Step1Auth({ onAuth }) {
-  const [mode, setMode]       = useState('login')
-  const [email, setEmail]     = useState('')
+function Step1Auth({ onAuth, urlAuthError }) {
+  const [mode, setMode]         = useState('login')
+  const [email, setEmail]       = useState('')
   const [password, setPassword] = useState('')
-  const [nome, setNome]       = useState('')
-  const [loading, setLoading] = useState(false)
-  const [error, setError]     = useState(null)
+  const [nome, setNome]         = useState('')
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState(null)
+
+  // Recuperação de senha
+  const [showReset, setShowReset]       = useState(false)
+  const [resetEmail, setResetEmail]     = useState('')
+  const [resetLoading, setResetLoading] = useState(false)
+  const [resetMsg, setResetMsg]         = useState(null)
+  const [resetErr, setResetErr]         = useState(null)
 
   async function handleLogin(e) {
     e.preventDefault()
@@ -180,6 +203,29 @@ function Step1Auth({ onAuth }) {
     }
   }
 
+  async function handleReset(e) {
+    e.preventDefault()
+    setResetErr(null)
+    setResetMsg(null)
+    setResetLoading(true)
+    const { error: err } = await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: window.location.origin + '/redefinir-senha',
+    })
+    setResetLoading(false)
+    if (err) { setResetErr(err.message); return }
+    setResetMsg('Link de recuperação enviado! Verifique seu e-mail.')
+  }
+
+  function switchMode(v) {
+    setMode(v)
+    setError(null)
+    setShowReset(false)
+    setResetMsg(null)
+    setResetErr(null)
+  }
+
+  const strength = passwordStrength(password)
+
   return (
     <div className="max-w-sm mx-auto space-y-4">
       <div>
@@ -191,13 +237,18 @@ function Step1Auth({ onAuth }) {
           <button
             key={v}
             type="button"
-            onClick={() => { setMode(v); setError(null) }}
+            onClick={() => switchMode(v)}
             className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${mode === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
           >
             {l}
           </button>
         ))}
       </div>
+      {urlAuthError && (
+        <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+          O link de recuperação de senha expirou ou é inválido. Por favor, solicite um novo link.
+        </div>
+      )}
       <ErrBox msg={error} />
       <form onSubmit={mode === 'login' ? handleLogin : handleRegister} className="space-y-3">
         {mode === 'register' && (
@@ -213,6 +264,81 @@ function Step1Auth({ onAuth }) {
         <div>
           <FLabel required>Senha</FLabel>
           <FInput type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" required minLength={6} />
+
+          {/* Recuperação de senha — somente na aba login */}
+          {mode === 'login' && (
+            <div className="mt-1.5">
+              {!showReset ? (
+                <button
+                  type="button"
+                  onClick={() => { setShowReset(true); setResetEmail(email) }}
+                  className="text-xs text-blue-600 hover:underline"
+                >
+                  Esqueci minha senha
+                </button>
+              ) : (
+                <div className="mt-2 p-3 bg-gray-50 rounded-md border border-gray-200 space-y-2">
+                  {resetMsg ? (
+                    <p className="text-xs text-green-700 font-medium">{resetMsg}</p>
+                  ) : (
+                    <>
+                      {resetErr && <p className="text-xs text-red-600">{resetErr}</p>}
+                      <FInput
+                        type="email"
+                        value={resetEmail}
+                        onChange={e => setResetEmail(e.target.value)}
+                        placeholder="seu@email.com"
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={handleReset}
+                          disabled={resetLoading || !resetEmail}
+                          className="flex-1 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                        >
+                          {resetLoading ? 'Enviando…' : 'Enviar link de recuperação'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowReset(false); setResetErr(null); setResetMsg(null) }}
+                          className="px-3 py-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Indicador de força — somente na aba criar conta */}
+          {mode === 'register' && password && (
+            <div className="mt-2 space-y-1">
+              <div className="flex gap-1">
+                {[1, 2, 3, 4].map(lvl => (
+                  <div
+                    key={lvl}
+                    className={`h-1.5 flex-1 rounded-full transition-colors ${
+                      strength.level >= lvl ? STRENGTH_COLORS[strength.level] : 'bg-gray-200'
+                    }`}
+                  />
+                ))}
+              </div>
+              {strength.label && (
+                <p className={`text-xs font-medium ${STRENGTH_TEXT[strength.level]}`}>
+                  Senha {strength.label.toLowerCase()}
+                </p>
+              )}
+            </div>
+          )}
+          {mode === 'register' && (
+            <p className="text-xs text-gray-400 mt-1.5">
+              Use ao menos 8 caracteres combinando letras, números e símbolos (!@#$%) para uma senha segura.
+            </p>
+          )}
         </div>
         <button
           type="submit"
@@ -577,6 +703,15 @@ export function FichaInscricao() {
   const [globalError, setGlobalError]     = useState(null)
   const [saving, setSaving]         = useState(false)
   const [stepError, setStepError]   = useState(null)
+
+  // Detecta erro no link de recuperação de senha (hash do Supabase)
+  const [urlAuthError] = useState(() => {
+    const hashParams   = new URLSearchParams(window.location.hash.slice(1))
+    const searchParams = new URLSearchParams(window.location.search)
+    const hasError = hashParams.get('error') || searchParams.get('error')
+    if (hasError) history.replaceState(null, '', window.location.pathname)
+    return !!hasError
+  })
 
   // Auth
   const [session, setSession]       = useState(null)
@@ -945,7 +1080,7 @@ export function FichaInscricao() {
 
                 {step === 1 && (
                   <>
-                    <Step1Auth onAuth={handleAuth} />
+                    <Step1Auth onAuth={handleAuth} urlAuthError={urlAuthError} />
                     {saving && (
                       <div className="flex items-center justify-center gap-2 mt-4 text-sm text-gray-500">
                         <Loader2 className="w-4 h-4 animate-spin" />Carregando seus dados…

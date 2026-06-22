@@ -21,6 +21,7 @@ import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
 import { ConfirmacaoInscricao } from '@/pages/inscricao/ConfirmacaoInscricao'
 import { FichaInscricao } from '@/pages/candidato/FichaInscricao'
+import { RedefinirSenha } from '@/pages/inscricao/RedefinirSenha'
 import { ConfiguracaoInscricao } from '@/pages/admin/ConfiguracaoInscricao'
 import { AvaliadorProvider, useAvaliador } from '@/contexts/AvaliadorContext'
 import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
@@ -65,6 +66,7 @@ function App() {
       <Routes>
         {/* Ficha pública de inscrição PibicJr (nova) */}
         <Route path="/inscricao" element={<FichaInscricao />} />
+        <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         {/* Fluxo legado de inscrição */}
         <Route path="/inscricao/login" element={<LoginInscricao />} />
         <Route path="/inscricao/formulario" element={<FormularioInscricao />} />

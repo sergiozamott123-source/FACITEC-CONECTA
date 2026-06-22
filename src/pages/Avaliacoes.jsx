@@ -32,7 +32,7 @@ function AvaliacaoForm({ value, onChange, projetos, avaliadores }) {
           {avaliadores.map(a => <option key={a.id} value={a.id}>{a.nome ?? a.email}</option>)}
         </Select>
       </FormField>
-      <FormField label="Status" required>
+      <FormField label="Status" required>clc
         <Select value={value.status} onChange={set('status')}>
           {STATUS_OPTS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </Select>
