@@ -9,11 +9,14 @@ import { FormField, Input, Textarea, Select, ErrorAlert, EmptyState, LoadingStat
 import { useTable, useCrud } from '@/hooks/useTable'
 import { edicaoService } from '@/lib/db'
 
-const STATUS_OPTS = ['rascunho', 'aberto', 'ativo', 'encerrado', 'cancelado']
+const STATUS_OPTS = [
+  { value: 'ativo', label: 'Ativo' },
+  { value: 'encerrado', label: 'Encerrado' },
+  { value: 'planejado', label: 'Planejado' },
+]
 
 const STATUS_VARIANT = {
-  ativo: 'success', aberto: 'default', rascunho: 'secondary',
-  encerrado: 'secondary', cancelado: 'destructive',
+  ativo: 'success', encerrado: 'secondary', planejado: 'default',
 }
 
 const EMPTY = {
@@ -21,11 +24,14 @@ const EMPTY = {
   numero_edital: '',
   programa_id: 'PIBICJR',
   codigo_facitec: '',
-  status: 'rascunho',
+  status: 'planejado',
   data_inicio: '',
   data_termino: '',
   edital_url: '',
   observacoes: '',
+  numero_processo: '',
+  prazo_recurso_fim: '',
+  item_criterios_avaliacao: '',
 }
 
 function codigoFromAno(ano) {
@@ -89,16 +95,34 @@ function EdicaoForm({ value, onChange }) {
         </FormField>
       </div>
 
-      {/* Row 3: Status */}
+      {/* Row 3: Número do processo + Item dos critérios */}
+      <div className="grid grid-cols-2 gap-3">
+        <FormField label="Número do processo">
+          <Input
+            placeholder="ex: 2026.001234"
+            value={value.numero_processo ?? ''}
+            onChange={set('numero_processo')}
+          />
+        </FormField>
+        <FormField label="Item dos critérios de avaliação">
+          <Input
+            placeholder="ex: 8.1"
+            value={value.item_criterios_avaliacao ?? ''}
+            onChange={set('item_criterios_avaliacao')}
+          />
+        </FormField>
+      </div>
+
+      {/* Row 4: Status */}
       <FormField label="Status" required>
         <Select value={value.status} onChange={set('status')}>
           {STATUS_OPTS.map(s => (
-            <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
+            <option key={s.value} value={s.value}>{s.label}</option>
           ))}
         </Select>
       </FormField>
 
-      {/* Row 4: Datas */}
+      {/* Row 5: Datas */}
       <div className="grid grid-cols-2 gap-3">
         <FormField label="Data de início">
           <Input type="date" value={value.data_inicio ?? ''} onChange={set('data_inicio')} />
@@ -107,6 +131,15 @@ function EdicaoForm({ value, onChange }) {
           <Input type="date" value={value.data_termino ?? ''} onChange={set('data_termino')} />
         </FormField>
       </div>
+
+      {/* Prazo final para recursos */}
+      <FormField label="Prazo final para recursos">
+        <Input
+          type="date"
+          value={value.prazo_recurso_fim ?? ''}
+          onChange={set('prazo_recurso_fim')}
+        />
+      </FormField>
 
       {/* URL do edital */}
       <FormField label="URL do edital">
@@ -163,6 +196,9 @@ export function Edicoes() {
       data_termino: item.data_termino ?? '',
       edital_url: item.edital_url ?? '',
       observacoes: item.observacoes ?? '',
+      numero_processo: item.numero_processo ?? '',
+      prazo_recurso_fim: item.prazo_recurso_fim ?? '',
+      item_criterios_avaliacao: item.item_criterios_avaliacao ?? '',
     })
     setModal({ mode: 'edit', item })
   }
@@ -181,6 +217,9 @@ export function Edicoes() {
       data_termino: form.data_termino || null,
       edital_url: form.edital_url || null,
       observacoes: form.observacoes || null,
+      numero_processo: form.numero_processo || null,
+      prazo_recurso_fim: form.prazo_recurso_fim || null,
+      item_criterios_avaliacao: form.item_criterios_avaliacao || null,
     }
     try {
       if (modal.mode === 'create') await create(payload)

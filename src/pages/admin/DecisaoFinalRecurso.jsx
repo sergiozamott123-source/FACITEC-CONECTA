@@ -1,14 +1,24 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Loader2, Scale } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, FileText, Loader2, Scale } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+import logoFacitec from '@/assets/facitec_logo_cropped.png'
+import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
 
 function arredonda(n) {
   return Math.round(n * 100) / 100
+}
+
+function dataPorExtenso(date = new Date()) {
+  const meses = [
+    'janeiro','fevereiro','março','abril','maio','junho',
+    'julho','agosto','setembro','outubro','novembro','dezembro',
+  ]
+  return `${date.getDate()} de ${meses[date.getMonth()]} de ${date.getFullYear()}`
 }
 
 function buildCriterios(rcList, ccAll, notaMap) {
@@ -29,6 +39,7 @@ function buildCriterios(rcList, ccAll, notaMap) {
       return {
         rcId: rc.id,
         criterio: rc.criterio,
+        fundamentacao: rc.fundamentacao ?? null,
         ccList,
         pendentes,
         simVoters,
@@ -45,16 +56,21 @@ export function DecisaoFinalRecurso() {
   const { recursoId } = useParams()
   const navigate      = useNavigate()
 
-  const [recurso,     setRecurso]     = useState(null)
-  const [criterios,   setCriterios]   = useState([])
-  const [notaMap,     setNotaMap]     = useState({})
-  const [loading,     setLoading]     = useState(true)
-  const [error,       setError]       = useState(null)
-  const [confirming,  setConfirming]  = useState(false)
-  const [salvando,    setSalvando]    = useState(false)
-  const [actionError, setActionError] = useState(null)
-  const [sucesso,     setSucesso]     = useState(false)
-  const [resumo,      setResumo]      = useState([])
+  const [recurso,        setRecurso]        = useState(null)
+  const [criterios,      setCriterios]      = useState([])
+  const [notaMap,        setNotaMap]        = useState({})
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState(null)
+  const [confirming,     setConfirming]     = useState(false)
+  const [salvando,       setSalvando]       = useState(false)
+  const [actionError,    setActionError]    = useState(null)
+  const [sucesso,        setSucesso]        = useState(false)
+  const [resumo,         setResumo]         = useState([])
+
+  // Fase E — Parecer Oficial
+  const [parecerModal,   setParecerModal]   = useState(false)
+  const [presidenteNome, setPresidenteNome] = useState('')
+  const [parecerTexto,   setParecerTexto]   = useState('')
 
   useEffect(() => { fetchDados() }, [recursoId])
 
@@ -70,15 +86,15 @@ export function DecisaoFinalRecurso() {
       supabase
         .from('recurso')
         .select(`
-          id, codigo_recurso, status, projeto_id,
-          projeto:projeto_id(id, titulo),
+          id, codigo_recurso, status, projeto_id, enviado_em,
+          projeto:projeto_id(id, titulo, edicao_id, edicao:edicao_id(numero_edital, numero_processo, item_criterios_avaliacao, prazo_recurso_fim)),
           orientador:orientador_id(id, nome_completo)
         `)
         .eq('id', recursoId)
         .single(),
       supabase
         .from('recurso_criterio')
-        .select('id, criterio_id, criterio:criterio_id(id, codigo, nome, nota_maxima, ordem)')
+        .select('id, criterio_id, fundamentacao, criterio:criterio_id(id, codigo, nome, nota_maxima, ordem)')
         .eq('recurso_id', recursoId),
       supabase
         .from('convocacao')
@@ -185,6 +201,146 @@ export function DecisaoFinalRecurso() {
     }
   }
 
+  // ─── Fase E: gerar parecer oficial em PDF ────────────────────────────────
+  function handleGerarPDF() {
+    const dataHoje      = dataPorExtenso()
+    const edicao        = recurso?.projeto?.edicao
+    const tempestivo    = recurso?.enviado_em && edicao?.prazo_recurso_fim
+      ? new Date(recurso.enviado_em) <= new Date(edicao.prazo_recurso_fim)
+      : true
+
+    const isDeferido    = criterios.some(c => c.decisao === 'alterada')
+    const nomeOrient    = recurso?.orientador?.nome_completo ?? '—'
+    const tituloProjeto = recurso?.projeto?.titulo ?? '—'
+    const codigoRecurso = recurso?.codigo_recurso ?? '—'
+    const numEdital     = edicao?.numero_edital ?? '—'
+    const numProcesso   = edicao?.numero_processo ?? '—'
+    const itemCrit      = edicao?.item_criterios_avaliacao ?? '—'
+    const nomesCrit     = criterios.map(c => c.criterio?.nome ?? '—').join(', ')
+
+    const avIds = new Set()
+    criterios.forEach(c => c.ccList.forEach(cc => avIds.add(cc.avaliador_id)))
+    const numAv = avIds.size
+
+    function esc(str) {
+      return String(str ?? '')
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/\n/g, '<br>')
+    }
+
+    const letras = 'abcdefghij'.split('')
+
+    const blocosCriterio = criterios.map((crit, i) => {
+      const nome  = crit.criterio?.nome ?? '—'
+      const fund  = esc(crit.fundamentacao ?? '(sem fundamentação registrada)')
+      const banca = esc(parecerTexto)
+      return `
+        <p><strong>${letras[i] ?? i + 1}) ${esc(nome)}</strong></p>
+        <p>No que diz respeito ao ${esc(nome)}, a recorrente sustenta: ${fund}</p>
+        <p>A Banca Avaliadora, por maioria, entendeu que ${banca}.</p>`
+    }).join('')
+
+    const nomesTodos = criterios.map(c => c.criterio?.nome ?? '—').join(', ')
+
+    const alteracoesTexto = criterios
+      .filter(c => c.decisao === 'alterada')
+      .map(c => {
+        const notaOrig = c.simVoters.length > 0
+          ? arredonda(c.simVoters.reduce((s, cc) => s + (notaMap[`${cc.avaliador_id}:${cc.criterio_id}`] ?? 0), 0) / c.simVoters.length)
+          : null
+        return `Critério ${esc(c.criterio?.nome ?? '—')}: de ${notaOrig !== null ? notaOrig.toFixed(2) : '—'} para ${c.nota_calculada?.toFixed(2) ?? '—'}`
+      }).join('; ')
+
+    const secaoII = !tempestivo ? '' : `
+      <h2>SEÇÃO II – FUNDAMENTAÇÃO</h2>
+
+      <p><strong>II.1 – Da competência e do conhecimento do recurso</strong></p>
+      <p>Conforme previsto no edital ${esc(numEdital)}, os recursos interpostos contra o resultado preliminar devem ser dirigidos ao Presidente do Conselho Municipal de Ciência e Tecnologia, a quem compete o julgamento.</p>
+      <p>No caso concreto, o recurso administrativo foi protocolado tempestivamente, identifica com precisão a proposta e o resultado impugnado, e foi apresentado por quem figura como proponente, preenchendo, portanto, os requisitos objetivos e subjetivos de admissibilidade.</p>
+      <p>Diante disso, CONHEÇO do recurso interposto por ${esc(nomeOrient)} para exame de mérito.</p>
+
+      <p><strong>II.2 – Da motivação da avaliação e da atuação da Banca</strong></p>
+      <p>Registre-se, inicialmente, que a atribuição original de notas às propostas submetidas ao ${esc(numEdital)} não foi acompanhada de motivação escrita individualizada para cada critério, tendo sido divulgadas apenas as pontuações finais.</p>
+      <p>A fase recursal, entretanto, foi estruturada de modo a permitir a reapreciação das propostas e a explicitação das razões técnicas de manutenção ou alteração das notas, incumbindo à Banca Avaliadora emitir pareceres fundamentados à luz dos critérios definidos no item ${esc(itemCrit)} do edital.</p>
+      <p>No âmbito do presente recurso, a Banca Avaliadora examinou detidamente as razões apresentadas pela recorrente em relação a cada um dos critérios de avaliação, tendo emitido manifestação técnica que supre de forma adequada a motivação das notas originalmente atribuídas.</p>
+
+      <p><strong>II.3 – Do mérito recursal segundo os critérios de avaliação</strong></p>
+      ${blocosCriterio}
+
+      <p><strong>II.4 – Síntese conclusiva</strong></p>
+      <p>À vista de todo o exposto, constata-se que: (i) o recurso preenche os requisitos de admissibilidade e foi devidamente conhecido; (ii) a Banca Avaliadora examinou a proposta e as razões recursais à luz dos critérios do edital, emitindo parecer técnico fundamentado; e (iii) ${
+        isDeferido
+          ? 'restou demonstrado que as notas merecem revisão conforme deliberação da Banca.'
+          : 'não restou demonstrado vício de legalidade, erro manifesto ou arbitrariedade que justifique a alteração das notas atribuídas.'
+      }</p>`
+
+    const secaoIII = !tempestivo ? '' : `
+      <h2>SEÇÃO III – DISPOSITIVO</h2>
+      <p>Diante do exposto, no uso das atribuições que me confere o Edital FACITEC n.º ${esc(numEdital)} e na qualidade de Presidente do Conselho Municipal de Ciência e Tecnologia – CMCT, DECIDO:</p>
+      <p>1) CONHECER do recurso administrativo interposto por ${esc(nomeOrient)}, relativo à proposta ${esc(tituloProjeto)}, vinculada ao Processo Administrativo n.º ${esc(numProcesso)}.</p>
+      ${isDeferido
+        ? `<p>2) NO MÉRITO, DAR PROVIMENTO ao recurso, alterando as seguintes notas: ${alteracoesTexto}.</p>`
+        : `<p>2) NO MÉRITO, NEGAR PROVIMENTO ao recurso, mantendo-se inalteradas as notas atribuídas aos critérios ${esc(nomesTodos)}, por seus próprios fundamentos técnicos, ora expressamente adotados como razões de decidir.</p>`
+      }
+      <p>3) Determinar a publicação desta decisão no endereço eletrônico oficial do Fundo FACITEC (facitecnews.com.br), de forma consolidada com os demais resultados, para que produza seus regulares efeitos jurídicos e administrativos.</p>`
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>Decisão Final — ${esc(codigoRecurso)}</title>
+  <style>
+    @page { size: A4; margin: 2.5cm 3cm; }
+    body { font-family: Arial, sans-serif; font-size: 12pt; color: #000; line-height: 1.7; margin: 2.5rem 3rem; }
+    h1 { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 4px 0; line-height: 1.5; }
+    h2 { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin: 28px 0 14px; }
+    p { margin: 0 0 14px; text-align: justify; }
+    .cabecalho { text-align: center; margin-bottom: 36px; border-bottom: 2px solid #000; padding-bottom: 20px; }
+    .assinatura { margin-top: 64px; text-align: center; }
+    .assinatura .data { margin-bottom: 52px; }
+    .assinatura .linha { border-top: 1px solid #000; width: 320px; margin: 0 auto 8px; }
+    .assinatura p { margin: 3px 0; text-align: center; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+
+  <div class="cabecalho">
+    <h1>COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA – CDTIV</h1>
+    <h1>CONSELHO MUNICIPAL DE CIÊNCIA E TECNOLOGIA – CMCT</h1>
+    <h1>PROCESSO ADMINISTRATIVO N.º ${esc(numProcesso)}</h1>
+    <h1>EDITAL FACITEC N.º ${esc(numEdital)} – PIBICJR</h1>
+    <h1>RECURSO ADMINISTRATIVO – PROPOSTA ${esc(tituloProjeto)}</h1>
+  </div>
+
+  <h2>SEÇÃO I – RELATÓRIO</h2>
+  <p>Trata-se de recurso administrativo interposto por ${esc(nomeOrient)}, registrado sob o código ${esc(codigoRecurso)}, em face do resultado preliminar de avaliação da proposta intitulada ${esc(tituloProjeto)}, submetida no âmbito do Edital FACITEC n. ${esc(numEdital)} – Programa Institucional de Bolsas de Iniciação Científica Júnior – PIBICJR.</p>
+  <p>A recorrente insurge-se contra as notas atribuídas aos critérios de avaliação previstos no edital, pleiteando a revisão das pontuações atribuídas aos critérios ${esc(nomesCrit)}.</p>
+  ${tempestivo
+    ? `<p>O recurso foi apresentado dentro do prazo estabelecido no cronograma do edital ${esc(numEdital)}, por parte legítima e em peça escrita, razão pela qual foi formalmente conhecido e encaminhado à Banca Avaliadora composta por ${numAv} avaliador${numAv !== 1 ? 'es' : ''}, para análise técnica e emissão de parecer fundamentado quanto às razões recursais.</p><p>É o relatório. Decido.</p>`
+    : `<p>Não obstante, verifica-se que o recurso foi interposto fora do prazo estabelecido no cronograma do Edital FACITEC n. ${esc(numEdital)}, razão pela qual se mostra <strong>INTEMPESTIVO</strong>, não podendo ser formalmente conhecido.</p>`
+  }
+
+  ${secaoII}
+  ${secaoIII}
+
+  <div class="assinatura">
+    <p class="data">Vitória/ES, ${dataHoje}.</p>
+    <div class="linha"></div>
+    <p><strong>${esc(presidenteNome)}</strong></p>
+    <p>Diretor Presidente da CDTIV</p>
+    <p>Presidente do Conselho Municipal de Ciência e Tecnologia – CMCT</p>
+  </div>
+
+</body>
+</html>`
+
+    const win = window.open('', '_blank')
+    win.document.write(html)
+    win.document.close()
+    win.print()
+  }
+
   // ─── Tela de sucesso ──────────────────────────────────────────────────────
   if (sucesso) {
     return (
@@ -234,11 +390,82 @@ export function DecisaoFinalRecurso() {
           </CardContent>
         </Card>
 
-        <div className="flex justify-end">
+        <div className="flex items-center justify-end gap-3">
+          <Button variant="outline" onClick={() => setParecerModal(true)} className="gap-2">
+            <FileText className="w-4 h-4" />
+            Gerar Parecer Oficial
+          </Button>
           <Button onClick={() => navigate('/recursos')}>
             Voltar à lista de recursos
           </Button>
         </div>
+
+        {/* Modal — Parecer Oficial */}
+        <Modal
+          open={parecerModal}
+          onClose={() => setParecerModal(false)}
+          title="Gerar Parecer Oficial"
+          size="lg"
+        >
+          <div className="space-y-5">
+
+            {/* Local e data (fixo) */}
+            <div className="rounded-md bg-muted/50 border border-border px-4 py-2.5">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-0.5">
+                Local e data
+              </p>
+              <p className="text-sm text-foreground">Vitória, {dataPorExtenso()}.</p>
+            </div>
+
+            {/* Nome do Presidente */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Nome do Presidente do CMCT
+                <span className="text-destructive ml-0.5">*</span>
+              </label>
+              <input
+                type="text"
+                value={presidenteNome}
+                onChange={e => setPresidenteNome(e.target.value)}
+                placeholder="Ex.: João da Silva Souza"
+                className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+              />
+            </div>
+
+            {/* Parecer / Fundamentação */}
+            <div className="space-y-1.5">
+              <label className="text-sm font-medium text-foreground">
+                Parecer / Fundamentação da decisão
+                <span className="text-destructive ml-0.5">*</span>
+              </label>
+              <textarea
+                value={parecerTexto}
+                onChange={e => setParecerTexto(e.target.value)}
+                rows={8}
+                placeholder={
+                  'Descreva a fundamentação jurídica e técnica da decisão desta Secretaria Executiva. ' +
+                  'Ex.: "Após análise dos argumentos apresentados pelo recorrente e das manifestações ' +
+                  'dos avaliadores convocados, esta Secretaria Executiva entende que..."'
+                }
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-1 border-t border-border">
+              <Button variant="outline" onClick={() => setParecerModal(false)}>
+                Cancelar
+              </Button>
+              <Button
+                disabled={!presidenteNome.trim() || !parecerTexto.trim()}
+                onClick={() => { setParecerModal(false); handleGerarPDF() }}
+                className="gap-2"
+              >
+                <FileText className="w-4 h-4" />
+                Gerar PDF
+              </Button>
+            </div>
+          </div>
+        </Modal>
       </div>
     )
   }
