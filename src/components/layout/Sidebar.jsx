@@ -16,6 +16,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Settings2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
@@ -75,6 +76,11 @@ const navItems = [
     label: 'Importação',
     href: '/importacao',
     icon: FileUp,
+  },
+  {
+    label: 'Config. Inscrição',
+    href: '/admin/configuracao-inscricao',
+    icon: Settings2,
   },
 ]
 

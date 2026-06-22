@@ -20,6 +20,8 @@ import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
 import { ConfirmacaoInscricao } from '@/pages/inscricao/ConfirmacaoInscricao'
+import { FichaInscricao } from '@/pages/candidato/FichaInscricao'
+import { ConfiguracaoInscricao } from '@/pages/admin/ConfiguracaoInscricao'
 import { AvaliadorProvider, useAvaliador } from '@/contexts/AvaliadorContext'
 import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
 import { ProjetosAvaliador } from '@/pages/avaliador/ProjetosAvaliador'
@@ -61,8 +63,10 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Portal público de inscrições PibicJr */}
-        <Route path="/inscricao" element={<LoginInscricao />} />
+        {/* Ficha pública de inscrição PibicJr (nova) */}
+        <Route path="/inscricao" element={<FichaInscricao />} />
+        {/* Fluxo legado de inscrição */}
+        <Route path="/inscricao/login" element={<LoginInscricao />} />
         <Route path="/inscricao/formulario" element={<FormularioInscricao />} />
         <Route path="/inscricao/confirmacao" element={<ConfirmacaoInscricao />} />
         {/* Portal de avaliadores */}
@@ -117,6 +121,7 @@ function App() {
                 <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
                 <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
+                <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
               </Routes>
             </Layout>
           }
