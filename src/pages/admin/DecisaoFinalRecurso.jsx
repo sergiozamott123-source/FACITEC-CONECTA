@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, FileText, Loader2, Scale } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, FileText, Loader2, Scale, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
-import { supabase } from '@/lib/supabase'
+import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase'
 import logoFacitec from '@/assets/facitec_logo_cropped.png'
 import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
 
@@ -70,7 +70,38 @@ export function DecisaoFinalRecurso() {
   // Fase E — Parecer Oficial
   const [parecerModal,   setParecerModal]   = useState(false)
   const [presidenteNome, setPresidenteNome] = useState('')
-  const [parecerTexto,   setParecerTexto]   = useState('')
+  const [textoIA,        setTextoIA]        = useState('')
+  const [gerandoIA,      setGerandoIA]      = useState(false)
+
+  async function gerarComIA() {
+    setGerandoIA(true)
+    try {
+      const resp = await fetch(
+        `${supabaseUrl}/functions/v1/gerar-parecer-recurso`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${supabaseAnonKey}`,
+          },
+          body: JSON.stringify({
+            recurso_id: recurso.id,
+            criterio_ids: criterios.map(c => c.criterio?.id).filter(Boolean),
+          }),
+        }
+      )
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }))
+        throw new Error(err.error ?? 'Erro ao gerar texto com IA')
+      }
+      const { texto_gerado } = await resp.json()
+      setTextoIA(texto_gerado ?? '')
+    } catch (err) {
+      setActionError(err.message)
+    } finally {
+      setGerandoIA(false)
+    }
+  }
 
   useEffect(() => { fetchDados() }, [recursoId])
 
@@ -228,17 +259,11 @@ export function DecisaoFinalRecurso() {
         .replace(/\n/g, '<br>')
     }
 
-    const letras = 'abcdefghij'.split('')
-
-    const blocosCriterio = criterios.map((crit, i) => {
-      const nome  = crit.criterio?.nome ?? '—'
-      const fund  = esc(crit.fundamentacao ?? '(sem fundamentação registrada)')
-      const banca = esc(parecerTexto)
-      return `
-        <p><strong>${letras[i] ?? i + 1}) ${esc(nome)}</strong></p>
-        <p>No que diz respeito ao ${esc(nome)}, a recorrente sustenta: ${fund}</p>
-        <p>A Banca Avaliadora, por maioria, entendeu que ${banca}.</p>`
-    }).join('')
+    const blocoII3 = textoIA
+      .split(/\n\n+/)
+      .filter(p => p.trim())
+      .map(p => `<p>${esc(p.trim())}</p>`)
+      .join('\n')
 
     const nomesTodos = criterios.map(c => c.criterio?.nome ?? '—').join(', ')
 
@@ -260,12 +285,12 @@ export function DecisaoFinalRecurso() {
       <p>Diante disso, CONHEÇO do recurso interposto por ${esc(nomeOrient)} para exame de mérito.</p>
 
       <p><strong>II.2 – Da motivação da avaliação e da atuação da Banca</strong></p>
-      <p>Registre-se, inicialmente, que a atribuição original de notas às propostas submetidas ao ${esc(numEdital)} não foi acompanhada de motivação escrita individualizada para cada critério, tendo sido divulgadas apenas as pontuações finais.</p>
+      <p>Registre-se, inicialmente, que a atribuição original de notas às propostas submetidas ao Edital ${esc(numEdital)} não foi acompanhada de motivação escrita individualizada para cada critério, tendo sido divulgadas apenas as pontuações finais.</p>
       <p>A fase recursal, entretanto, foi estruturada de modo a permitir a reapreciação das propostas e a explicitação das razões técnicas de manutenção ou alteração das notas, incumbindo à Banca Avaliadora emitir pareceres fundamentados à luz dos critérios definidos no item ${esc(itemCrit)} do edital.</p>
       <p>No âmbito do presente recurso, a Banca Avaliadora examinou detidamente as razões apresentadas pela recorrente em relação a cada um dos critérios de avaliação, tendo emitido manifestação técnica que supre de forma adequada a motivação das notas originalmente atribuídas.</p>
 
       <p><strong>II.3 – Do mérito recursal segundo os critérios de avaliação</strong></p>
-      ${blocosCriterio}
+      ${blocoII3}
 
       <p><strong>II.4 – Síntese conclusiva</strong></p>
       <p>À vista de todo o exposto, constata-se que: (i) o recurso preenche os requisitos de admissibilidade e foi devidamente conhecido; (ii) a Banca Avaliadora examinou a proposta e as razões recursais à luz dos critérios do edital, emitindo parecer técnico fundamentado; e (iii) ${
@@ -432,22 +457,34 @@ export function DecisaoFinalRecurso() {
               />
             </div>
 
-            {/* Parecer / Fundamentação */}
+            {/* Item II.3 — gerado por IA */}
             <div className="space-y-1.5">
-              <label className="text-sm font-medium text-foreground">
-                Parecer / Fundamentação da decisão
-                <span className="text-destructive ml-0.5">*</span>
-              </label>
+              <div className="flex items-center justify-between gap-3">
+                <label className="text-sm font-medium text-foreground">
+                  Item II.3 – Mérito recursal por critério
+                  <span className="text-destructive ml-0.5">*</span>
+                </label>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={gerandoIA}
+                  onClick={gerarComIA}
+                  className="gap-1.5 shrink-0"
+                >
+                  {gerandoIA
+                    ? <><Loader2 className="w-3 h-3 animate-spin" />Gerando...</>
+                    : <><Sparkles className="w-3 h-3" />Gerar com IA</>
+                  }
+                </Button>
+              </div>
               <textarea
-                value={parecerTexto}
-                onChange={e => setParecerTexto(e.target.value)}
-                rows={8}
-                placeholder={
-                  'Descreva a fundamentação jurídica e técnica da decisão desta Secretaria Executiva. ' +
-                  'Ex.: "Após análise dos argumentos apresentados pelo recorrente e das manifestações ' +
-                  'dos avaliadores convocados, esta Secretaria Executiva entende que..."'
-                }
-                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-none"
+                value={textoIA}
+                onChange={e => setTextoIA(e.target.value)}
+                rows={10}
+                placeholder="Clique em 'Gerar com IA' para redigir automaticamente o item II.3 com base nos votos e argumentações da banca, ou redija manualmente."
+                className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1 resize-y"
+                style={{ minHeight: '200px' }}
               />
             </div>
 
@@ -456,7 +493,7 @@ export function DecisaoFinalRecurso() {
                 Cancelar
               </Button>
               <Button
-                disabled={!presidenteNome.trim() || !parecerTexto.trim()}
+                disabled={!presidenteNome.trim() || !textoIA.trim()}
                 onClick={() => { setParecerModal(false); handleGerarPDF() }}
                 className="gap-2"
               >

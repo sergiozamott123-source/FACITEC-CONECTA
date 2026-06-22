@@ -8,7 +8,14 @@
       "PowerShell(npx supabase --version)",
       "Skill(run)",
       "PowerShell(npx playwright install chromium --with-deps 2>&1 | Select-Object -Last 5)",
-      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:5173\" -TimeoutSec 3 -UseBasicParsing\\).StatusCode } catch { \"offline\" })"
+      "PowerShell(try { \\(Invoke-WebRequest -Uri \"http://localhost:5173\" -TimeoutSec 3 -UseBasicParsing\\).StatusCode } catch { \"offline\" })",
+      "Bash(curl *)",
+      "Bash(git add *)",
+      "Bash(git push *)",
+      "Bash(New-Item -ItemType Directory -Force \"C:\\\\Projetos\\\\facitec-conecta\\\\supabase\\\\functions\\\\gerar-parecer-recurso\")",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"ok\")",
+      "PowerShell(npx supabase functions deploy gerar-parecer-recurso --project-ref gastofrxtkkjpcgthrru 2>&1)"
     ]
   }
 }
