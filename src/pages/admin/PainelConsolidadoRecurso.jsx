@@ -1,11 +1,23 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeft, Check, Clock, FileText, RefreshCw, Scale } from 'lucide-react'
+import {
+  ArrowLeft, Check, CheckCircle2, Clock, Download, FileText,
+  Loader2, Paperclip, Plus, RefreshCw, Scale, Trash2,
+} from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+
+const TIPOS_DOC = ['Petição', 'Parecer jurídico', 'Decisão final', 'Outro']
+
+function tipoIcon(tipo) {
+  if (tipo === 'Petição')        return <FileText className="w-4 h-4 text-blue-500" />
+  if (tipo === 'Parecer jurídico') return <Scale className="w-4 h-4 text-purple-500" />
+  if (tipo === 'Decisão final')  return <CheckCircle2 className="w-4 h-4 text-green-600" />
+  return <Paperclip className="w-4 h-4 text-gray-400" />
+}
 
 export function PainelConsolidadoRecurso() {
   const { recursoId } = useParams()
@@ -14,9 +26,19 @@ export function PainelConsolidadoRecurso() {
   const [recurso,        setRecurso]        = useState(null)
   const [convocacao,     setConvocacao]     = useState(null)
   const [notasOriginais, setNotasOriginais] = useState({})
+  const [documentos,     setDocumentos]     = useState([])
   const [loading,        setLoading]        = useState(true)
   const [error,          setError]          = useState(null)
   const [modalJust,      setModalJust]      = useState(null)
+
+  // Upload de documento
+  const fileInputRef            = useRef(null)
+  const [docModal,      setDocModal]      = useState(false)
+  const [docTipo,       setDocTipo]       = useState(TIPOS_DOC[0])
+  const [docFile,       setDocFile]       = useState(null)
+  const [uploadingDoc,  setUploadingDoc]  = useState(false)
+  const [docError,      setDocError]      = useState(null)
+  const [deletingDoc,   setDeletingDoc]   = useState(null)
 
   useEffect(() => { fetchDados() }, [recursoId])
 
@@ -24,7 +46,7 @@ export function PainelConsolidadoRecurso() {
     setLoading(true)
     setError(null)
 
-    const [{ data: rec, error: e1 }, { data: conv, error: e2 }] = await Promise.all([
+    const [{ data: rec, error: e1 }, { data: conv, error: e2 }, { data: docs }] = await Promise.all([
       supabase
         .from('recurso')
         .select(`
@@ -47,12 +69,18 @@ export function PainelConsolidadoRecurso() {
         `)
         .eq('recurso_id', recursoId)
         .maybeSingle(),
+      supabase
+        .from('recurso_documento')
+        .select('*')
+        .eq('recurso_id', recursoId)
+        .order('created_at', { ascending: false }),
     ])
 
     if (e1) { setError(e1.message); setLoading(false); return }
 
     setRecurso(rec)
     setConvocacao(conv ?? null)
+    setDocumentos(docs ?? [])
 
     if (rec && conv?.convocacao_criterio?.length) {
       const { data: avs } = await supabase
@@ -71,6 +99,65 @@ export function PainelConsolidadoRecurso() {
     }
 
     setLoading(false)
+  }
+
+  async function fetchDocumentos() {
+    const { data } = await supabase
+      .from('recurso_documento')
+      .select('*')
+      .eq('recurso_id', recursoId)
+      .order('created_at', { ascending: false })
+    setDocumentos(data ?? [])
+  }
+
+  async function handleUploadDoc() {
+    if (!docFile) return
+    setDocError(null)
+    setUploadingDoc(true)
+    try {
+      const ts        = Date.now()
+      const tipoSlug  = docTipo.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '')
+      const fileName  = `${tipoSlug}_${ts}.pdf`
+      const path      = `recursos/${recursoId}/${fileName}`
+
+      const { error: upErr } = await supabase.storage
+        .from('inscricoes')
+        .upload(path, docFile, { upsert: false, contentType: 'application/pdf' })
+      if (upErr) throw new Error(upErr.message)
+
+      const { data: { publicUrl } } = supabase.storage.from('inscricoes').getPublicUrl(path)
+
+      const { error: dbErr } = await supabase
+        .from('recurso_documento')
+        .insert({ recurso_id: recursoId, tipo: docTipo, nome_arquivo: fileName, url: publicUrl })
+      if (dbErr) throw new Error(dbErr.message)
+
+      setDocModal(false)
+      setDocFile(null)
+      setDocTipo(TIPOS_DOC[0])
+      await fetchDocumentos()
+    } catch (err) {
+      setDocError(err.message)
+    } finally {
+      setUploadingDoc(false)
+    }
+  }
+
+  async function handleDeleteDoc(doc) {
+    setDeletingDoc(doc.id)
+    try {
+      const url  = doc.url
+      const path = url.split('/inscricoes/')[1]?.split('?')[0]
+      if (path) {
+        await supabase.storage.from('inscricoes').remove([path])
+      }
+      await supabase.from('recurso_documento').delete().eq('id', doc.id)
+      await fetchDocumentos()
+    } catch (err) {
+      setDocError(`Erro ao excluir: ${err.message}`)
+    } finally {
+      setDeletingDoc(null)
+    }
   }
 
   function handlePDF() {
@@ -129,14 +216,14 @@ export function PainelConsolidadoRecurso() {
   if (error)   return <ErrorAlert message={error} />
   if (!recurso) return <ErrorAlert message="Recurso não encontrado." />
 
-  const ccs             = convocacao?.convocacao_criterio ?? []
-  const total           = ccs.length
-  const respondidos     = ccs.filter(cc => cc.status === 'respondido').length
+  const ccs              = convocacao?.convocacao_criterio ?? []
+  const total            = ccs.length
+  const respondidos      = ccs.filter(cc => cc.status === 'respondido').length
   const todosResponderam = total > 0 && respondidos === total
-  const pct             = total > 0 ? Math.round((respondidos / total) * 100) : 0
+  const pct              = total > 0 ? Math.round((respondidos / total) * 100) : 0
 
-  const statusLabel  = todosResponderam ? 'Aguardando decisão' : 'Em andamento'
-  const statusClass  = todosResponderam
+  const statusLabel = todosResponderam ? 'Aguardando decisão' : 'Em andamento'
+  const statusClass = todosResponderam
     ? 'bg-blue-50 text-blue-700 border-blue-200'
     : 'bg-yellow-50 text-yellow-700 border-yellow-200'
 
@@ -284,6 +371,66 @@ export function PainelConsolidadoRecurso() {
         </div>
       )}
 
+      {/* Documentos do processo */}
+      <Card>
+        <CardContent className="pt-4 pb-4 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold text-foreground">Documentos do processo</p>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-1.5 h-7 text-xs"
+              onClick={() => { setDocFile(null); setDocTipo(TIPOS_DOC[0]); setDocError(null); setDocModal(true) }}
+            >
+              <Plus className="w-3 h-3" />
+              Adicionar
+            </Button>
+          </div>
+
+          <ErrorAlert message={docError} />
+
+          {documentos.length === 0 ? (
+            <p className="text-xs text-muted-foreground italic text-center py-4">
+              Nenhum documento anexado.
+            </p>
+          ) : (
+            <div className="divide-y divide-border rounded-md border">
+              {documentos.map(doc => (
+                <div key={doc.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <span className="shrink-0">{tipoIcon(doc.tipo)}</span>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-foreground truncate">{doc.nome_arquivo}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {doc.tipo} · {new Date(doc.created_at).toLocaleDateString('pt-BR')}
+                    </p>
+                  </div>
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
+                    title="Download"
+                  >
+                    <Download className="w-3.5 h-3.5 text-blue-600" />
+                  </a>
+                  <button
+                    onClick={() => handleDeleteDoc(doc)}
+                    disabled={deletingDoc === doc.id}
+                    className="shrink-0 p-1 rounded hover:bg-muted transition-colors disabled:opacity-50"
+                    title="Excluir"
+                  >
+                    {deletingDoc === doc.id
+                      ? <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                      : <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                    }
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Botões de ação */}
       <div className="flex items-center justify-end gap-3 pt-2 border-t border-border">
         <Button variant="outline" onClick={handlePDF} className="gap-2">
@@ -322,6 +469,74 @@ export function PainelConsolidadoRecurso() {
             </p>
           </div>
         )}
+      </Modal>
+
+      {/* Modal — adicionar documento */}
+      <Modal
+        open={docModal}
+        onClose={() => setDocModal(false)}
+        title="Adicionar documento"
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Tipo de documento</label>
+            <select
+              value={docTipo}
+              onChange={e => setDocTipo(e.target.value)}
+              className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1"
+            >
+              {TIPOS_DOC.map(t => <option key={t} value={t}>{t}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-sm font-medium text-foreground">Arquivo PDF</label>
+            {docFile ? (
+              <div className="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 px-3 py-2">
+                <FileText className="w-4 h-4 text-green-600 shrink-0" />
+                <span className="text-xs text-green-800 truncate flex-1">{docFile.name}</span>
+                <button
+                  onClick={() => setDocFile(null)}
+                  className="text-xs text-muted-foreground hover:text-foreground shrink-0"
+                >
+                  Trocar
+                </button>
+              </div>
+            ) : (
+              <label className="flex flex-col items-center gap-2 py-5 rounded-md border-2 border-dashed border-border hover:border-primary/50 hover:bg-muted/30 cursor-pointer transition-colors">
+                <FileText className="w-6 h-6 text-muted-foreground" />
+                <span className="text-xs text-muted-foreground">Clique para selecionar um PDF</span>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={e => setDocFile(e.target.files?.[0] ?? null)}
+                />
+              </label>
+            )}
+          </div>
+
+          <ErrorAlert message={docError} />
+
+          <div className="flex justify-end gap-3 pt-1 border-t border-border">
+            <Button variant="outline" size="sm" onClick={() => setDocModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={!docFile || uploadingDoc}
+              onClick={handleUploadDoc}
+              className="gap-2"
+            >
+              {uploadingDoc
+                ? <><Loader2 className="w-3.5 h-3.5 animate-spin" />Enviando…</>
+                : <><Plus className="w-3.5 h-3.5" />Anexar</>
+              }
+            </Button>
+          </div>
+        </div>
       </Modal>
 
     </div>

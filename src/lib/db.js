@@ -126,7 +126,7 @@ export const pagamentoService = {
 
 export const avaliacaoService = {
   list: () => db.list('avaliacao', {
-    select: '*, projeto:projeto_id(id, titulo, area_conhecimento), avaliador:avaliador_id(id, nome)',
+    select: '*, projeto:projeto_id(id, titulo, area_conhecimento, edicao_id), avaliador:avaliador_id(id, nome, extrato_url)',
   }),
   get: (id) => db.get('avaliacao', id),
   create: (p) => db.insert('avaliacao', p),

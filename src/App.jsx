@@ -1,4 +1,5 @@
 import PortalAdmin from '@/pages/PortalAdmin';
+import PainelModulo1 from '@/pages/PainelModulo1';
 import HubProgramas from '@/pages/HubProgramas';
 import PibicJr from '@/pages/PibicJr';
 import SelecaoM1 from '@/pages/SelecaoM1';
@@ -13,6 +14,7 @@ import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
 import { Classificacao } from '@/pages/Classificacao'
+import { HomeAdmin } from '@/pages/admin/HomeAdmin'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
 import { PainelConsolidadoRecurso } from '@/pages/admin/PainelConsolidadoRecurso'
 import { DecisaoFinalRecurso } from '@/pages/admin/DecisaoFinalRecurso'
@@ -95,8 +97,8 @@ function App() {
             </Routes>
           </OrientadorProvider>
         } />
-        {/* Portal de entrada */}
-        <Route path="/" element={<PortalAdmin />} />
+        {/* Portal de entrada — redireciona para o painel admin */}
+        <Route path="/" element={<Navigate to="/admin/pibic-jr/2026/painel" replace />} />
         {/* Hub de programas */}
         <Route path="/hub" element={<HubProgramas />} />
         {/* PIBIC Jr — visão geral e módulos */}
@@ -123,7 +125,10 @@ function App() {
                 <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
                 <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
+                <Route path="/admin" element={<HomeAdmin />} />
                 <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
+                <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
+                <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
               </Routes>
             </Layout>
           }

@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, Star } from 'lucide-react'
+import { useRef, useState, useCallback } from 'react'
+import { Download, Loader2, Pencil, Plus, Star, Trash2, Upload } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField, Select, Textarea, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable, useCrud } from '@/hooks/useTable'
 import { avaliacaoService, avaliadorService, projetoService } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 
 const STATUS_OPTS = ['pendente', 'em_andamento', 'concluida', 'recurso']
 const STATUS_VARIANT = {
@@ -32,7 +33,7 @@ function AvaliacaoForm({ value, onChange, projetos, avaliadores }) {
           {avaliadores.map(a => <option key={a.id} value={a.id}>{a.nome ?? a.email}</option>)}
         </Select>
       </FormField>
-      <FormField label="Status" required>clc
+      <FormField label="Status" required>
         <Select value={value.status} onChange={set('status')}>
           {STATUS_OPTS.map(s => <option key={s} value={s}>{s.replace('_', ' ')}</option>)}
         </Select>
@@ -40,6 +41,66 @@ function AvaliacaoForm({ value, onChange, projetos, avaliadores }) {
       <FormField label="Parecer">
         <Textarea placeholder="Descreva o parecer da avaliação..." value={value.parecer ?? ''} onChange={set('parecer')} rows={4} />
       </FormField>
+    </div>
+  )
+}
+
+function ExtratoRow({ av, onUpload, uploading }) {
+  const inputRef = useRef(null)
+  const url = av.avaliador?.extrato_url
+
+  function nomeArquivo(u) {
+    if (!u) return ''
+    try { return decodeURIComponent(u.split('/').pop()) } catch { return u.split('/').pop() }
+  }
+
+  return (
+    <div className="mt-2 pt-2 border-t border-border">
+      {url ? (
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700 bg-green-50 border border-green-200 px-2 py-1 rounded min-w-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-green-500 shrink-0" />
+            <span className="truncate max-w-[180px]">{nomeArquivo(url)}</span>
+          </span>
+          <a
+            href={url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            <Download className="w-3 h-3" />
+            Download
+          </a>
+          <button
+            onClick={() => inputRef.current?.click()}
+            disabled={uploading}
+            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors disabled:opacity-50"
+          >
+            {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+            Anexar novo
+          </button>
+        </div>
+      ) : (
+        <button
+          onClick={() => inputRef.current?.click()}
+          disabled={uploading}
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground border border-dashed border-border hover:border-primary/50 rounded px-2.5 py-1 transition-colors disabled:opacity-50"
+        >
+          {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
+          {uploading ? 'Enviando…' : 'Anexar extrato'}
+        </button>
+      )}
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,application/pdf"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(av, file)
+          e.target.value = ''
+        }}
+      />
     </div>
   )
 }
@@ -57,6 +118,8 @@ export function Avaliacoes() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [confirm, setConfirm] = useState(null)
+  const [uploading, setUploading] = useState({})
+  const [uploadError, setUploadError] = useState(null)
 
   function openCreate() { setForm(EMPTY); setModal({ mode: 'create' }) }
   function openEdit(item) {
@@ -89,6 +152,39 @@ export function Avaliacoes() {
     try { await remove(confirm); setConfirm(null); reload() } catch { /* */ }
   }
 
+  async function handleUploadExtrato(av, file) {
+    const avaliadorId = av.avaliador_id
+    const edicaoId = av.projeto?.edicao_id
+    if (!avaliadorId) return
+
+    setUploadError(null)
+    setUploading(prev => ({ ...prev, [avaliadorId]: true }))
+    try {
+      const path = edicaoId
+        ? `extratos/${edicaoId}/${avaliadorId}/extrato_assinado.pdf`
+        : `extratos/${avaliadorId}/extrato_assinado.pdf`
+
+      const { error: upErr } = await supabase.storage
+        .from('inscricoes')
+        .upload(path, file, { upsert: true, contentType: 'application/pdf' })
+      if (upErr) throw new Error(upErr.message)
+
+      const { data: { publicUrl } } = supabase.storage.from('inscricoes').getPublicUrl(path)
+
+      const { error: dbErr } = await supabase
+        .from('avaliador')
+        .update({ extrato_url: publicUrl })
+        .eq('id', avaliadorId)
+      if (dbErr) throw new Error(dbErr.message)
+
+      reload()
+    } catch (err) {
+      setUploadError(`Erro ao enviar extrato: ${err.message}`)
+    } finally {
+      setUploading(prev => ({ ...prev, [avaliadorId]: false }))
+    }
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -100,6 +196,7 @@ export function Avaliacoes() {
       </div>
 
       <ErrorAlert message={error} />
+      <ErrorAlert message={uploadError} />
 
       {loading ? <LoadingState /> : data.length === 0 ? <EmptyState message="Nenhuma avaliação cadastrada." /> : (
         <div className="space-y-3">
@@ -125,6 +222,13 @@ export function Avaliacoes() {
                     <p className="text-xs text-muted-foreground">
                       {new Date(av.created_at).toLocaleDateString('pt-BR')}
                     </p>
+                    {av.avaliador_id && (
+                      <ExtratoRow
+                        av={av}
+                        onUpload={handleUploadExtrato}
+                        uploading={!!uploading[av.avaliador_id]}
+                      />
+                    )}
                   </div>
                   <div className="flex gap-1 shrink-0">
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(av)}>
