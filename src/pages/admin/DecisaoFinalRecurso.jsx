@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, FileText, Loader2, Scale, Sparkles } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, CheckCircle2, Clock, Download, Eye, FileText, Loader2, Scale, Sparkles } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
@@ -8,6 +8,11 @@ import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase'
 import logoFacitec from '@/assets/facitec_logo_cropped.png'
 import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
+
+const TIPO_DOC = {
+  recurso_interposto: 'Recurso interposto',
+  resposta_recurso: 'Resposta ao recurso',
+}
 
 function arredonda(n) {
   return Math.round(n * 100) / 100
@@ -66,6 +71,7 @@ export function DecisaoFinalRecurso() {
   const [actionError,    setActionError]    = useState(null)
   const [sucesso,        setSucesso]        = useState(false)
   const [resumo,         setResumo]         = useState([])
+  const [docs,           setDocs]           = useState([])
 
   // Fase E — Parecer Oficial
   const [parecerModal,   setParecerModal]   = useState(false)
@@ -110,9 +116,10 @@ export function DecisaoFinalRecurso() {
     setError(null)
 
     const [
-      { data: rec,    error: e1 },
-      { data: rcList, error: e2 },
-      { data: conv,   error: e3 },
+      { data: rec,     error: e1 },
+      { data: rcList,  error: e2 },
+      { data: conv,    error: e3 },
+      { data: docList, error: e4 },
     ] = await Promise.all([
       supabase
         .from('recurso')
@@ -139,9 +146,15 @@ export function DecisaoFinalRecurso() {
         `)
         .eq('recurso_id', recursoId)
         .maybeSingle(),
+      supabase
+        .from('recurso_documento')
+        .select('id, tipo, nome_arquivo, url')
+        .eq('recurso_id', recursoId)
+        .order('created_at', { ascending: true }),
     ])
 
     if (e1 || e2) { setError((e1 ?? e2).message); setLoading(false); return }
+    setDocs(docList ?? [])
 
     const { data: avs } = await supabase
       .from('avaliacao')
@@ -556,6 +569,49 @@ export function DecisaoFinalRecurso() {
           </p>
         </div>
       )}
+
+      {/* Documentos do processo */}
+      <Card>
+        <CardContent className="pt-4 pb-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+            Documentos do processo
+          </p>
+          {docs.length === 0 ? (
+            <p className="text-sm text-muted-foreground italic">Nenhum documento anexado</p>
+          ) : (
+            <div className="space-y-2">
+              {docs.map(doc => (
+                <div key={doc.id} className="flex items-center gap-3 rounded-md border border-border px-3 py-2.5 flex-wrap">
+                  <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{doc.nome_arquivo ?? '—'}</p>
+                    <p className="text-xs text-muted-foreground">{TIPO_DOC[doc.tipo] ?? doc.tipo ?? '—'}</p>
+                  </div>
+                  <div className="flex gap-2 shrink-0">
+                    <a
+                      href={doc.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                    >
+                      <Eye className="w-3 h-3" />
+                      Visualizar
+                    </a>
+                    <a
+                      href={doc.url}
+                      download
+                      className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-foreground bg-muted hover:bg-muted/80 border border-border px-2 py-1 rounded transition-colors"
+                    >
+                      <Download className="w-3 h-3" />
+                      Baixar
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Cards por critério */}
       <div className="space-y-4">

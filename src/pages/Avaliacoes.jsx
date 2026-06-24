@@ -1,5 +1,5 @@
-import { useRef, useState, useCallback } from 'react'
-import { Download, Loader2, Pencil, Plus, Star, Trash2, Upload } from 'lucide-react'
+import { useRef, useState, useCallback, useEffect } from 'react'
+import { Download, Eye, Loader2, Pencil, Plus, Star, Trash2, Upload } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { FormField, Select, Textarea, ErrorAlert, EmptyState, LoadingState } fro
 import { useTable, useCrud } from '@/hooks/useTable'
 import { avaliacaoService, avaliadorService, projetoService } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const STATUS_OPTS = ['pendente', 'em_andamento', 'concluida', 'recurso']
 const STATUS_VARIANT = {
@@ -115,11 +116,29 @@ export function Avaliacoes() {
   const { data: avaliadores } = useTable(fetchAvaliadores)
   const { saving, crudError, create, update, remove } = useCrud(avaliacaoService)
 
+  const { edicaoSelecionada } = useAdmin()
+  const [avEdicao, setAvEdicao] = useState([])
+  const [loadingAvEdicao, setLoadingAvEdicao] = useState(false)
+
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState(EMPTY)
   const [confirm, setConfirm] = useState(null)
   const [uploading, setUploading] = useState({})
   const [uploadError, setUploadError] = useState(null)
+
+  useEffect(() => {
+    if (!edicaoSelecionada?.id) return
+    setLoadingAvEdicao(true)
+    supabase
+      .from('avaliador')
+      .select('id, nome, extrato_url')
+      .eq('edicao_id', edicaoSelecionada.id)
+      .order('nome')
+      .then(({ data: rows }) => {
+        setAvEdicao(rows ?? [])
+        setLoadingAvEdicao(false)
+      })
+  }, [edicaoSelecionada?.id])
 
   function openCreate() { setForm(EMPTY); setModal({ mode: 'create' }) }
   function openEdit(item) {
@@ -257,6 +276,62 @@ export function Avaliacoes() {
       </Modal>
 
       <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)} onConfirm={handleDelete} loading={saving} />
+
+      {/* Extratos dos avaliadores */}
+      <div className="space-y-3 pt-2 border-t border-border">
+        <h3 className="text-sm font-semibold text-foreground">Extratos dos avaliadores</h3>
+        {loadingAvEdicao ? (
+          <LoadingState />
+        ) : avEdicao.length === 0 ? (
+          <EmptyState message="Nenhum avaliador cadastrado para esta edição." />
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {avEdicao.map(av => {
+              const initials = (av.nome ?? '')
+                .split(' ')
+                .filter(Boolean)
+                .slice(0, 2)
+                .map(w => w[0].toUpperCase())
+                .join('')
+              return (
+                <Card key={av.id}>
+                  <CardContent className="pt-4 pb-4 flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <span className="text-sm font-bold text-primary">{initials || '?'}</span>
+                    </div>
+                    <div className="flex-1 min-w-0 space-y-2">
+                      <p className="text-sm font-medium text-foreground truncate">{av.nome ?? '—'}</p>
+                      {av.extrato_url ? (
+                        <div className="flex gap-2 flex-wrap">
+                          <a
+                            href={av.extrato_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Ver
+                          </a>
+                          <a
+                            href={av.extrato_url}
+                            download
+                            className="inline-flex items-center gap-1 text-xs font-medium text-foreground hover:text-foreground bg-muted hover:bg-muted/80 border border-border px-2 py-1 rounded transition-colors"
+                          >
+                            <Download className="w-3 h-3" />
+                            Baixar
+                          </a>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">Extrato não anexado</p>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
+          </div>
+        )}
+      </div>
     </div>
   )
 }

@@ -1,10 +1,15 @@
 import { useEffect, useState } from 'react'
-import { ArrowLeft, Check, ChevronDown, ChevronRight, ChevronUp, Loader2, UserCheck } from 'lucide-react'
+import { ArrowLeft, Check, ChevronDown, ChevronRight, ChevronUp, Download, Eye, Loader2, UserCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+
+const TIPO_LABEL = {
+  recurso_interposto: 'Recurso interposto',
+  resposta_recurso:   'Resposta ao recurso',
+}
 
 function buildCriterioGroups(rcList, avList) {
   return rcList
@@ -36,8 +41,22 @@ export function ConvocacaoRecurso() {
   const [convocando,      setConvocando]      = useState(new Set())
   const [convocarError,   setConvocarError]   = useState(null)
   const [gruposBExpanded, setGruposBExpanded] = useState(new Set())
+  const [documentos,      setDocumentos]      = useState([])
+  const [loadingDocs,     setLoadingDocs]     = useState(true)
+  const [docsError,       setDocsError]       = useState(null)
 
   useEffect(() => { fetchRecursos() }, [])
+
+  useEffect(() => {
+    supabase
+      .from('recurso_documento')
+      .select('id, nome_arquivo, tipo, url')
+      .then(({ data, error: err }) => {
+        if (err) setDocsError(err.message)
+        else setDocumentos(data ?? [])
+        setLoadingDocs(false)
+      })
+  }, [])
 
   async function fetchRecursos() {
     setLoading(true)
@@ -416,6 +435,44 @@ export function ConvocacaoRecurso() {
           ))}
         </div>
       )}
+
+      {/* Documentos do processo */}
+      <div className="space-y-3 pt-2 border-t border-border">
+        <h3 className="text-sm font-semibold text-foreground">Documentos do processo — Edição 2026</h3>
+        {loadingDocs ? <LoadingState /> : docsError ? <ErrorAlert message={docsError} /> : documentos.length === 0 ? (
+          <EmptyState message="Nenhum documento encontrado." />
+        ) : (
+          <div className="space-y-2">
+            {documentos.map(doc => (
+              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium text-foreground truncate">{doc.nome_arquivo ?? '—'}</p>
+                  <p className="text-xs text-muted-foreground">{TIPO_LABEL[doc.tipo] ?? doc.tipo ?? '—'}</p>
+                </div>
+                <div className="flex gap-2 shrink-0">
+                  <a
+                    href={doc.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                  >
+                    <Eye className="w-3 h-3" />
+                    Visualizar
+                  </a>
+                  <a
+                    href={doc.url}
+                    download
+                    className="inline-flex items-center gap-1 text-xs font-medium text-foreground bg-muted hover:bg-muted/80 border border-border px-2 py-1 rounded transition-colors"
+                  >
+                    <Download className="w-3 h-3" />
+                    Baixar
+                  </a>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
