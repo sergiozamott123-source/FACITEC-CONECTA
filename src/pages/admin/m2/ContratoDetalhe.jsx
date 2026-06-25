@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 
-// ── PALETA (mesma do ContratosPainel) ────────────────────────────────────────
+// ── PALETA ───────────────────────────────────────────────────────────────────
 const C = {
   header:  "#1a2744",
   border:  "#E2E8F0",
@@ -27,6 +27,90 @@ const STATUS_CFG = {
   assinado:          { label: "Assinado",          ...C.green  },
 }
 
+const MESES = ["janeiro","fevereiro","março","abril","maio","junho",
+               "julho","agosto","setembro","outubro","novembro","dezembro"]
+
+// ── TEMPLATE DO CONTRATO ─────────────────────────────────────────────────────
+const TEMPLATE_CONTRATO = `CONTRATO DE CONCESSÃO DE BOLSAS Nº {{numero_contrato}}
+
+{{numero_contrato}}, QUE ENTRE SI CELEBRAM A COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA - CDTIV E {{nome_orientador}}
+
+A COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA - CDTIV, empresa pública municipal, com personalidade jurídica de direito privado, inscrita no CNPJ/MF 31.482.631/0001-18, com sede social situada à Rua Armando Moreira de Oliveira, 230, Goiabeiras, CEP 29.075-075, Vitória-ES, na qualidade de gestora do Fundo de Apoio à Ciência e Tecnologia - FACITEC, inscrito no CNPJ 21.896.905/0001-61, neste ato representada pelo Diretor Presidente, {{nome_diretor_presidente}}, e pela Diretora Administrativo Financeiro, {{nome_diretora_adm_financeira}}, doravante denominada CDTIV, e de outro lado {{nome_orientador}}, CPF nº {{cpf_orientador}} e RG nº {{rg_orientador}}, residente e domiciliado(a) no {{endereco_orientador}}, doravante denominado(a) simplesmente Orientador(a), de acordo com o disposto no processo administrativo nº {{numero_processo}}, firmam com base nas Leis Municipais nº 3.763/91, 5151/2000 e 7.871/2009, seus respectivos regulamentos, os Decretos Municipais nº 13.325/2007, 13.326/2007, 13.985/2008 e 14.663/2010, a Resolução 01/2014 do CMCT e o Edital {{numero_edital}}, o presente instrumento que se regerá na forma das cláusulas e condições a seguir estabelecidas:
+
+CLÁUSULA PRIMEIRA: DO OBJETO.
+
+O objeto deste instrumento é a concessão de 01 (uma) Bolsa de Orientação e 08 (oito) Bolsas de Iniciação Científica Júnior, conforme termos de adesão, para realização do projeto de pesquisa: {{titulo_projeto}}, aprovado no âmbito do Edital {{numero_edital}}.
+
+As bolsas são concedidas em razão de terem sido atendidos os requisitos e critérios de avaliação previstos no Edital.
+
+CLÁUSULA SEGUNDA: DA NATUREZA DOS RECURSOS, FORMA DE PAGAMENTO E VALORES.
+
+Os valores das bolsas são de R$ {{valor_bolsa_orientador_fmt}} ({{valor_bolsa_orientador_extenso}}), mensais, para o(a) Orientador(a), e R$ {{valor_bolsa_estudante_fmt}} ({{valor_bolsa_estudante_extenso}}), mensais, para cada estudante bolsista que aderir ao presente instrumento, conforme tabela de bolsas do CMCT vigente.
+
+O crédito será colocado à disposição dos Creditados em 06 (seis) parcelas mensais e sucessivas, até o décimo dia útil do mês subsequente ao mês de referência, desde que cumpridas as obrigações dispostas na CLÁUSULA QUINTA, através de depósitos em conta de "pagamento de benefício" junto ao Banco credenciado pelo FACITEC, sendo o valor global deste Instrumento de R$ {{valor_global_fmt}} ({{valor_global_extenso}}). O crédito ora concedido compõe o Fundo de Apoio à Ciência e Tecnologia do Município de Vitória - FACITEC, criado pela Lei nº 3.763/91, dotação orçamentária: FACITEC - 03.02.19.573.0030.1.0144 - Natureza da despesa: 3.3.90.18.04 - Fonte de Recursos: 1.500.0000.0000 - Especificação: Apoio à Pesquisa Científica - Exercício: {{ano_exercicio}}.
+
+CLÁUSULA TERCEIRA: DA VIGÊNCIA.
+
+3.1. A vigência deste contrato será de 06 (seis) meses contados a partir da data de sua assinatura, podendo ser prorrogado, sem acréscimos de bolsas, mediante solicitação do(a) Orientador(a) e autorização da Diretoria da CDTIV.
+
+CLÁUSULA QUARTA: DA EQUIPE DO PROJETO, DESLIGAMENTOS E SUBSTITUIÇÕES.
+
+A equipe do Projeto será formada pelo(a) Orientador(a) e por até 08 (oito) estudantes bolsistas que aderirem ao presente instrumento.
+
+O(A) Orientador(a) poderá utilizar estudantes voluntários em suas equipes para o desenvolvimento de seus projetos.
+
+Em caso de desligamento de estudantes bolsistas, o(a) Orientador(a) observará os seguintes procedimentos: deverá substituí-los, mediante justificativa, até o fim do terceiro mês de vigência do projeto; nos meses seguintes, a pesquisa terá prosseguimento com a equipe restante; poderão ser substituídos até 03 (três) estudantes bolsistas; os casos omissos serão analisados pelo Comitê de Acompanhamento.
+
+Em caso de impossibilidade do(a) Orientador(a) continuar à frente do projeto, o mesmo poderá ser substituído por outro orientador que preencha os mesmos requisitos.
+
+CLÁUSULA QUINTA: DAS OBRIGAÇÕES.
+
+Da CDTIV: Liberar os recursos conforme estabelecido na Cláusula Segunda; emitir certificado de participação para os Orientadores, estudantes bolsistas e eventuais voluntários.
+
+Do(a) Orientador(a): Orientar, monitorar e acompanhar as atividades de cada bolsista; encaminhar à CDTIV/FACITEC os relatórios mensais do projeto até o quinto dia útil do mês subsequente; solicitar à CDTIV/FACITEC a suspensão do pagamento e o desligamento do estudante bolsista que descumprir o plano de trabalho; entregar à CDTIV/FACITEC, no prazo de até 60 (sessenta) dias após o encerramento do PibicJr, o relatório final do projeto; produzir junto com os estudantes todo material necessário para apresentação do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal.
+
+Do(a) Estudante Bolsista: Cumprir todas as atividades previstas no plano de trabalho; apresentar os resultados do projeto, caso seja convocado; ter frequência mínima mensal de 75% nas atividades do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal; efetuar o cadastro junto ao Banco autorizado. O estudante bolsista formalizará sua participação mediante assinatura do Termo de Adesão. Para os menores de dezoito anos, o Termo deve ser assinado pelo responsável.
+
+CLÁUSULA SEXTA: DAS PENALIDADES.
+
+O descumprimento das obrigações por parte do(a) Estudante Bolsista acarretará no seu desligamento do projeto e na impossibilidade de participação no Programa por 12 meses.
+
+O descumprimento das obrigações por parte do(a) Orientador(a) acarretará no encerramento de seu projeto, rescisão deste instrumento e impossibilidade de submissão de projetos no Programa por 24 meses.
+
+CLÁUSULA SÉTIMA: DISPOSIÇÕES FINAIS.
+
+Este Instrumento será devidamente publicado no veículo de divulgação dos atos oficiais da Companhia de Desenvolvimento, Turismo e Inovação de Vitória.
+
+Fica eleito o Foro da Fazenda Pública Estadual, Municipal, Registro Públicos, Meio Ambiente e Saúde de Vitória/ES para dirimir quaisquer questões que decorram direta ou indiretamente do presente contrato.
+
+E por estarem assim justos e acordados, assinam o presente contrato em 2 (duas) vias de igual teor e forma, na presença das testemunhas abaixo:
+
+Vitória, {{dia_assinatura}} de {{mes_assinatura}} de {{ano_assinatura}}.
+
+
+_______________________________    _______________________________
+{{nome_diretor_presidente}}         {{nome_diretora_adm_financeira}}
+Diretor Presidente - CDTIV          Diretora de Administração e Finanças - CDTIV
+
+
+_______________________________
+{{nome_orientador}}
+Orientador(a)
+
+
+TESTEMUNHAS:
+
+_______________________________
+Nome legível:
+CPF:
+Assinatura:
+
+_______________________________
+Nome legível:
+CPF:
+Assinatura:`
+
+// ── HELPERS ──────────────────────────────────────────────────────────────────
 function calcIdade(dataNasc) {
   if (!dataNasc) return null
   const hoje = new Date()
@@ -48,14 +132,104 @@ function calcStatus({ orientador, bolsistas, contrato }) {
 
 function calcDadosContratoOk(dados) {
   return !!(
-    dados.numero_contrato &&
-    dados.numero_processo &&
-    dados.nome_diretor_presidente &&
-    dados.nome_diretora_adm &&
-    dados.data_assinatura &&
-    dados.data_inicio_vigencia &&
-    dados.data_fim_vigencia
+    dados.numero_contrato && dados.numero_processo &&
+    dados.nome_diretor_presidente && dados.nome_diretora_adm &&
+    dados.data_assinatura && dados.data_inicio_vigencia && dados.data_fim_vigencia
   )
+}
+
+function fmtBRL(n) {
+  return Number(n || 0).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+}
+
+function porExtenso(valor) {
+  const n = Math.round(Number(valor || 0) * 100)
+  const reais = Math.floor(n / 100)
+  const centavos = n % 100
+
+  const uni = ["","um","dois","três","quatro","cinco","seis","sete","oito","nove",
+               "dez","onze","doze","treze","quatorze","quinze","dezesseis","dezessete","dezoito","dezenove"]
+  const dez = ["","","vinte","trinta","quarenta","cinquenta","sessenta","setenta","oitenta","noventa"]
+  const cen = ["","cento","duzentos","trezentos","quatrocentos","quinhentos",
+               "seiscentos","setecentos","oitocentos","novecentos"]
+
+  function p(x) {
+    if (x === 0) return ""
+    if (x === 100) return "cem"
+    if (x < 20) return uni[x]
+    if (x < 100) { const d = Math.floor(x / 10), u = x % 10; return dez[d] + (u ? " e " + uni[u] : "") }
+    const c = Math.floor(x / 100), r = x % 100
+    return cen[c] + (r ? " e " + p(r) : "")
+  }
+
+  function grp(x) {
+    if (x === 0) return ""
+    if (x < 1000) return p(x)
+    const m = Math.floor(x / 1000), r = x % 1000
+    const mil = m === 1 ? "mil" : p(m) + " mil"
+    return mil + (r ? " e " + p(r) : "")
+  }
+
+  if (reais === 0 && centavos === 0) return "zero reais"
+  let res = ""
+  if (reais > 0) res += grp(reais) + (reais === 1 ? " real" : " reais")
+  if (centavos > 0) {
+    if (reais > 0) res += " e "
+    res += p(centavos) + (centavos === 1 ? " centavo" : " centavos")
+  }
+  return res
+}
+
+function gerarTextoContrato(projeto, orientador, dados) {
+  const vOri    = Number(dados.valor_bolsa_orientador || 1000)
+  const vEst    = Number(dados.valor_bolsa_estudante  || 300)
+  const vGlobal = vOri * 6 + 8 * vEst * 6
+
+  const endParts = orientador
+    ? [orientador.logradouro, orientador.numero, orientador.complemento,
+       orientador.bairro, orientador.municipio, orientador.uf]
+    : []
+  const endereco = endParts.filter(Boolean).join(", ") || "___"
+
+  let dataObj = { dia: "___", mes: "___", ano: "____" }
+  if (dados.data_assinatura) {
+    const d = new Date(dados.data_assinatura + "T12:00:00")
+    dataObj = {
+      dia: String(d.getDate()).padStart(2, "0"),
+      mes: MESES[d.getMonth()],
+      ano: String(d.getFullYear()),
+    }
+  }
+
+  const vars = {
+    "{{numero_contrato}}":               dados.numero_contrato             || "___",
+    "{{nome_orientador}}":               orientador?.nome_completo         || "___",
+    "{{cpf_orientador}}":                orientador?.cpf                   || "___",
+    "{{rg_orientador}}":                 orientador?.rg                    || "___",
+    "{{orgao_emissor}}":                 orientador?.orgao_emissor         || "___",
+    "{{endereco_orientador}}":           endereco,
+    "{{numero_processo}}":               dados.numero_processo             || "___",
+    "{{numero_edital}}":                 dados.numero_edital               || "01/2026",
+    "{{titulo_projeto}}":                projeto?.titulo                   || "___",
+    "{{nome_diretor_presidente}}":       dados.nome_diretor_presidente     || "___",
+    "{{nome_diretora_adm_financeira}}":  dados.nome_diretora_adm          || "___",
+    "{{valor_bolsa_orientador_fmt}}":    fmtBRL(vOri),
+    "{{valor_bolsa_orientador_extenso}}":porExtenso(vOri),
+    "{{valor_bolsa_estudante_fmt}}":     fmtBRL(vEst),
+    "{{valor_bolsa_estudante_extenso}}": porExtenso(vEst),
+    "{{valor_global_fmt}}":              fmtBRL(vGlobal),
+    "{{valor_global_extenso}}":          porExtenso(vGlobal),
+    "{{ano_exercicio}}":                 String(dados.ano_exercicio || 2026),
+    "{{dia_assinatura}}":                dataObj.dia,
+    "{{mes_assinatura}}":                dataObj.mes,
+    "{{ano_assinatura}}":                dataObj.ano,
+  }
+
+  let texto = TEMPLATE_CONTRATO
+  for (const [k, v] of Object.entries(vars)) {
+    texto = texto.split(k).join(v)
+  }
+  return texto
 }
 
 // ── SUB-COMPONENTES ──────────────────────────────────────────────────────────
@@ -77,8 +251,7 @@ function Card({ title, children, action }) {
     <div style={{ background: C.white, borderRadius: 10, border: `0.5px solid ${C.border}`, overflow: "hidden" }}>
       <div style={{
         display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "14px 20px", borderBottom: `1px solid ${C.border}`,
-        background: C.grayBg,
+        padding: "14px 20px", borderBottom: `1px solid ${C.border}`, background: C.grayBg,
       }}>
         <span style={{ fontSize: 12, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.07em", color: C.gray }}>
           {title}
@@ -104,18 +277,24 @@ function Field({ label, value, mono }) {
 }
 
 function DocBadge({ url, label }) {
-  const enviado = !!url
+  const ok = !!url
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 12px", borderRadius: 8, border: `1px solid ${enviado ? C.green.fg + "44" : C.amber.fg + "44"}`, background: enviado ? C.green.bg : C.amber.bg }}>
+    <div style={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "8px 12px", borderRadius: 8,
+      border: `1px solid ${ok ? C.green.fg + "44" : C.amber.fg + "44"}`,
+      background: ok ? C.green.bg : C.amber.bg,
+    }}>
       <span style={{ fontSize: 12, color: C.dark }}>{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        {enviado && (
-          <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: 11, color: C.blue.fg, textDecoration: "none", fontWeight: 600 }}>
+        {ok && (
+          <a href={url} target="_blank" rel="noreferrer"
+            style={{ fontSize: 11, color: C.blue.fg, textDecoration: "none", fontWeight: 600 }}>
             Ver →
           </a>
         )}
-        <span style={{ fontSize: 11, fontWeight: 600, color: enviado ? C.green.fg : C.amber.fg }}>
-          {enviado ? "Enviado" : "Pendente"}
+        <span style={{ fontSize: 11, fontWeight: 600, color: ok ? C.green.fg : C.amber.fg }}>
+          {ok ? "Enviado" : "Pendente"}
         </span>
       </div>
     </div>
@@ -124,14 +303,13 @@ function DocBadge({ url, label }) {
 
 function Toast({ msg, type }) {
   if (!msg) return null
-  const colors = { ok: C.green, err: C.red, info: C.blue }
-  const c = colors[type] ?? C.blue
+  const c = ({ ok: C.green, err: C.red, info: C.blue })[type] ?? C.blue
   return (
     <div style={{
       position: "fixed", bottom: 24, right: 24, zIndex: 9999,
       background: c.bg, color: c.fg, border: `1px solid ${c.fg}44`,
       borderRadius: 10, padding: "12px 20px", fontSize: 13, fontWeight: 600,
-      boxShadow: "0 4px 20px rgba(0,0,0,0.12)", maxWidth: 340,
+      boxShadow: "0 4px 20px rgba(0,0,0,0.12)", maxWidth: 360,
     }}>
       {msg}
     </div>
@@ -141,14 +319,21 @@ function Toast({ msg, type }) {
 const inputCss = {
   width: "100%", padding: "8px 12px", fontSize: 13,
   border: `1px solid ${C.border}`, borderRadius: 7,
-  outline: "none", background: C.white, color: C.dark,
-  boxSizing: "border-box",
+  outline: "none", background: C.white, color: C.dark, boxSizing: "border-box",
+}
+
+const labelCss = {
+  display: "block", fontSize: 11, fontWeight: 600, color: C.grayL,
+  marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em",
 }
 
 const CONTRATO_INICIAL = {
   numero_contrato: "", numero_processo: "",
   nome_diretor_presidente: "", nome_diretora_adm: "",
   data_assinatura: "", data_inicio_vigencia: "", data_fim_vigencia: "",
+  valor_bolsa_orientador: 1000, valor_bolsa_estudante: 300,
+  numero_edital: "01/2026", ano_exercicio: 2026,
+  conteudo_editavel: "",
 }
 
 // ── TELA PRINCIPAL ───────────────────────────────────────────────────────────
@@ -156,23 +341,23 @@ export default function ContratoDetalhe() {
   const { ano = "2026", projetoId } = useParams()
   const navigate = useNavigate()
 
-  const [projeto,    setProjeto]    = useState(null)
-  const [orientador, setOrientador] = useState(null)
-  const [bolsistas,  setBolsistas]  = useState([])
-  const [contrato,   setContrato]   = useState(null)
-  const [loading,    setLoading]    = useState(true)
-  const [error,      setError]      = useState(null)
+  const [projeto,        setProjeto]        = useState(null)
+  const [orientador,     setOrientador]     = useState(null)
+  const [bolsistas,      setBolsistas]      = useState([])
+  const [contrato,       setContrato]       = useState(null)
+  const [loading,        setLoading]        = useState(true)
+  const [error,          setError]          = useState(null)
   const [saving,         setSaving]         = useState(false)
+  const [generatingPDF,  setGeneratingPDF]  = useState(false)
   const [toast,          setToast]          = useState(null)
-  const [autoSaveStatus, setAutoSaveStatus] = useState(null) // null | "saving" | "saved"
-  const [dados, setDados] = useState(CONTRATO_INICIAL)
+  const [autoSaveStatus, setAutoSaveStatus] = useState(null)
+  const [dados,          setDados]          = useState(CONTRATO_INICIAL)
 
   const debounceRef = useRef(null)
   const isDirtyRef  = useRef(false)
 
   useEffect(() => { fetchDados() }, [projetoId])
 
-  // debounce auto-save — só dispara após interação do usuário
   useEffect(() => {
     if (!isDirtyRef.current || loading || !projeto) return
     clearTimeout(debounceRef.current)
@@ -182,14 +367,13 @@ export default function ContratoDetalhe() {
 
   function showToast(msg, type = "ok") {
     setToast({ msg, type })
-    setTimeout(() => setToast(null), 3500)
+    setTimeout(() => setToast(null), 4000)
   }
 
   async function fetchDados() {
     setLoading(true)
     setError(null)
     try {
-      // 1 — projeto
       const { data: proj, error: e1 } = await supabase
         .from("projeto")
         .select("id, titulo, codigo, orientador_id, status")
@@ -198,17 +382,15 @@ export default function ContratoDetalhe() {
       if (e1) throw e1
       setProjeto(proj)
 
-      // 2 — orientador
       if (proj.orientador_id) {
-        const { data: ori, error: e2 } = await supabase
+        const { data: ori } = await supabase
           .from("orientador")
           .select("id, nome_completo, codigo_orientador, cpf, rg, orgao_emissor, email, telefone, cep, logradouro, numero, complemento, bairro, municipio, uf, doc_identidade, doc_diploma")
           .eq("id", proj.orientador_id)
           .single()
-        if (!e2) setOrientador(ori)
+        if (ori) setOrientador(ori)
       }
 
-      // 3 — bolsistas ativos
       const { data: bolsData } = await supabase
         .from("bolsista")
         .select("id, nome_completo, cpf, data_nascimento, ano_escolar, escola_origem")
@@ -217,7 +399,6 @@ export default function ContratoDetalhe() {
         .order("created_at", { ascending: true })
       setBolsistas(bolsData ?? [])
 
-      // 4 — contrato (pode não existir)
       const { data: cont } = await supabase
         .from("contrato")
         .select("*")
@@ -233,6 +414,11 @@ export default function ContratoDetalhe() {
           data_assinatura:         cont.data_assinatura         ?? "",
           data_inicio_vigencia:    cont.data_inicio_vigencia    ?? "",
           data_fim_vigencia:       cont.data_fim_vigencia       ?? "",
+          valor_bolsa_orientador:  cont.valor_bolsa_orientador  ?? 1000,
+          valor_bolsa_estudante:   cont.valor_bolsa_estudante   ?? 300,
+          numero_edital:           cont.numero_edital            ?? "01/2026",
+          ano_exercicio:           cont.ano_exercicio            ?? 2026,
+          conteudo_editavel:       cont.conteudo_editavel        ?? "",
         })
       }
     } catch (err) {
@@ -242,10 +428,18 @@ export default function ContratoDetalhe() {
     }
   }
 
-  // preserva o status já existente — nunca rebaixa emitido/assinado
   function buildPayload(overrideStatus) {
-    const status = overrideStatus ?? contrato?.status ?? "rascunho"
-    return { ...dados, projeto_id: projetoId, orientador_id: projeto.orientador_id, status }
+    const status   = overrideStatus ?? contrato?.status ?? "rascunho"
+    const vOri     = Number(dados.valor_bolsa_orientador || 0)
+    const vEst     = Number(dados.valor_bolsa_estudante  || 0)
+    const valorGlobal = vOri * 6 + 8 * vEst * 6
+    return {
+      ...dados,
+      projeto_id:    projetoId,
+      orientador_id: projeto.orientador_id,
+      valor_global:  valorGlobal,
+      status,
+    }
   }
 
   async function autoSave() {
@@ -264,7 +458,7 @@ export default function ContratoDetalhe() {
 
   async function handleSalvarDados(e) {
     e.preventDefault()
-    clearTimeout(debounceRef.current) // cancela debounce pendente
+    clearTimeout(debounceRef.current)
     setSaving(true)
     const { data, error: err } = contrato
       ? await supabase.from("contrato").update(buildPayload()).eq("projeto_id", projetoId).select().single()
@@ -281,29 +475,107 @@ export default function ContratoDetalhe() {
     setDados(d => ({ ...d, [field]: value }))
   }
 
+  function handleRegenerarTexto() {
+    const texto = gerarTextoContrato(projeto, orientador, dados)
+    handleDadosChange("conteudo_editavel", texto)
+  }
+
+  async function handleGerarPDF() {
+    if (!dados.conteudo_editavel.trim()) {
+      showToast("Gere o texto do contrato antes de exportar o PDF.", "info")
+      return
+    }
+    setGeneratingPDF(true)
+    try {
+      const { jsPDF } = await import("jspdf")
+      const doc = new jsPDF({ unit: "mm", format: "a4" })
+
+      const mL = 30, mR = 20, mT = 30, mB = 20
+      const pgW = 210, pgH = 297
+      const usableW = pgW - mL - mR
+      const lineH   = 6.5
+
+      // cabeçalho apenas na primeira página
+      doc.setFont("times", "bold")
+      doc.setFontSize(9)
+      doc.text("FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC", pgW / 2, mT - 14, { align: "center" })
+      doc.text("Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV", pgW / 2, mT - 8, { align: "center" })
+      doc.setLineWidth(0.3)
+      doc.line(mL, mT - 4, pgW - mR, mT - 4)
+
+      doc.setFont("times", "normal")
+      doc.setFontSize(12)
+
+      let y = mT + 2
+      const rawLines = dados.conteudo_editavel.split("\n")
+
+      for (const rawLine of rawLines) {
+        const wrapped = doc.splitTextToSize(rawLine.trimEnd() || " ", usableW)
+        for (const wLine of wrapped) {
+          if (y + lineH > pgH - mB) {
+            doc.addPage()
+            y = mT
+          }
+          doc.text(wLine, mL, y)
+          y += lineH
+        }
+      }
+
+      const filename = `contrato-${(dados.numero_contrato || projetoId).replace(/\//g, "-")}.pdf`
+
+      // upload para Supabase Storage
+      const blob = doc.output("blob")
+      const storagePath = `contratos/${projetoId}.pdf`
+      const { error: uploadErr } = await supabase.storage
+        .from("inscricoes")
+        .upload(storagePath, blob, { contentType: "application/pdf", upsert: true })
+
+      let pdfUrl = null
+      if (!uploadErr) {
+        const { data: urlData } = supabase.storage.from("inscricoes").getPublicUrl(storagePath)
+        pdfUrl = urlData.publicUrl
+      }
+
+      // atualiza status para emitido + pdf_url
+      const updatePdf = { status: "emitido", ...(pdfUrl ? { pdf_url: pdfUrl } : {}) }
+      const { data: updated } = await supabase
+        .from("contrato")
+        .update(updatePdf)
+        .eq("projeto_id", projetoId)
+        .select()
+        .single()
+      if (updated) setContrato(updated)
+
+      doc.save(filename)
+      showToast("Contrato PDF gerado. Status atualizado para Emitido.", "ok")
+    } catch (err) {
+      showToast(`Erro ao gerar PDF: ${err.message}`, "err")
+    } finally {
+      setGeneratingPDF(false)
+    }
+  }
+
+  // ── VALORES COMPUTADOS ────────────────────────────────────────────────────
   const status = loading ? null : calcStatus({ orientador, bolsistas, contrato })
   const dadosOk = calcDadosContratoOk(dados)
+  const prontoParaPDF = dadosOk && !!dados.conteudo_editavel.trim()
+  const valorGlobal = (Number(dados.valor_bolsa_orientador || 0) * 6) + (8 * Number(dados.valor_bolsa_estudante || 0) * 6)
   const endereco = orientador
-    ? [orientador.logradouro, orientador.numero, orientador.complemento, orientador.bairro, orientador.municipio, orientador.uf]
-        .filter(Boolean).join(", ")
+    ? [orientador.logradouro, orientador.numero, orientador.complemento,
+       orientador.bairro, orientador.municipio, orientador.uf].filter(Boolean).join(", ")
     : ""
 
-  // ── RENDER ──────────────────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.grayL, fontSize: 14, fontFamily: "system-ui, sans-serif" }}>
-        Carregando…
-      </div>
-    )
-  }
+  if (loading) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.grayL, fontSize: 14 }}>
+      Carregando…
+    </div>
+  )
 
-  if (error || !projeto) {
-    return (
-      <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.red.fg, fontSize: 14, fontFamily: "system-ui, sans-serif" }}>
-        {error ?? "Projeto não encontrado."}
-      </div>
-    )
-  }
+  if (error || !projeto) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center", justifyContent: "center", color: C.red.fg, fontSize: 14 }}>
+      {error ?? "Projeto não encontrado."}
+    </div>
+  )
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif", fontSize: 14, color: C.dark }}>
@@ -340,7 +612,7 @@ export default function ContratoDetalhe() {
       </div>
 
       {/* ── CONTEÚDO ────────────────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "28px 32px 60px", display: "flex", flexDirection: "column", gap: 20 }}>
+      <div style={{ maxWidth: 960, margin: "0 auto", padding: "28px 32px 60px", display: "flex", flexDirection: "column", gap: 20 }}>
 
         {/* 1 — Dados do orientador */}
         <Card title="Dados do orientador">
@@ -348,8 +620,8 @@ export default function ContratoDetalhe() {
             <div style={{ gridColumn: "1 / -1" }}>
               <Field label="Nome completo" value={orientador?.nome_completo} />
             </div>
-            <Field label="CPF"           value={orientador?.cpf}          mono />
-            <Field label="RG"            value={orientador?.rg}           mono />
+            <Field label="CPF"           value={orientador?.cpf}           mono />
+            <Field label="RG"            value={orientador?.rg}            mono />
             <Field label="Órgão emissor" value={orientador?.orgao_emissor} />
             <Field label="E-mail"        value={orientador?.email} />
             <Field label="Telefone"      value={orientador?.telefone} />
@@ -430,92 +702,97 @@ export default function ContratoDetalhe() {
           <form onSubmit={handleSalvarDados}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
 
-              {/* número contrato */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  Número do contrato
-                </label>
-                <input
-                  style={inputCss}
-                  placeholder="Ex: 001/2026"
+                <label style={labelCss}>Número do contrato</label>
+                <input style={inputCss} placeholder="Ex: 001/2026"
                   value={dados.numero_contrato}
-                  onChange={e => handleDadosChange("numero_contrato", e.target.value)}
-                />
+                  onChange={e => handleDadosChange("numero_contrato", e.target.value)} />
               </div>
 
-              {/* número processo */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  Número do processo administrativo
-                </label>
-                <input
-                  style={inputCss}
-                  placeholder="Ex: 2026.001234"
+                <label style={labelCss}>Número do processo administrativo</label>
+                <input style={inputCss} placeholder="Ex: 2026.001234"
                   value={dados.numero_processo}
-                  onChange={e => handleDadosChange("numero_processo", e.target.value)}
-                />
+                  onChange={e => handleDadosChange("numero_processo", e.target.value)} />
               </div>
 
-              {/* diretor presidente */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  Nome do Diretor Presidente
-                </label>
-                <input
-                  style={inputCss}
+                <label style={labelCss}>Nome do Diretor Presidente</label>
+                <input style={inputCss}
                   value={dados.nome_diretor_presidente}
-                  onChange={e => handleDadosChange("nome_diretor_presidente", e.target.value)}
-                />
+                  onChange={e => handleDadosChange("nome_diretor_presidente", e.target.value)} />
               </div>
 
-              {/* diretora adm */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  Nome da Diretora Adm-Financeira
-                </label>
-                <input
-                  style={inputCss}
+                <label style={labelCss}>Nome da Diretora Adm-Financeira</label>
+                <input style={inputCss}
                   value={dados.nome_diretora_adm}
-                  onChange={e => handleDadosChange("nome_diretora_adm", e.target.value)}
-                />
+                  onChange={e => handleDadosChange("nome_diretora_adm", e.target.value)} />
               </div>
 
-              {/* data assinatura */}
               <div>
-                <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                  Data de assinatura
-                </label>
-                <input
-                  type="date"
-                  style={inputCss}
+                <label style={labelCss}>Data de assinatura</label>
+                <input type="date" style={inputCss}
                   value={dados.data_assinatura}
-                  onChange={e => handleDadosChange("data_assinatura", e.target.value)}
-                />
+                  onChange={e => handleDadosChange("data_assinatura", e.target.value)} />
               </div>
 
-              {/* vigência */}
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                    Início da vigência
-                  </label>
-                  <input
-                    type="date"
-                    style={inputCss}
+                  <label style={labelCss}>Início da vigência</label>
+                  <input type="date" style={inputCss}
                     value={dados.data_inicio_vigencia}
-                    onChange={e => handleDadosChange("data_inicio_vigencia", e.target.value)}
-                  />
+                    onChange={e => handleDadosChange("data_inicio_vigencia", e.target.value)} />
                 </div>
                 <div>
-                  <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: C.grayL, marginBottom: 5, textTransform: "uppercase", letterSpacing: "0.07em" }}>
-                    Fim da vigência
-                  </label>
-                  <input
-                    type="date"
-                    style={inputCss}
+                  <label style={labelCss}>Fim da vigência</label>
+                  <input type="date" style={inputCss}
                     value={dados.data_fim_vigencia}
-                    onChange={e => handleDadosChange("data_fim_vigencia", e.target.value)}
-                  />
+                    onChange={e => handleDadosChange("data_fim_vigencia", e.target.value)} />
+                </div>
+              </div>
+
+              <div>
+                <label style={labelCss}>Número do edital</label>
+                <input style={inputCss} placeholder="Ex: 01/2026"
+                  value={dados.numero_edital}
+                  onChange={e => handleDadosChange("numero_edital", e.target.value)} />
+              </div>
+
+              <div>
+                <label style={labelCss}>Ano de exercício</label>
+                <input type="number" style={inputCss} placeholder="Ex: 2026"
+                  value={dados.ano_exercicio}
+                  onChange={e => handleDadosChange("ano_exercicio", Number(e.target.value))} />
+              </div>
+
+              <div>
+                <label style={labelCss}>Valor da bolsa — Orientador (R$)</label>
+                <input type="number" step="0.01" style={inputCss}
+                  value={dados.valor_bolsa_orientador}
+                  onChange={e => handleDadosChange("valor_bolsa_orientador", Number(e.target.value))} />
+              </div>
+
+              <div>
+                <label style={labelCss}>Valor da bolsa — Estudante (R$)</label>
+                <input type="number" step="0.01" style={inputCss}
+                  value={dados.valor_bolsa_estudante}
+                  onChange={e => handleDadosChange("valor_bolsa_estudante", Number(e.target.value))} />
+              </div>
+
+              {/* valor global calculado */}
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelCss}>Valor global do instrumento (calculado)</label>
+                <div style={{
+                  padding: "9px 12px", borderRadius: 7, background: C.grayBg,
+                  border: `1px solid ${C.border}`, fontSize: 14, fontWeight: 700, color: C.dark,
+                  display: "flex", alignItems: "baseline", gap: 10,
+                }}>
+                  R$ {fmtBRL(valorGlobal)}
+                  <span style={{ fontSize: 11, fontWeight: 400, color: C.grayL }}>
+                    ({dados.valor_bolsa_orientador}×6 parcelas + 8 × {dados.valor_bolsa_estudante}×6 parcelas)
+                    = {porExtenso(valorGlobal)}
+                  </span>
                 </div>
               </div>
 
@@ -525,7 +802,8 @@ export default function ContratoDetalhe() {
               type="submit"
               disabled={saving}
               style={{
-                padding: "9px 22px", borderRadius: 8, border: "none", cursor: saving ? "not-allowed" : "pointer",
+                padding: "9px 22px", borderRadius: 8, border: "none",
+                cursor: saving ? "not-allowed" : "pointer",
                 background: C.header, color: C.white, fontSize: 13, fontWeight: 600,
                 opacity: saving ? 0.6 : 1, transition: "opacity 0.12s",
               }}
@@ -535,43 +813,92 @@ export default function ContratoDetalhe() {
           </form>
         </Card>
 
-        {/* 4 — Ações */}
+        {/* 4 — Texto do contrato */}
+        <Card
+          title="Texto do contrato"
+          action={
+            <button
+              onClick={handleRegenerarTexto}
+              style={{
+                padding: "5px 14px", borderRadius: 6, border: `1px solid ${C.border}`,
+                background: C.white, color: C.dark, fontSize: 12, fontWeight: 600,
+                cursor: "pointer", transition: "background 0.1s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.grayBg }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.white  }}
+            >
+              Regenerar texto
+            </button>
+          }
+        >
+          {!dados.conteudo_editavel && (
+            <p style={{ fontSize: 13, color: C.amber.fg, marginTop: 0, marginBottom: 12 }}>
+              Clique em <strong>Regenerar texto</strong> para montar o texto do contrato com os dados preenchidos acima.
+            </p>
+          )}
+          <textarea
+            value={dados.conteudo_editavel}
+            onChange={e => handleDadosChange("conteudo_editavel", e.target.value)}
+            spellCheck={false}
+            style={{
+              width: "100%", minHeight: 520, padding: "14px", fontSize: 12,
+              fontFamily: "Georgia, 'Times New Roman', serif", lineHeight: 1.7,
+              border: `1px solid ${C.border}`, borderRadius: 7, resize: "vertical",
+              outline: "none", background: C.white, color: C.dark, boxSizing: "border-box",
+            }}
+            placeholder="O texto completo do contrato aparecerá aqui. Edite livremente antes de gerar o PDF."
+          />
+        </Card>
+
+        {/* 5 — Ações */}
         <Card title="Ações">
-          <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "flex-start" }}>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
               <button
-                disabled={!dadosOk}
-                onClick={() => showToast("Geração de PDF em desenvolvimento.", "info")}
+                disabled={!prontoParaPDF || generatingPDF}
+                onClick={handleGerarPDF}
                 style={{
-                  padding: "9px 20px", borderRadius: 8, border: "none", cursor: dadosOk ? "pointer" : "not-allowed",
-                  background: dadosOk ? C.header : C.grayBg,
-                  color:      dadosOk ? C.white  : C.grayL,
-                  fontSize: 13, fontWeight: 600, opacity: dadosOk ? 1 : 0.7,
-                  transition: "opacity 0.12s",
+                  padding: "9px 20px", borderRadius: 8, border: "none",
+                  cursor: prontoParaPDF && !generatingPDF ? "pointer" : "not-allowed",
+                  background: prontoParaPDF ? C.header : C.grayBg,
+                  color:      prontoParaPDF ? C.white   : C.grayL,
+                  fontSize: 13, fontWeight: 600,
+                  opacity: prontoParaPDF ? 1 : 0.7, transition: "opacity 0.12s",
                 }}
               >
-                Gerar contrato PDF
+                {generatingPDF ? "Gerando PDF…" : "Gerar contrato PDF"}
               </button>
               {!dadosOk && (
-                <span style={{ fontSize: 11, color: C.amber.fg }}>Preencha todos os dados do contrato antes de gerar.</span>
+                <span style={{ fontSize: 11, color: C.amber.fg }}>
+                  Preencha todos os dados do contrato.
+                </span>
+              )}
+              {dadosOk && !dados.conteudo_editavel.trim() && (
+                <span style={{ fontSize: 11, color: C.amber.fg }}>
+                  Gere o texto do contrato antes de exportar.
+                </span>
+              )}
+              {contrato?.pdf_url && (
+                <a href={contrato.pdf_url} target="_blank" rel="noreferrer"
+                  style={{ fontSize: 11, color: C.blue.fg, fontWeight: 600 }}>
+                  Ver último PDF gerado →
+                </a>
               )}
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <button
-                onClick={() => showToast("Geração de termos em desenvolvimento.", "info")}
-                style={{
-                  padding: "9px 20px", borderRadius: 8, border: `1px solid ${C.border}`,
-                  cursor: "pointer", background: C.white, color: C.dark,
-                  fontSize: 13, fontWeight: 600, transition: "background 0.12s",
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = C.grayBg }}
-                onMouseLeave={e => { e.currentTarget.style.background = C.white  }}
-              >
-                Gerar termos de adesão
-              </button>
-            </div>
+            <button
+              onClick={() => showToast("Geração de termos de adesão em desenvolvimento.", "info")}
+              style={{
+                padding: "9px 20px", borderRadius: 8, border: `1px solid ${C.border}`,
+                cursor: "pointer", background: C.white, color: C.dark,
+                fontSize: 13, fontWeight: 600, transition: "background 0.12s",
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = C.grayBg }}
+              onMouseLeave={e => { e.currentTarget.style.background = C.white  }}
+            >
+              Gerar termos de adesão
+            </button>
 
           </div>
         </Card>
