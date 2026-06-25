@@ -25,6 +25,7 @@ import { ConfirmacaoInscricao } from '@/pages/inscricao/ConfirmacaoInscricao'
 import { FichaInscricao } from '@/pages/candidato/FichaInscricao'
 import { RedefinirSenha } from '@/pages/inscricao/RedefinirSenha'
 import { ConfiguracaoInscricao } from '@/pages/admin/ConfiguracaoInscricao'
+import { ClassificacaoAdmin } from '@/pages/admin/Classificacao'
 import { AvaliadorProvider, useAvaliador } from '@/contexts/AvaliadorContext'
 import { LoginAvaliador } from '@/pages/avaliador/LoginAvaliador'
 import { ProjetosAvaliador } from '@/pages/avaliador/ProjetosAvaliador'
@@ -158,6 +159,7 @@ function App() {
                 <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                 <Route path="/importacao" element={<Importacao />} />
                 <Route path="/admin" element={<HomeAdmin />} />
+                <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
                 <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
                 <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
                 <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
