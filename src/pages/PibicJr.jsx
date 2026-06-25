@@ -21,8 +21,8 @@ const MODULOS = [
   {
     id: "m2", codigo: "M2", nome: "Organização",
     desc: "Contratos, termos de adesão e equipes",
-    cor: C.teal, corBg: C.tealBg, ativo: false,
-    rota: null, Icon: Users,
+    cor: C.teal, corBg: C.tealBg, ativo: true,
+    rota: "/admin/pibic-jr/2026/m2/contratos", Icon: Users,
   },
   {
     id: "m3", codigo: "M3", nome: "Gestão",
