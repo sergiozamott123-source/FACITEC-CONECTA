@@ -1,6 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, User, FolderOpen, Users, FileText, LogOut } from 'lucide-react'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
+import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 const NAV_ITEMS = [
   { label: 'Início',      icon: LayoutDashboard, to: '/orientador/dashboard'  },
@@ -31,8 +32,8 @@ export function OrientadorSidebar() {
     >
       {/* Logo */}
       <div className="px-4 pt-5 pb-4 border-b border-white/10">
-        <p className="text-white font-bold text-sm leading-tight">FACITEC CONECTA</p>
-        <p className="text-white/50 text-xs leading-tight mt-0.5">Portal do Orientador</p>
+        <LogoFacitecConecta size="md" inverted />
+        <p className="text-white/50 text-xs leading-tight mt-2">Portal do Orientador</p>
       </div>
 
       {/* Orientador info */}
