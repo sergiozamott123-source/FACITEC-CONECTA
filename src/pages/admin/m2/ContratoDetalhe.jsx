@@ -583,15 +583,38 @@ export default function ContratoDetalhe() {
         y = checkPage(y, lineH)
 
         if (/^CONTRATO DE CONCESSÃO/i.test(txt)) {
+          // título do contrato centralizado
           doc.setFont("helvetica", "bold")
           doc.setFontSize(13)
-          doc.text(txt, pgW / 2, y, { align: "center" })
+          const titleW = doc.splitTextToSize(txt, usableW)
+          for (const tl of titleW) {
+            y = checkPage(y, lineH)
+            doc.text(tl, pgW / 2, y, { align: "center" })
+            y += lineH
+          }
           doc.setFontSize(12)
-          y += lineH
-        } else if (/^CLÁUSULA/i.test(txt) || /^3\.1\./.test(txt)) {
+        } else if (/^CLÁUSULA/i.test(txt)) {
+          // cláusula principal: espaço extra + bold + texto pode quebrar
+          y += 4
+          y = checkPage(y, lineH)
           doc.setFont("helvetica", "bold")
-          doc.text(txt, mL, y)
-          y += lineH
+          const clauseLines = doc.splitTextToSize(txt, usableW)
+          for (const cl of clauseLines) {
+            y = checkPage(y, lineH)
+            doc.text(cl, mL, y)
+            y += lineH
+          }
+          doc.setFont("helvetica", "normal")
+        } else if (/^3\.1\./.test(txt)) {
+          // subcláusula: bold sem espaço extra
+          y = checkPage(y, lineH)
+          doc.setFont("helvetica", "bold")
+          const subLines = doc.splitTextToSize(txt, usableW)
+          for (const sl of subLines) {
+            y = checkPage(y, lineH)
+            doc.text(sl, mL, y)
+            y += lineH
+          }
           doc.setFont("helvetica", "normal")
         } else {
           doc.setFont("helvetica", "normal")
@@ -613,13 +636,19 @@ export default function ContratoDetalhe() {
         y += lineH * 2
       }
 
-      // garante espaço (≈ 65 mm) para o bloco de assinaturas
+      // garante espaço (≈ 65 mm) para o primeiro bloco de assinaturas
       y = checkPage(y, 65)
 
+      // helper: reinicia estado gráfico e traça linha horizontal
+      function sigLine(x1, x2, atY) {
+        doc.setDrawColor(0)
+        doc.setLineWidth(0.4)
+        doc.line(x1, atY, x2, atY)
+      }
+
       // — Diretor Presidente + Diretora Adm-Financeira (2 colunas) —
-      doc.setLineWidth(0.4)
-      doc.line(mL,    y, mL    + sigW, y)
-      doc.line(col2X, y, col2X + sigW, y)
+      sigLine(mL,    mL    + sigW, y)
+      sigLine(col2X, col2X + sigW, y)
       y += lineH * 0.7
 
       doc.setFont("helvetica", "bold")
@@ -635,9 +664,9 @@ export default function ContratoDetalhe() {
       y += lineH * 2.5
 
       // — Orientador (centralizado) —
+      y = checkPage(y, 30)
       const cx = pgW / 2
-      doc.setLineWidth(0.4)
-      doc.line(cx - 32, y, cx + 32, y)
+      sigLine(cx - 32, cx + 32, y)
       y += lineH * 0.7
 
       doc.setFont("helvetica", "bold")
@@ -657,9 +686,9 @@ export default function ContratoDetalhe() {
       doc.text("TESTEMUNHAS:", mL, y)
       y += lineH * 1.5
 
-      doc.setLineWidth(0.4)
-      doc.line(mL,    y, mL    + sigW, y)
-      doc.line(col2X, y, col2X + sigW, y)
+      y = checkPage(y, lineH * 6)
+      sigLine(mL,    mL    + sigW, y)
+      sigLine(col2X, col2X + sigW, y)
       y += lineH * 0.7
 
       doc.setFont("helvetica", "normal")
