@@ -8,9 +8,8 @@ const ACEITOS = '.pdf,.jpg,.jpeg,.png,.webp'
 const BUCKET = 'inscricoes'
 
 const DOCS_ORIENTADOR = [
-  { key: 'doc_rg_url',        label: 'RG do orientador'              },
-  { key: 'doc_comprovante_url', label: 'Comprovante de residência'   },
-  { key: 'doc_lattes_url',    label: 'Currículo Lattes'              },
+  { key: 'doc_identidade', label: 'Documento de identidade com foto e CPF', ref: 'Edital 01/2026, item 13.5-a' },
+  { key: 'doc_diploma',    label: 'Diploma de graduação de curso superior', ref: 'Edital 01/2026, item 13.5-b' },
 ]
 
 async function uploadArquivo(file, path) {
@@ -252,29 +251,39 @@ export function OrientadorDocumentos() {
           <div className="space-y-3">
             {DOCS_ORIENTADOR.map(doc => {
               const url = meusDocUrls[doc.key]
+              const filename = url ? decodeURIComponent(url.split('/').pop().split('?')[0]) : null
               return (
-                <div key={doc.key} className="flex items-center gap-4 py-2.5 border-b border-gray-100 last:border-0">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-800">{doc.label}</p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {url ? (
-                      <>
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                          <CheckCircle2 className="w-3 h-3" /> Enviado
+                <div key={doc.key} className="py-3 border-b border-gray-100 last:border-0">
+                  <div className="flex items-start justify-between gap-4 flex-wrap">
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800">{doc.label}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{doc.ref}</p>
+                      {url && (
+                        <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 truncate max-w-xs">
+                          <FileText className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                          {filename}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {url ? (
+                        <>
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                            <CheckCircle2 className="w-3 h-3" /> Enviado
+                          </span>
+                          <DocActions url={url} />
+                        </>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                          <Clock className="w-3 h-3" /> Pendente
                         </span>
-                        <DocActions url={url} />
-                      </>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-50 text-gray-500 border border-gray-200">
-                        Pendente
-                      </span>
-                    )}
-                    <UploadButton
-                      onUpload={file => handleUploadMeuDoc(doc.key, file)}
-                      uploading={uploading[doc.key]}
-                      label={url ? 'Substituir' : 'Enviar'}
-                    />
+                      )}
+                      <UploadButton
+                        onUpload={file => handleUploadMeuDoc(doc.key, file)}
+                        uploading={uploading[doc.key]}
+                        label={url ? 'Substituir' : 'Enviar'}
+                      />
+                    </div>
                   </div>
                 </div>
               )
