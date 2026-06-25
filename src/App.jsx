@@ -45,6 +45,7 @@ import { OrientadorEquipe } from '@/pages/orientador/OrientadorEquipe'
 import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
+import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -169,6 +170,7 @@ function App() {
                 <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
                 <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
                 <Route path="/admin/pibic-jr/:ano/m2/contratos" element={<ContratosPainel />} />
+                <Route path="/admin/pibic-jr/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
               </Routes>
             </Layout>
           }
