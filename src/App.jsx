@@ -35,6 +35,12 @@ import { OrientadorProvider, useOrientador } from '@/contexts/OrientadorContext'
 import { LoginCandidato } from '@/pages/candidato/LoginCandidato'
 import { MeusRecursos } from '@/pages/candidato/MeusRecursos'
 import { RecursoWizard } from '@/pages/candidato/RecursoWizard'
+import { PortalOrientadorProvider, usePortalOrientador } from '@/contexts/PortalOrientadorContext'
+import { OrientadorLogin } from '@/pages/orientador/OrientadorLogin'
+import { OrientadorDashboard } from '@/pages/orientador/OrientadorDashboard'
+import { OrientadorDados } from '@/pages/orientador/OrientadorDados'
+import { OrientadorEquipe } from '@/pages/orientador/OrientadorEquipe'
+import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -46,6 +52,19 @@ function ProtectedAvaliador({ children }) {
     )
   }
   if (!avaliador) return <Navigate to="/avaliador/login" replace />
+  return children
+}
+
+function ProtectedOrientador({ children }) {
+  const { orientador, loading } = usePortalOrientador()
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-400 text-sm">Verificando acesso...</p>
+      </div>
+    )
+  }
+  if (!orientador) return <Navigate to="/orientador/login" replace />
   return children
 }
 
@@ -85,6 +104,19 @@ function App() {
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
           </AvaliadorProvider>
+        } />
+        {/* Portal do orientador — equipe e documentos */}
+        <Route path="/orientador/*" element={
+          <PortalOrientadorProvider>
+            <Routes>
+              <Route path="login" element={<OrientadorLogin />} />
+              <Route path="dashboard" element={<ProtectedOrientador><OrientadorDashboard /></ProtectedOrientador>} />
+              <Route path="dados" element={<ProtectedOrientador><OrientadorDados /></ProtectedOrientador>} />
+              <Route path="equipe" element={<ProtectedOrientador><OrientadorEquipe /></ProtectedOrientador>} />
+              <Route path="documentos" element={<ProtectedOrientador><OrientadorDocumentos /></ProtectedOrientador>} />
+              <Route path="*" element={<Navigate to="login" replace />} />
+            </Routes>
+          </PortalOrientadorProvider>
         } />
         {/* Portal do candidato — recursos */}
         <Route path="/candidato/*" element={
