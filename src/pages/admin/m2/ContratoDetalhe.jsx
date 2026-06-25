@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
+import { jsPDF } from "jspdf"
 import { supabase } from "@/lib/supabase"
 
 // ── PALETA ───────────────────────────────────────────────────────────────────
@@ -516,7 +517,6 @@ export default function ContratoDetalhe() {
     }
     setGeneratingPDF(true)
     try {
-      const { jsPDF } = await import("jspdf")
       const doc = new jsPDF({ unit: "mm", format: "a4" })
 
       const mL = 30, mR = 20, mT = 30, mB = 20
