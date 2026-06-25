@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 
@@ -162,11 +162,23 @@ export default function ContratoDetalhe() {
   const [contrato,   setContrato]   = useState(null)
   const [loading,    setLoading]    = useState(true)
   const [error,      setError]      = useState(null)
-  const [saving,     setSaving]     = useState(false)
-  const [toast,      setToast]      = useState(null)
+  const [saving,         setSaving]         = useState(false)
+  const [toast,          setToast]          = useState(null)
+  const [autoSaveStatus, setAutoSaveStatus] = useState(null) // null | "saving" | "saved"
   const [dados, setDados] = useState(CONTRATO_INICIAL)
 
+  const debounceRef = useRef(null)
+  const isDirtyRef  = useRef(false)
+
   useEffect(() => { fetchDados() }, [projetoId])
+
+  // debounce auto-save — só dispara após interação do usuário
+  useEffect(() => {
+    if (!isDirtyRef.current || loading || !projeto) return
+    clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(autoSave, 1500)
+    return () => clearTimeout(debounceRef.current)
+  }, [dados])
 
   function showToast(msg, type = "ok") {
     setToast({ msg, type })
@@ -230,17 +242,43 @@ export default function ContratoDetalhe() {
     }
   }
 
+  // preserva o status já existente — nunca rebaixa emitido/assinado
+  function buildPayload(overrideStatus) {
+    const status = overrideStatus ?? contrato?.status ?? "rascunho"
+    return { ...dados, projeto_id: projetoId, orientador_id: projeto.orientador_id, status }
+  }
+
+  async function autoSave() {
+    setAutoSaveStatus("saving")
+    const { data, error: err } = contrato
+      ? await supabase.from("contrato").update(buildPayload()).eq("projeto_id", projetoId).select().single()
+      : await supabase.from("contrato").insert(buildPayload()).select().single()
+    if (!err) {
+      setContrato(data)
+      setAutoSaveStatus("saved")
+      setTimeout(() => setAutoSaveStatus(null), 2500)
+    } else {
+      setAutoSaveStatus(null)
+    }
+  }
+
   async function handleSalvarDados(e) {
     e.preventDefault()
+    clearTimeout(debounceRef.current) // cancela debounce pendente
     setSaving(true)
-    const payload = { ...dados, projeto_id: projetoId, orientador_id: projeto.orientador_id, status: "emitido" }
     const { data, error: err } = contrato
-      ? await supabase.from("contrato").update(payload).eq("projeto_id", projetoId).select().single()
-      : await supabase.from("contrato").insert(payload).select().single()
+      ? await supabase.from("contrato").update(buildPayload()).eq("projeto_id", projetoId).select().single()
+      : await supabase.from("contrato").insert(buildPayload()).select().single()
     setSaving(false)
     if (err) { showToast(`Erro ao salvar: ${err.message}`, "err"); return }
     setContrato(data)
+    setAutoSaveStatus(null)
     showToast("Dados do contrato salvos.", "ok")
+  }
+
+  function handleDadosChange(field, value) {
+    isDirtyRef.current = true
+    setDados(d => ({ ...d, [field]: value }))
   }
 
   const status = loading ? null : calcStatus({ orientador, bolsistas, contrato })
@@ -379,7 +417,16 @@ export default function ContratoDetalhe() {
         </Card>
 
         {/* 3 — Dados do contrato */}
-        <Card title="Dados do contrato — preenchimento pela Secretaria">
+        <Card
+          title="Dados do contrato — preenchimento pela Secretaria"
+          action={
+            autoSaveStatus === "saving" ? (
+              <span style={{ fontSize: 11, color: C.grayL }}>Salvando…</span>
+            ) : autoSaveStatus === "saved" ? (
+              <span style={{ fontSize: 11, color: C.green.fg, fontWeight: 600 }}>✓ Salvo</span>
+            ) : null
+          }
+        >
           <form onSubmit={handleSalvarDados}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px 20px", marginBottom: 20 }}>
 
@@ -392,7 +439,7 @@ export default function ContratoDetalhe() {
                   style={inputCss}
                   placeholder="Ex: 001/2026"
                   value={dados.numero_contrato}
-                  onChange={e => setDados(d => ({ ...d, numero_contrato: e.target.value }))}
+                  onChange={e => handleDadosChange("numero_contrato", e.target.value)}
                 />
               </div>
 
@@ -405,7 +452,7 @@ export default function ContratoDetalhe() {
                   style={inputCss}
                   placeholder="Ex: 2026.001234"
                   value={dados.numero_processo}
-                  onChange={e => setDados(d => ({ ...d, numero_processo: e.target.value }))}
+                  onChange={e => handleDadosChange("numero_processo", e.target.value)}
                 />
               </div>
 
@@ -417,7 +464,7 @@ export default function ContratoDetalhe() {
                 <input
                   style={inputCss}
                   value={dados.nome_diretor_presidente}
-                  onChange={e => setDados(d => ({ ...d, nome_diretor_presidente: e.target.value }))}
+                  onChange={e => handleDadosChange("nome_diretor_presidente", e.target.value)}
                 />
               </div>
 
@@ -429,7 +476,7 @@ export default function ContratoDetalhe() {
                 <input
                   style={inputCss}
                   value={dados.nome_diretora_adm}
-                  onChange={e => setDados(d => ({ ...d, nome_diretora_adm: e.target.value }))}
+                  onChange={e => handleDadosChange("nome_diretora_adm", e.target.value)}
                 />
               </div>
 
@@ -442,7 +489,7 @@ export default function ContratoDetalhe() {
                   type="date"
                   style={inputCss}
                   value={dados.data_assinatura}
-                  onChange={e => setDados(d => ({ ...d, data_assinatura: e.target.value }))}
+                  onChange={e => handleDadosChange("data_assinatura", e.target.value)}
                 />
               </div>
 
@@ -456,7 +503,7 @@ export default function ContratoDetalhe() {
                     type="date"
                     style={inputCss}
                     value={dados.data_inicio_vigencia}
-                    onChange={e => setDados(d => ({ ...d, data_inicio_vigencia: e.target.value }))}
+                    onChange={e => handleDadosChange("data_inicio_vigencia", e.target.value)}
                   />
                 </div>
                 <div>
@@ -467,7 +514,7 @@ export default function ContratoDetalhe() {
                     type="date"
                     style={inputCss}
                     value={dados.data_fim_vigencia}
-                    onChange={e => setDados(d => ({ ...d, data_fim_vigencia: e.target.value }))}
+                    onChange={e => handleDadosChange("data_fim_vigencia", e.target.value)}
                   />
                 </div>
               </div>
