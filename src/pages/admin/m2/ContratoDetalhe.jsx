@@ -518,41 +518,161 @@ export default function ContratoDetalhe() {
     setGeneratingPDF(true)
     try {
       const doc = new jsPDF({ unit: "mm", format: "a4" })
-
       const mL = 30, mR = 20, mT = 30, mB = 20
       const pgW = 210, pgH = 297
       const usableW = pgW - mL - mR
       const lineH   = 6.5
+      const col2X   = pgW / 2 + 5
+      const sigW    = 65
 
-      // cabeçalho apenas na primeira página
-      doc.setFont("times", "bold")
+      // ── texto justificado com quebra de página automática ─────────────
+      function addJustifiedText(doc, text, x, startY, maxWidth, lh) {
+        const lines = doc.splitTextToSize(text, maxWidth)
+        let curY = startY
+        lines.forEach((line, i) => {
+          if (curY + lh > pgH - mB) { doc.addPage(); curY = mT }
+          const isLast = i === lines.length - 1
+          if (isLast || !line.trim()) {
+            doc.text(line, x, curY)
+          } else {
+            const words = line.trim().split(" ")
+            if (words.length <= 1) {
+              doc.text(line, x, curY)
+            } else {
+              const totalW = words.reduce((s, w) => s + doc.getTextWidth(w), 0)
+              const space  = (maxWidth - totalW) / (words.length - 1)
+              let wx = x
+              words.forEach(w => { doc.text(w, wx, curY); wx += doc.getTextWidth(w) + space })
+            }
+          }
+          curY += lh
+        })
+        return curY
+      }
+
+      function checkPage(y, needed = lineH) {
+        if (y + needed > pgH - mB) { doc.addPage(); return mT }
+        return y
+      }
+
+      // ── cabeçalho ─────────────────────────────────────────────────────
+      doc.setFont("helvetica", "bold")
       doc.setFontSize(9)
-      doc.text("FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC", pgW / 2, mT - 14, { align: "center" })
-      doc.text("Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV", pgW / 2, mT - 8, { align: "center" })
-      doc.setLineWidth(0.3)
+      doc.text("FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC",
+               pgW / 2, mT - 14, { align: "center" })
+      doc.text("Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV",
+               pgW / 2, mT - 8,  { align: "center" })
+      doc.setLineWidth(0.4)
       doc.line(mL, mT - 4, pgW - mR, mT - 4)
-
-      doc.setFont("times", "normal")
       doc.setFontSize(12)
 
       let y = mT + 2
-      const rawLines = dados.conteudo_editavel.split("\n")
 
-      for (const rawLine of rawLines) {
-        const wrapped = doc.splitTextToSize(rawLine.trimEnd() || " ", usableW)
-        for (const wLine of wrapped) {
-          if (y + lineH > pgH - mB) {
-            doc.addPage()
-            y = mT
-          }
-          doc.text(wLine, mL, y)
+      // ── separar corpo do bloco de assinaturas ─────────────────────────
+      const fullText = dados.conteudo_editavel
+      const vitMatch = /^Vitória,/m.exec(fullText)
+      const bodyText = vitMatch
+        ? fullText.slice(0, vitMatch.index).trimEnd()
+        : fullText
+
+      // ── renderizar corpo ──────────────────────────────────────────────
+      for (const rawLine of bodyText.split("\n")) {
+        const txt = rawLine.trim()
+        if (!txt) { y += lineH * 0.5; continue }
+
+        y = checkPage(y, lineH)
+
+        if (/^CONTRATO DE CONCESSÃO/i.test(txt)) {
+          doc.setFont("helvetica", "bold")
+          doc.setFontSize(13)
+          doc.text(txt, pgW / 2, y, { align: "center" })
+          doc.setFontSize(12)
           y += lineH
+        } else if (/^CLÁUSULA/i.test(txt) || /^3\.1\./.test(txt)) {
+          doc.setFont("helvetica", "bold")
+          doc.text(txt, mL, y)
+          y += lineH
+          doc.setFont("helvetica", "normal")
+        } else {
+          doc.setFont("helvetica", "normal")
+          y = addJustifiedText(doc, txt, mL, y, usableW, lineH)
         }
       }
 
-      const filename = `contrato-${(dados.numero_contrato || projetoId).replace(/\//g, "-")}.pdf`
+      // ── bloco de assinaturas ─────────────────────────────────────────
+      y += lineH
 
-      // upload para Supabase Storage
+      // linha da data
+      const dateLine = vitMatch
+        ? fullText.slice(vitMatch.index).split("\n")[0].trim()
+        : ""
+      if (dateLine) {
+        y = checkPage(y, lineH)
+        doc.setFont("helvetica", "normal")
+        doc.text(dateLine, mL, y)
+        y += lineH * 2
+      }
+
+      // garante espaço (≈ 65 mm) para o bloco de assinaturas
+      y = checkPage(y, 65)
+
+      // — Diretor Presidente + Diretora Adm-Financeira (2 colunas) —
+      doc.setLineWidth(0.4)
+      doc.line(mL,    y, mL    + sigW, y)
+      doc.line(col2X, y, col2X + sigW, y)
+      y += lineH * 0.7
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(10)
+      doc.text(dados.nome_diretor_presidente || "___", mL,    y)
+      doc.text(dados.nome_diretora_adm       || "___", col2X, y)
+      y += lineH * 0.8
+
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      doc.text("Diretor Presidente - CDTIV",                   mL,    y)
+      doc.text("Diretora de Administração e Finanças - CDTIV", col2X, y)
+      y += lineH * 2.5
+
+      // — Orientador (centralizado) —
+      const cx = pgW / 2
+      doc.setLineWidth(0.4)
+      doc.line(cx - 32, y, cx + 32, y)
+      y += lineH * 0.7
+
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(10)
+      doc.text(orientador?.nome_completo || "___", cx, y, { align: "center" })
+      y += lineH * 0.8
+
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      doc.text("Orientador(a)", cx, y, { align: "center" })
+      y += lineH * 2.5
+
+      // — Testemunhas (2 colunas) —
+      y = checkPage(y, 45)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(11)
+      doc.text("TESTEMUNHAS:", mL, y)
+      y += lineH * 1.5
+
+      doc.setLineWidth(0.4)
+      doc.line(mL,    y, mL    + sigW, y)
+      doc.line(col2X, y, col2X + sigW, y)
+      y += lineH * 0.7
+
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      for (const field of ["Nome legível:", "CPF:", "Assinatura:"]) {
+        y = checkPage(y, lineH)
+        doc.text(field, mL,    y)
+        doc.text(field, col2X, y)
+        y += lineH
+      }
+
+      // ── upload para Storage + atualiza status ─────────────────────────
+      const filename = `contrato-${(dados.numero_contrato || projetoId).replace(/\//g, "-")}.pdf`
       const blob = doc.output("blob")
       const storagePath = `contratos/${projetoId}.pdf`
       const { error: uploadErr } = await supabase.storage
@@ -565,7 +685,6 @@ export default function ContratoDetalhe() {
         pdfUrl = urlData.publicUrl
       }
 
-      // atualiza status para emitido + pdf_url
       const updatePdf = { status: "emitido", ...(pdfUrl ? { pdf_url: pdfUrl } : {}) }
       const { data: updatedRows } = await supabase
         .from("contrato")
