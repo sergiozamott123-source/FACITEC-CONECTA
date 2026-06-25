@@ -113,9 +113,9 @@ export default function ContratosPainel() {
       // 1 — projetos selecionados
       const { data: projData, error: e1 } = await supabase
         .from("projeto")
-        .select("id, titulo, codigo_projeto, orientador_id, rank")
+        .select("id, titulo, codigo, orientador_id, ordem_classificacao")
         .eq("status", "selecionado")
-        .order("rank", { ascending: true })
+        .order("ordem_classificacao", { ascending: true })
       if (e1) throw e1
 
       if (!projData?.length) { setProjetos([]); setLoading(false); return }
@@ -316,12 +316,12 @@ export default function ContratosPainel() {
                       {p.orientador?.nome_completo ?? <span style={{ color: C.grayL }}>Orientador não vinculado</span>}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
-                      {p.codigo_projeto && (
+                      {p.codigo && (
                         <span style={{
                           fontSize: 10, fontWeight: 700, color: C.blue.fg,
                           background: C.blue.bg, padding: "1px 6px", borderRadius: 4,
                         }}>
-                          {p.codigo_projeto}
+                          {p.codigo}
                         </span>
                       )}
                       <span style={{ fontSize: 12, color: C.gray, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 320 }}>
