@@ -233,7 +233,7 @@ export default function ContratoDetalhe() {
   async function handleSalvarDados(e) {
     e.preventDefault()
     setSaving(true)
-    const payload = { ...dados, projeto_id: projetoId, status: "emitido" }
+    const payload = { ...dados, projeto_id: projetoId, orientador_id: projeto.orientador_id, status: "emitido" }
     const { data, error: err } = contrato
       ? await supabase.from("contrato").update(payload).eq("projeto_id", projetoId).select().single()
       : await supabase.from("contrato").insert(payload).select().single()
