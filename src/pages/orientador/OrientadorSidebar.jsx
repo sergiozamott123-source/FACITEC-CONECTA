@@ -31,9 +31,8 @@ export function OrientadorSidebar() {
       style={{ background: '#0D1F3C' }}
     >
       {/* Logo */}
-      <div className="px-4 pt-5 pb-4 border-b border-white/10">
-        <LogoFacitecConecta size="md" inverted />
-        <p className="text-white/50 text-xs leading-tight mt-2">Portal do Orientador</p>
+      <div className="px-4 pt-6 pb-5 border-b border-white/10">
+        <LogoFacitecConecta size="lg" inverted />
       </div>
 
       {/* Orientador info */}
