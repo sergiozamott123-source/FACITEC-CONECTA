@@ -15,7 +15,9 @@
       "Bash(New-Item -ItemType Directory -Force \"C:\\\\Projetos\\\\facitec-conecta\\\\supabase\\\\functions\\\\gerar-parecer-recurso\")",
       "Bash(Out-Null)",
       "Bash(Write-Host \"ok\")",
-      "PowerShell(npx supabase functions deploy gerar-parecer-recurso --project-ref gastofrxtkkjpcgthrru 2>&1)"
+      "PowerShell(npx supabase functions deploy gerar-parecer-recurso --project-ref gastofrxtkkjpcgthrru 2>&1)",
+      "Bash(git -C \"C:\\\\Projetos\\\\facitec-conecta\" add .)",
+      "Bash(git -C \"C:\\\\Projetos\\\\facitec-conecta\" status)"
     ]
   }
 }

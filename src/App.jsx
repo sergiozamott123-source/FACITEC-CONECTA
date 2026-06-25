@@ -40,7 +40,9 @@ import { PortalOrientadorProvider, usePortalOrientador } from '@/contexts/Portal
 import { OrientadorLogin } from '@/pages/orientador/OrientadorLogin'
 import { OrientadorDashboard } from '@/pages/orientador/OrientadorDashboard'
 import { OrientadorDados } from '@/pages/orientador/OrientadorDados'
+import { OrientadorMeusDados } from '@/pages/orientador/OrientadorMeusDados'
 import { OrientadorEquipe } from '@/pages/orientador/OrientadorEquipe'
+import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 
 function ProtectedAvaliador({ children }) {
@@ -113,7 +115,9 @@ function App() {
               <Route path="login" element={<OrientadorLogin />} />
               <Route path="dashboard" element={<ProtectedOrientador><OrientadorDashboard /></ProtectedOrientador>} />
               <Route path="dados" element={<ProtectedOrientador><OrientadorDados /></ProtectedOrientador>} />
+              <Route path="meus-dados" element={<ProtectedOrientador><OrientadorMeusDados /></ProtectedOrientador>} />
               <Route path="equipe" element={<ProtectedOrientador><OrientadorEquipe /></ProtectedOrientador>} />
+              <Route path="bolsistas" element={<ProtectedOrientador><OrientadorBolsistas /></ProtectedOrientador>} />
               <Route path="documentos" element={<ProtectedOrientador><OrientadorDocumentos /></ProtectedOrientador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>

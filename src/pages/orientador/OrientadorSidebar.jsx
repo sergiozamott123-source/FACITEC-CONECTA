@@ -1,13 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, User, Users, FileText, BarChart2, LogOut } from 'lucide-react'
+import { LayoutDashboard, User, FolderOpen, Users, FileText, LogOut } from 'lucide-react'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 
 const NAV_ITEMS = [
-  { label: 'Dashboard',    icon: LayoutDashboard, to: '/orientador/dashboard' },
-  { label: 'Meus dados',   icon: User,            to: '/orientador/dados'     },
-  { label: 'Minha equipe', icon: Users,           to: '/orientador/equipe'    },
-  { label: 'Documentos',   icon: FileText,        to: '/orientador/documentos'},
-  { label: 'Relatórios',   icon: BarChart2,       to: '/orientador/relatorios'},
+  { label: 'Início',      icon: LayoutDashboard, to: '/orientador/dashboard'  },
+  { label: 'Meus dados',  icon: User,            to: '/orientador/meus-dados' },
+  { label: 'Meu projeto', icon: FolderOpen,      to: '/orientador/dados'      },
+  { label: 'Bolsistas',   icon: Users,           to: '/orientador/bolsistas'  },
+  { label: 'Documentos',  icon: FileText,        to: '/orientador/documentos' },
 ]
 
 export function OrientadorSidebar() {
