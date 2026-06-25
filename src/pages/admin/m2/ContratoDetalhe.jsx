@@ -353,8 +353,12 @@ export default function ContratoDetalhe() {
   const [autoSaveStatus, setAutoSaveStatus] = useState(null)
   const [dados,          setDados]          = useState(CONTRATO_INICIAL)
 
-  const debounceRef = useRef(null)
-  const isDirtyRef  = useRef(false)
+  const debounceRef  = useRef(null)
+  const isDirtyRef   = useRef(false)
+  const contratoRef  = useRef(null)  // espelho síncrono de `contrato` para closures
+
+  // sincroniza ref sempre que o estado mudar
+  useEffect(() => { contratoRef.current = contrato }, [contrato])
 
   useEffect(() => { fetchDados() }, [projetoId])
 
@@ -429,26 +433,54 @@ export default function ContratoDetalhe() {
   }
 
   function buildPayload(overrideStatus) {
-    const status   = overrideStatus ?? contrato?.status ?? "rascunho"
+    const curr     = contratoRef.current
+    const status   = overrideStatus ?? curr?.status ?? "rascunho"
     const vOri     = Number(dados.valor_bolsa_orientador || 0)
     const vEst     = Number(dados.valor_bolsa_estudante  || 0)
-    const valorGlobal = vOri * 6 + 8 * vEst * 6
     return {
       ...dados,
       projeto_id:    projetoId,
       orientador_id: projeto.orientador_id,
-      valor_global:  valorGlobal,
+      valor_global:  vOri * 6 + 8 * vEst * 6,
       status,
+    }
+  }
+
+  // Upsert seguro: usa contratoRef para evitar stale closure;
+  // UPDATE retorna array — pegamos data[0] para não depender de .single().
+  async function upsert(overrideStatus) {
+    const curr = contratoRef.current
+    const payload = buildPayload(overrideStatus)
+    if (curr) {
+      const { data, error } = await supabase
+        .from("contrato")
+        .update(payload)
+        .eq("projeto_id", projetoId)
+        .select()
+      const row = data?.[0] ?? null
+      if (!error && row) {
+        setContrato(row)
+        contratoRef.current = row
+      }
+      return { row, error }
+    } else {
+      const { data, error } = await supabase
+        .from("contrato")
+        .insert(payload)
+        .select()
+        .single()
+      if (!error && data) {
+        setContrato(data)
+        contratoRef.current = data
+      }
+      return { row: data, error }
     }
   }
 
   async function autoSave() {
     setAutoSaveStatus("saving")
-    const { data, error: err } = contrato
-      ? await supabase.from("contrato").update(buildPayload()).eq("projeto_id", projetoId).select().single()
-      : await supabase.from("contrato").insert(buildPayload()).select().single()
-    if (!err) {
-      setContrato(data)
+    const { row, error } = await upsert()
+    if (!error && row) {
       setAutoSaveStatus("saved")
       setTimeout(() => setAutoSaveStatus(null), 2500)
     } else {
@@ -460,12 +492,9 @@ export default function ContratoDetalhe() {
     e.preventDefault()
     clearTimeout(debounceRef.current)
     setSaving(true)
-    const { data, error: err } = contrato
-      ? await supabase.from("contrato").update(buildPayload()).eq("projeto_id", projetoId).select().single()
-      : await supabase.from("contrato").insert(buildPayload()).select().single()
+    const { error } = await upsert()
     setSaving(false)
-    if (err) { showToast(`Erro ao salvar: ${err.message}`, "err"); return }
-    setContrato(data)
+    if (error) { showToast(`Erro ao salvar: ${error.message}`, "err"); return }
     setAutoSaveStatus(null)
     showToast("Dados do contrato salvos.", "ok")
   }
@@ -538,13 +567,13 @@ export default function ContratoDetalhe() {
 
       // atualiza status para emitido + pdf_url
       const updatePdf = { status: "emitido", ...(pdfUrl ? { pdf_url: pdfUrl } : {}) }
-      const { data: updated } = await supabase
+      const { data: updatedRows } = await supabase
         .from("contrato")
         .update(updatePdf)
         .eq("projeto_id", projetoId)
         .select()
-        .single()
-      if (updated) setContrato(updated)
+      const updated = updatedRows?.[0] ?? null
+      if (updated) { setContrato(updated); contratoRef.current = updated }
 
       doc.save(filename)
       showToast("Contrato PDF gerado. Status atualizado para Emitido.", "ok")
