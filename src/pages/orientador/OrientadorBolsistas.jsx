@@ -52,6 +52,12 @@ function calcStatus(b) {
   return 'incompleto'
 }
 
+function calcChecklistStatus(b) {
+  const dadosOk = !!(b.nome_completo && b.cpf && b.data_nascimento)
+  if (!dadosOk) return 'incompleto'
+  return calcStatus(b) === 'completo' ? 'pronto' : 'pendente'
+}
+
 function StatusBadge({ bolsista }) {
   const status = calcStatus(bolsista)
   const cfg = {
@@ -507,6 +513,94 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
   )
 }
 
+function ChecklistEnvio({ bolsistas, orientador }) {
+  const [confirmando, setConfirmando] = useState(false)
+  const [confirmado, setConfirmado] = useState(false)
+  const [erro, setErro] = useState(null)
+
+  const statuses = bolsistas.map(b => ({ ...b, _status: calcChecklistStatus(b) }))
+  const prontos = statuses.filter(b => b._status === 'pronto').length
+  const total = bolsistas.length
+  const todosProtos = total > 0 && prontos === total
+  const pct = total > 0 ? Math.round((prontos / total) * 100) : 0
+
+  const cfg = {
+    pronto:     { icon: '✅', label: 'Pronto',               cls: 'text-green-700 bg-green-50 border-green-200' },
+    pendente:   { icon: '⚠️', label: 'Documentos pendentes', cls: 'text-amber-700 bg-amber-50 border-amber-200' },
+    incompleto: { icon: '❌', label: 'Dados incompletos',    cls: 'text-red-700 bg-red-50 border-red-200'       },
+  }
+
+  async function handleConfirmar() {
+    setConfirmando(true)
+    setErro(null)
+    const { error: err } = await supabase
+      .from('orientador')
+      .update({ equipe_confirmada: true, data_confirmacao_equipe: new Date().toISOString() })
+      .eq('id', orientador.id)
+    setConfirmando(false)
+    if (err) { setErro(`Erro ao confirmar: ${err.message}`); return }
+    setConfirmado(true)
+  }
+
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 space-y-4">
+      <h2 className="text-base font-bold text-gray-900">✅ Checklist de envio — Equipe pronta?</h2>
+
+      <div className="space-y-1.5">
+        <div className="flex justify-between text-xs text-gray-600">
+          <span>{prontos} de {total} bolsistas prontos</span>
+          <span>{pct}%</span>
+        </div>
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          <div
+            className={`h-full rounded-full transition-all duration-500 ${todosProtos ? 'bg-green-500' : 'bg-blue-500'}`}
+            style={{ width: `${pct}%` }}
+          />
+        </div>
+      </div>
+
+      <ul className="space-y-2">
+        {statuses.map(b => {
+          const c = cfg[b._status]
+          return (
+            <li key={b.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm ${c.cls}`}>
+              <span className="shrink-0">{c.icon}</span>
+              <span className="flex-1 font-medium truncate">{b.nome_completo || '—'}</span>
+              <span className="text-xs shrink-0">{c.label}</span>
+            </li>
+          )
+        })}
+      </ul>
+
+      {erro && (
+        <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">{erro}</div>
+      )}
+
+      {confirmado ? (
+        <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-center gap-2 text-green-800 text-sm font-semibold">
+          <CheckCircle className="w-4 h-4 shrink-0" />
+          Equipe confirmada e enviada à Secretaria com sucesso!
+        </div>
+      ) : (
+        <>
+          <button
+            onClick={handleConfirmar}
+            disabled={!todosProtos || confirmando}
+            className="w-full py-2.5 rounded-lg text-sm font-semibold transition-colors bg-green-600 text-white hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {confirmando ? 'Confirmando...' : 'Confirmar envio à Secretaria'}
+          </button>
+          {!todosProtos && (
+            <p className="text-xs text-gray-500 text-center">
+              Todos os bolsistas precisam estar ✅ prontos antes de confirmar o envio.
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
 export function OrientadorBolsistas() {
   const { orientador, projeto } = usePortalOrientador()
   const [bolsistas, setBolsistas] = useState([])
@@ -658,6 +752,10 @@ export function OrientadorBolsistas() {
               Limite de <span className="font-semibold">{MAX_BOLSISTAS} bolsistas</span> atingido conforme o Edital FACITEC 01/2026.
             </p>
           </div>
+        )}
+
+        {!loading && projeto && bolsistas.length > 0 && (
+          <ChecklistEnvio bolsistas={bolsistas} orientador={orientador} />
         )}
       </main>
     </div>
