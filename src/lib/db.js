@@ -79,7 +79,7 @@ export const bolsistaService = {
   list: () => db.list('bolsista', {
     select: '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)',
   }),
-  listAll: () => db.list('bolsista', { select: 'id, nome_completo, tipo', order: 'nome_completo', asc: true }),
+  listAll: () => db.list('bolsista', { select: 'id, nome_completo, tipo, codigo_bolsista', order: 'nome_completo', asc: true }),
   get: (id) => db.get('bolsista', id),
   create: (p) => db.insert('bolsista', p),
   update: (id, p) => db.update('bolsista', id, p),

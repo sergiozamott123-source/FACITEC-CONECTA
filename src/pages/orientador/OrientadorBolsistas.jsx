@@ -283,7 +283,7 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
 
 // Card temporário para novo bolsista — INSERT só acontece ao preencher o nome
 function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
-  const [form, setForm] = useState({ nome_completo: '', cpf: '', data_nascimento: '', ano_escolar: '' })
+  const [form, setForm] = useState({ nome_completo: '', cpf: '', data_nascimento: '', ano_escolar: '', tipo: 'bolsista' })
   const [saving, setSaving] = useState(false)
   const [insertError, setInsertError] = useState(null)
   const [uploading, setUploading] = useState({})
@@ -312,6 +312,7 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
           orientador_id: orientador.id,
           status: 'ativo',
           nome_completo: value,
+          tipo: form.tipo,
         })
         .select()
         .single()
@@ -321,7 +322,21 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
         return
       }
       savedId.current = data.id
-      onInserted(data)
+
+      // Gerar e salvar código do bolsista automaticamente
+      const numOr = orientador.codigo_orientador?.split('-')[1] ?? '000'
+      const tipoCod = form.tipo === 'voluntario' ? 'BV' : 'BT'
+      const { count } = await supabase
+        .from('bolsista')
+        .select('*', { count: 'exact', head: true })
+        .eq('orientador_id', orientador.id)
+        .eq('tipo', form.tipo)
+        .eq('status', 'ativo')
+      const seq = String(count).padStart(2, '0')
+      const codigo_bolsista = `PIBIC26-${numOr}-${tipoCod}${seq}`
+      await supabase.from('bolsista').update({ codigo_bolsista }).eq('id', data.id)
+
+      onInserted({ ...data, codigo_bolsista })
       return
     }
 
@@ -381,6 +396,13 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
               </label>
               <input name="nome_completo" value={form.nome_completo} onChange={handleChange} onBlur={handleBlur}
                 placeholder="Nome completo do bolsista" className={inputCls} autoFocus />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de bolsa <span className="text-red-500">*</span></label>
+              <select name="tipo" value={form.tipo} onChange={handleChange} className={inputCls}>
+                <option value="bolsista">Bolsista (BT)</option>
+                <option value="voluntario">Voluntário (BV)</option>
+              </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
