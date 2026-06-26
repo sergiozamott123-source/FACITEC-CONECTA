@@ -286,6 +286,7 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
   const [form, setForm] = useState({ nome_completo: '', cpf: '', data_nascimento: '', ano_escolar: '' })
   const [saving, setSaving] = useState(false)
   const [insertError, setInsertError] = useState(null)
+  const [uploading, setUploading] = useState({})
   const savedId = useRef(null) // id real após o primeiro INSERT
 
   const menor = isMenor(form.data_nascimento)
@@ -326,6 +327,20 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
 
     // UPDATEs subsequentes após o INSERT inicial
     await supabase.from('bolsista').update({ [name]: value }).eq('id', savedId.current)
+  }
+
+  async function handleUpload(fieldKey, file) {
+    if (!savedId.current) return
+    setUploading(prev => ({ ...prev, [fieldKey]: true }))
+    try {
+      const url = await uploadArquivo(file, projeto.id, savedId.current, fieldKey)
+      const { error: err } = await supabase.from('bolsista').update({ [fieldKey]: url }).eq('id', savedId.current)
+      if (err) throw new Error(err.message)
+    } catch (err) {
+      setInsertError(err.message ?? 'Erro ao enviar arquivo.')
+    } finally {
+      setUploading(prev => ({ ...prev, [fieldKey]: false }))
+    }
   }
 
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -396,7 +411,32 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
 
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documentos</p>
-          <p className="text-xs text-gray-400">Salve o nome do bolsista para habilitar o envio de documentos.</p>
+          <div className="space-y-3">
+            {DOCS_BASE.map(d => (
+              <DocUploadField
+                key={d.key}
+                label={d.label}
+                reference={d.ref}
+                fieldKey={d.key}
+                currentUrl={null}
+                onUpload={handleUpload}
+                uploading={uploading[d.key]}
+                disabled={!form.nome_completo}
+              />
+            ))}
+            {menor && DOCS_MENOR.map(d => (
+              <DocUploadField
+                key={d.key}
+                label={d.label}
+                reference={d.ref}
+                fieldKey={d.key}
+                currentUrl={null}
+                onUpload={handleUpload}
+                uploading={uploading[d.key]}
+                disabled={!form.nome_completo}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </div>
