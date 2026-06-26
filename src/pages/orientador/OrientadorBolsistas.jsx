@@ -52,10 +52,16 @@ function calcStatus(b) {
   return 'incompleto'
 }
 
+function faltaEmailResponsavel(b) {
+  return isMenor(b.data_nascimento) && !b.email_responsavel
+}
+
 function calcChecklistStatus(b) {
   const dadosOk = !!(b.nome_completo && b.cpf && b.data_nascimento)
   if (!dadosOk) return 'incompleto'
-  return calcStatus(b) === 'completo' ? 'pronto' : 'pendente'
+  if (calcStatus(b) !== 'completo') return 'pendente'
+  if (faltaEmailResponsavel(b)) return 'pendente'
+  return 'pronto'
 }
 
 function StatusBadge({ bolsista }) {
@@ -562,10 +568,19 @@ function ChecklistEnvio({ bolsistas, orientador }) {
       <ul className="space-y-2">
         {statuses.map(b => {
           const c = cfg[b._status]
+          const semEmail = b._status !== 'pronto' && faltaEmailResponsavel(b)
           return (
             <li key={b.id} className={`flex items-center gap-3 px-3 py-2 rounded-lg border text-sm ${c.cls}`}>
               <span className="shrink-0">{c.icon}</span>
-              <span className="flex-1 font-medium truncate">{b.nome_completo || '—'}</span>
+              <div className="flex-1 min-w-0">
+                <span className="font-medium truncate block">{b.nome_completo || '—'}</span>
+                {semEmail && (
+                  <span className="text-[10px] flex items-center gap-0.5 mt-0.5 text-amber-600">
+                    <AlertTriangle className="w-3 h-3 shrink-0" />
+                    E-mail do responsável obrigatório
+                  </span>
+                )}
+              </div>
               <span className="text-xs shrink-0">{c.label}</span>
             </li>
           )
