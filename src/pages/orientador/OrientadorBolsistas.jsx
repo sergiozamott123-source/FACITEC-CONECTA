@@ -145,6 +145,12 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
     cpf: bolsista.cpf ?? '',
     data_nascimento: bolsista.data_nascimento ?? '',
     ano_escolar: bolsista.ano_escolar ?? '',
+    nome_responsavel: bolsista.nome_responsavel ?? '',
+    cpf_responsavel: bolsista.cpf_responsavel ?? '',
+    rg_responsavel: bolsista.rg_responsavel ?? '',
+    vinculo_responsavel: bolsista.vinculo_responsavel ?? 'pai/mae',
+    telefone_responsavel: bolsista.telefone_responsavel ?? '',
+    email_responsavel: bolsista.email_responsavel ?? '',
   })
   const [uploading, setUploading] = useState({})
   const [fieldError, setFieldError] = useState(null)
@@ -244,6 +250,42 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
               </div>
             )}
           </div>
+
+          {menor && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do responsável</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nome do responsável</label>
+                  <input name="nome_responsavel" value={form.nome_responsavel} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">CPF do responsável</label>
+                  <input name="cpf_responsavel" value={form.cpf_responsavel} onChange={handleChange} onBlur={handleBlur} placeholder="000.000.000-00" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">RG do responsável</label>
+                  <input name="rg_responsavel" value={form.rg_responsavel} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Vínculo</label>
+                  <select name="vinculo_responsavel" value={form.vinculo_responsavel} onChange={handleChange} onBlur={handleBlur} className={inputCls}>
+                    <option value="pai/mae">Pai/Mãe</option>
+                    <option value="responsavel_legal">Responsável legal</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Telefone do responsável</label>
+                  <input name="telefone_responsavel" value={form.telefone_responsavel} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">E-mail do responsável</label>
+                  <input type="email" name="email_responsavel" value={form.email_responsavel} onChange={handleChange} onBlur={handleBlur} placeholder="email@exemplo.com" className={inputCls} />
+                </div>
+              </div>
+            </div>
+          )}
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documentos</p>
