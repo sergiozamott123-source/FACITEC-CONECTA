@@ -163,6 +163,7 @@ export default function BolsistaDetalhe() {
   const [nomeResponsavel, setNomeResponsavel] = useState('')
   const [cpfResponsavel,  setCpfResponsavel]  = useState('')
   const [docResponsavel,  setDocResponsavel]  = useState('')
+  const [nomeEscola,      setNomeEscola]      = useState('')
 
   useEffect(() => { fetchDados() }, [codigoBolsista])
 
@@ -186,6 +187,7 @@ export default function BolsistaDetalhe() {
       setNomeResponsavel(b.nome_responsavel ?? '')
       setCpfResponsavel(b.cpf_responsavel   ?? '')
       setDocResponsavel(b.rg_responsavel    ?? '')
+      setNomeEscola(b.escola_origem         ?? '')
 
       // 2 — orientador + colegas do mesmo orientador
       if (b.orientador_id) {
@@ -314,12 +316,11 @@ export default function BolsistaDetalhe() {
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(11)
 
-      const escola = [bolsista.escola_origem, bolsista.ano_escolar]
-        .filter(Boolean).join(' — ') || '___'
+      const escolaPDF = nomeEscola || '___'
 
       const paragrafo = ehMenor
-        ? `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, representado(a) neste ato por seu(sua) representante legal ${nomeResponsavel || '___'}, portador(a) do CPF nº ${cpfResponsavel || '___'}${docResponsavel ? ` e do documento de identidade nº ${docResponsavel}` : ''}, aluno(a) do(a) ${escola}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
-        : `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, aluno(a) do(a) ${escola}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
+        ? `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, representado(a) neste ato por seu(sua) representante legal ${nomeResponsavel || '___'}, portador(a) do CPF nº ${cpfResponsavel || '___'}${docResponsavel ? ` e do documento de identidade nº ${docResponsavel}` : ''}, aluno(a) do(a) ${escolaPDF}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
+        : `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, aluno(a) do(a) ${escolaPDF}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
 
       y = addJustified(paragrafo, mL, y, usableW, lineH)
       y += lineH
@@ -623,6 +624,19 @@ export default function BolsistaDetalhe() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-1.5">
+                Nome da escola
+              </label>
+              <input
+                type="text"
+                placeholder="Ex: EMEF Serafim Derenzi"
+                value={nomeEscola}
+                onChange={e => setNomeEscola(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
             </div>
 
             {ehMenor && (
