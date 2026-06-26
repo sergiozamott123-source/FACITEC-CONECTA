@@ -20,7 +20,8 @@
       "Bash(git -C \"C:\\\\Projetos\\\\facitec-conecta\" status)",
       "Bash(git *)",
       "Bash(npm install *)",
-      "Bash(npx vite *)"
+      "Bash(npx vite *)",
+      "Bash(xargs -I{} find {} -maxdepth 2 -type d)"
     ]
   }
 }

@@ -46,6 +46,8 @@ import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
 import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
+import SuperpainelM2 from '@/pages/admin/m2/SuperpainelM2'
+import BolsistaDetalhe from '@/pages/admin/m2/BolsistaDetalhe'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -169,6 +171,8 @@ function App() {
                 <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
                 <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
                 <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
+                <Route path="/admin/pibic-jr/:ano/m2" element={<SuperpainelM2 />} />
+                <Route path="/admin/pibic-jr/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
                 <Route path="/admin/pibic-jr/:ano/m2/contratos" element={<ContratosPainel />} />
                 <Route path="/admin/pibic-jr/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
               </Routes>
