@@ -378,7 +378,7 @@ export default function SuperpainelM2() {
             <p className="text-[10px] font-bold uppercase tracking-widest text-white/40 mb-1.5">
               M2 · ORGANIZAÇÃO
             </p>
-            <h1 className="text-2xl font-bold text-white leading-tight">Suppainel</h1>
+            <h1 className="text-2xl font-bold text-white leading-tight">Superpainel</h1>
             <p className="text-sm text-white/40 mt-1">
               PibicJr · Edição {ano} · {loading ? '…' : `${totalOrientadores} orientadores`}
             </p>

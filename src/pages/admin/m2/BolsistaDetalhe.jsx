@@ -3,8 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
 import {
-  ChevronRight, ExternalLink, Download, FileText,
-  CheckCircle, Clock, AlertTriangle,
+  ChevronRight, ChevronLeft, ExternalLink, Download, FileText,
+  CheckCircle, Clock, AlertTriangle, X,
 } from 'lucide-react'
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
@@ -152,6 +152,8 @@ export default function BolsistaDetalhe() {
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [toast,         setToast]         = useState(null)
 
+  const [colegas, setColegas] = useState([])
+
   const [dados, setDados] = useState({
     numero_contrato: '',
     numero_edital:   '01/2026',
@@ -185,14 +187,24 @@ export default function BolsistaDetalhe() {
       setCpfResponsavel(b.cpf_responsavel   ?? '')
       setDocResponsavel(b.rg_responsavel    ?? '')
 
-      // 2 — orientador
+      // 2 — orientador + colegas do mesmo orientador
       if (b.orientador_id) {
-        const { data: ori } = await supabase
-          .from('orientador')
-          .select('id, nome_completo, codigo_orientador')
-          .eq('id', b.orientador_id)
-          .single()
+        const [{ data: ori }, { data: colegasData }] = await Promise.all([
+          supabase
+            .from('orientador')
+            .select('id, nome_completo, codigo_orientador')
+            .eq('id', b.orientador_id)
+            .single(),
+          supabase
+            .from('bolsista')
+            .select('id, codigo_bolsista, nome_completo')
+            .eq('orientador_id', b.orientador_id)
+            .eq('status', 'ativo')
+            .not('codigo_bolsista', 'is', null)
+            .order('codigo_bolsista', { ascending: true }),
+        ])
         if (ori) setOrientador(ori)
+        if (colegasData) setColegas(colegasData)
       }
 
       // 3 — projeto + contrato (em paralelo)
@@ -404,7 +416,7 @@ export default function BolsistaDetalhe() {
             onClick={() => navigate(`/admin/pibic-jr/${ano}/m2`)}
             className="mt-3 text-xs text-blue-600 hover:underline"
           >
-            ← Voltar ao suppainel
+            ← Voltar ao Superpainel
           </button>
         </div>
       </div>
@@ -436,11 +448,24 @@ export default function BolsistaDetalhe() {
                  : toast?.type === 'err' ? 'bg-red-50 text-red-800 border-red-200'
                  : 'bg-blue-50 text-blue-800 border-blue-200'
 
+  const colegaIdx  = colegas.findIndex(c => c.codigo_bolsista === codigoBolsista)
+  const prevColega = colegaIdx > 0                   ? colegas[colegaIdx - 1] : null
+  const nextColega = colegaIdx < colegas.length - 1  ? colegas[colegaIdx + 1] : null
+
   return (
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ background: '#1a2744' }} className="px-8 pt-5 pb-7">
+      <div style={{ background: '#1a2744' }} className="px-8 pt-5 pb-7 relative">
+
+        {/* Botão fechar (X) */}
+        <button
+          onClick={() => navigate(`/admin/pibic-jr/${ano}/m2`)}
+          title="Fechar — voltar ao Superpainel"
+          className="absolute top-4 right-6 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+        >
+          <X className="w-5 h-5" />
+        </button>
 
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-xs text-white/40 mb-5 flex-wrap">
@@ -456,17 +481,35 @@ export default function BolsistaDetalhe() {
           <span className="text-white/70">{bolsista.nome_completo}</span>
         </nav>
 
-        {/* Identidade */}
-        <div className="flex items-center gap-4">
+        {/* Identidade + navegação */}
+        <div className="flex items-center gap-3">
+          {/* Seta anterior */}
+          <button
+            onClick={() => prevColega && navigate(`/admin/pibic-jr/${ano}/m2/bolsista/${prevColega.codigo_bolsista}`)}
+            disabled={!prevColega}
+            title={prevColega ? `← ${prevColega.nome_completo}` : 'Primeiro bolsista'}
+            className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Avatar */}
           <div className="w-12 h-12 rounded-full bg-white/10 border border-white/20 flex items-center justify-center shrink-0">
             <span className="text-white text-sm font-bold">{iniciais(bolsista.nome_completo)}</span>
           </div>
-          <div>
+
+          {/* Nome + badges */}
+          <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-white leading-tight">{bolsista.nome_completo}</h1>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
               <span className="text-[10px] font-bold font-mono text-blue-300 bg-blue-950/50 border border-blue-700/40 px-2 py-0.5 rounded">
                 {bolsista.codigo_bolsista}
               </span>
+              {colegas.length > 1 && (
+                <span className="text-[10px] text-white/30">
+                  {colegaIdx + 1}/{colegas.length}
+                </span>
+              )}
               {[tipoCfg, idadeCfg, statusCfg].map((cfg, i) => (
                 <span key={i} className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${cfg.cls}`}>
                   {cfg.label}
@@ -474,6 +517,16 @@ export default function BolsistaDetalhe() {
               ))}
             </div>
           </div>
+
+          {/* Seta próximo */}
+          <button
+            onClick={() => nextColega && navigate(`/admin/pibic-jr/${ano}/m2/bolsista/${nextColega.codigo_bolsista}`)}
+            disabled={!nextColega}
+            title={nextColega ? `${nextColega.nome_completo} →` : 'Último bolsista'}
+            className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors mr-8 transition-colors"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
       </div>
 

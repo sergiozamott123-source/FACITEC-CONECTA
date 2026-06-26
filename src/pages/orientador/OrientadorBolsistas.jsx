@@ -33,7 +33,7 @@ function isMenor(dataNasc) {
 
 const DOCS_BASE = [
   { key: 'doc_identidade_aluno',     label: 'Identidade com foto e CPF do aluno',          ref: 'Edital 13.5-e' },
-  { key: 'doc_declaracao_matricula', label: 'Declaração de matrícula — Anexo IV',           ref: 'Edital 13.5-f' },
+  { key: 'doc_declaracao_matricula', label: 'Comprovante de matrícula',                      ref: 'Edital 13.5-f' },
   { key: 'doc_anuencia_direcao',     label: 'Declaração de anuência da direção — Anexo V',  ref: 'Edital 13.5-g' },
   { key: 'doc_autorizacao_imagem',   label: 'Autorização de uso de imagem — Anexo VI',      ref: 'Edital 13.5-h' },
 ]
