@@ -425,6 +425,7 @@ export default function BolsistaDetalhe() {
   }
 
   // ── VALORES COMPUTADOS ────────────────────────────────────────────────────
+  const semDataNascimento = !bolsista.data_nascimento
   const ehMenor = isMenor(bolsista.data_nascimento)
   const idade   = calcIdade(bolsista.data_nascimento)
   const status  = calcStatusDocs(bolsista)
@@ -694,6 +695,15 @@ export default function BolsistaDetalhe() {
               />
             </div>
 
+            {semDataNascimento && (
+              <div className="flex items-start gap-2 rounded-lg bg-red-50 border border-red-300 px-3 py-2.5 text-xs text-red-800">
+                <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5 text-red-600" />
+                <span>
+                  <strong>Data de nascimento não informada.</strong> Não é possível determinar se o bolsista é maior ou menor de idade. Atualize o cadastro antes de gerar o Termo.
+                </span>
+              </div>
+            )}
+
             {ehMenor && (
               <div className="flex items-start gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2.5 text-xs text-amber-800">
                 <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
@@ -705,7 +715,7 @@ export default function BolsistaDetalhe() {
 
             <button
               onClick={gerarTermoPDF}
-              disabled={generatingPDF}
+              disabled={generatingPDF || semDataNascimento}
               className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <FileText className="w-4 h-4" />
