@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertTriangle, Trash2, X } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertTriangle, Trash2, X, ArrowLeftRight } from 'lucide-react'
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
@@ -151,7 +151,7 @@ function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uplo
 }
 
 // Card para bolsistas já salvos no banco — auto-save no blur
-function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelete }) {
+function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelete, onSubstituir }) {
   const [form, setForm] = useState({
     nome_completo: bolsista.nome_completo ?? '',
     cpf: bolsista.cpf ?? '',
@@ -322,7 +322,12 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
             </div>
           </div>
 
-          <div className="pt-1 border-t border-gray-100">
+          <div className="pt-1 border-t border-gray-100 flex items-center gap-4">
+            <button onClick={onSubstituir}
+              className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 transition-colors">
+              <ArrowLeftRight className="w-3.5 h-3.5" />
+              Substituir
+            </button>
             <button onClick={handleDelete} disabled={deleting}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50">
               <Trash2 className="w-3.5 h-3.5" />
@@ -519,6 +524,161 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
   )
 }
 
+function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError }) {
+  const [motivo, setMotivo] = useState('')
+  const [novoForm, setNovoForm] = useState({
+    nome_completo: '',
+    cpf: '',
+    data_nascimento: '',
+    ano_escolar: '',
+    nome_responsavel: '',
+    cpf_responsavel: '',
+    rg_responsavel: '',
+    vinculo_responsavel: 'pai/mae',
+    telefone_responsavel: '',
+    email_responsavel: '',
+  })
+  const [err, setErr] = useState(null)
+
+  const menor = isMenor(novoForm.data_nascimento)
+
+  function handleChange(e) {
+    const { name, value } = e.target
+    const masked = (name === 'cpf' || name === 'cpf_responsavel') ? maskCpf(value) : value
+    setNovoForm(prev => ({ ...prev, [name]: masked }))
+  }
+
+  function handleConfirm() {
+    if (!motivo.trim()) { setErr('Informe o motivo da substituição.'); return }
+    if (!novoForm.nome_completo.trim()) { setErr('Informe o nome do novo bolsista.'); return }
+    if (!novoForm.data_nascimento) { setErr('Informe a data de nascimento do novo bolsista.'); return }
+    setErr(null)
+    onConfirm(motivo.trim(), novoForm)
+  }
+
+  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <h2 className="text-base font-bold text-gray-900">Substituir bolsista</h2>
+          <button onClick={onClose} disabled={saving} className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-5">
+          <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5 text-sm text-amber-800">
+            <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+            <p>
+              O bolsista <span className="font-semibold">{bolsista.nome_completo}</span> será marcado como substituído.
+              Esta ação ficará registrada e visível para a Secretaria.
+            </p>
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Motivo da substituição <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              placeholder="Descreva o motivo da substituição..."
+              rows={3}
+              className={inputCls + ' resize-none'}
+            />
+          </div>
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do novo bolsista</p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Nome completo <span className="text-red-500">*</span></label>
+                <input name="nome_completo" value={novoForm.nome_completo} onChange={handleChange} placeholder="Nome completo do bolsista" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
+                <input name="cpf" value={novoForm.cpf} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
+                <input name="data_nascimento" type="date" value={novoForm.data_nascimento} onChange={handleChange} className={inputCls} />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar / Escola</label>
+                <input name="ano_escolar" value={novoForm.ano_escolar} onChange={handleChange} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
+              </div>
+            </div>
+            {novoForm.data_nascimento && (
+              <div className={`mt-2 text-xs px-2.5 py-1.5 rounded-md flex items-center gap-1.5 ${
+                menor ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-500'
+              }`}>
+                {menor && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                {menor
+                  ? `Menor de idade (${calcIdade(novoForm.data_nascimento)} anos) — dados do responsável obrigatórios`
+                  : `Maior de idade (${calcIdade(novoForm.data_nascimento)} anos)`}
+              </div>
+            )}
+          </div>
+
+          {menor && (
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do responsável</p>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Nome do responsável</label>
+                  <input name="nome_responsavel" value={novoForm.nome_responsavel} onChange={handleChange} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">CPF do responsável</label>
+                  <input name="cpf_responsavel" value={novoForm.cpf_responsavel} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">RG do responsável</label>
+                  <input name="rg_responsavel" value={novoForm.rg_responsavel} onChange={handleChange} className={inputCls} />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Vínculo</label>
+                  <select name="vinculo_responsavel" value={novoForm.vinculo_responsavel} onChange={handleChange} className={inputCls}>
+                    <option value="pai/mae">Pai/Mãe</option>
+                    <option value="responsavel_legal">Responsável legal</option>
+                    <option value="outro">Outro</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Telefone do responsável</label>
+                  <input name="telefone_responsavel" value={novoForm.telefone_responsavel} onChange={handleChange} className={inputCls} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">E-mail do responsável</label>
+                  <input type="email" name="email_responsavel" value={novoForm.email_responsavel} onChange={handleChange} placeholder="email@exemplo.com" className={inputCls} />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {(err || backendError) && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">{err || backendError}</div>
+          )}
+        </div>
+
+        <div className="flex gap-2 justify-end px-5 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
+          <button onClick={onClose} disabled={saving}
+            className="px-4 py-2 text-sm text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50">
+            Cancelar
+          </button>
+          <button onClick={handleConfirm} disabled={saving}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+            <ArrowLeftRight className="w-4 h-4" />
+            {saving ? 'Confirmando...' : 'Confirmar substituição'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 function ChecklistEnvio({ bolsistas, orientador }) {
   const [confirmando, setConfirmando] = useState(false)
   const [confirmado, setConfirmado] = useState(false)
@@ -623,6 +783,9 @@ export function OrientadorBolsistas() {
   const [error, setError] = useState(null)
   const [expanded, setExpanded] = useState(null)
   const [showNew, setShowNew] = useState(false)
+  const [substituirTarget, setSubstituirTarget] = useState(null)
+  const [substituindo, setSubstituindo] = useState(false)
+  const [substituirError, setSubstituirError] = useState(null)
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
@@ -636,6 +799,7 @@ export function OrientadorBolsistas() {
       .select('*')
       .eq('projeto_id', projeto.id)
       .eq('status', 'ativo')
+      .or('status_bolsista.is.null,status_bolsista.neq.substituido')
       .order('created_at', { ascending: true })
     if (err) setError(`Erro ao carregar bolsistas: ${err.message}`)
     setBolsistas(data ?? [])
@@ -663,6 +827,59 @@ export function OrientadorBolsistas() {
   function handleDelete(id) {
     setBolsistas(prev => prev.filter(b => b.id !== id))
     if (expanded === id) setExpanded(null)
+  }
+
+  async function handleConfirmarSubstituicao(motivo, novoForm) {
+    setSubstituindo(true)
+    setSubstituirError(null)
+    const antigo = substituirTarget
+    const now = new Date().toISOString()
+    try {
+      const { error: errAntigo } = await supabase
+        .from('bolsista')
+        .update({ status_bolsista: 'substituido', motivo_substituicao: motivo, data_substituicao: now })
+        .eq('id', antigo.id)
+      if (errAntigo) throw new Error(errAntigo.message)
+
+      const { data: novoData, error: errNovo } = await supabase
+        .from('bolsista')
+        .insert({
+          orientador_id: antigo.orientador_id,
+          projeto_id: antigo.projeto_id,
+          tipo: antigo.tipo,
+          codigo_bolsista: antigo.codigo_bolsista,
+          status: 'ativo',
+          nome_completo: novoForm.nome_completo,
+          cpf: novoForm.cpf || null,
+          data_nascimento: novoForm.data_nascimento,
+          ano_escolar: novoForm.ano_escolar || null,
+          nome_responsavel: novoForm.nome_responsavel || null,
+          cpf_responsavel: novoForm.cpf_responsavel || null,
+          rg_responsavel: novoForm.rg_responsavel || null,
+          vinculo_responsavel: novoForm.vinculo_responsavel || null,
+          telefone_responsavel: novoForm.telefone_responsavel || null,
+          email_responsavel: novoForm.email_responsavel || null,
+        })
+        .select()
+        .single()
+      if (errNovo) throw new Error(errNovo.message)
+
+      await supabase.from('substituicao_bolsista').insert({
+        bolsista_saindo_id: antigo.id,
+        bolsista_entrando_id: novoData.id,
+        motivo,
+        data_substituicao: now,
+        projeto_id: antigo.projeto_id,
+        orientador_id: antigo.orientador_id,
+      })
+
+      setSubstituirTarget(null)
+      fetchBolsistas()
+    } catch (err) {
+      setSubstituirError(err.message ?? 'Erro ao realizar substituição.')
+    } finally {
+      setSubstituindo(false)
+    }
   }
 
   const total = bolsistas.length
@@ -737,6 +954,7 @@ export function OrientadorBolsistas() {
                 onToggle={() => setExpanded(expanded === b.id ? null : b.id)}
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
+                onSubstituir={() => { setSubstituirError(null); setSubstituirTarget(b) }}
               />
             ))}
 
@@ -773,6 +991,16 @@ export function OrientadorBolsistas() {
           <ChecklistEnvio bolsistas={bolsistas} orientador={orientador} />
         )}
       </main>
+
+      {substituirTarget && (
+        <SubstituirModal
+          bolsista={substituirTarget}
+          onConfirm={handleConfirmarSubstituicao}
+          onClose={() => { setSubstituirTarget(null); setSubstituirError(null) }}
+          saving={substituindo}
+          backendError={substituirError}
+        />
+      )}
     </div>
   )
 }
