@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AlertTriangle, CheckCircle2, Clock, Users, FileText, Award, ChevronRight } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, Clock, Users, FileText, Award, ChevronRight, Bell, ExternalLink } from 'lucide-react'
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
+import { listarSolicitacoesDoOrientador, marcarComoAtendida, TIPOS_SOLICITACAO } from '@/lib/solicitacoes'
 
 const MAX_BOLSISTAS = 8
 
@@ -56,11 +57,39 @@ export function OrientadorDashboard() {
   const [contrato, setContrato] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [solicitacoes, setSolicitacoes] = useState([])
+  const [atendendoId, setAtendendoId] = useState(null)
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
     fetchDados()
   }, [projeto])
+
+  useEffect(() => {
+    if (!orientador?.id) return
+    fetchSolicitacoes()
+  }, [orientador?.id])
+
+  async function fetchSolicitacoes() {
+    try {
+      const data = await listarSolicitacoesDoOrientador(orientador.id)
+      setSolicitacoes(data.filter(s => s.status === 'pendente'))
+    } catch {
+      // falha silenciosa — não deve travar o dashboard
+    }
+  }
+
+  async function handleAtender(id) {
+    setAtendendoId(id)
+    try {
+      await marcarComoAtendida(id)
+      setSolicitacoes(prev => prev.filter(s => s.id !== id))
+    } catch {
+      // mantém na lista se der erro
+    } finally {
+      setAtendendoId(null)
+    }
+  }
 
   async function fetchDados() {
     setLoading(true)
@@ -109,6 +138,65 @@ export function OrientadorDashboard() {
             </span>
           )}
         </div>
+
+        {/* Solicitações da Secretaria Executiva */}
+        {solicitacoes.length > 0 && (
+          <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-indigo-600" />
+              <p className="text-sm font-semibold text-indigo-900">
+                {solicitacoes.length === 1
+                  ? '1 solicitação da Secretaria Executiva'
+                  : `${solicitacoes.length} solicitações da Secretaria Executiva`}
+              </p>
+            </div>
+            <div className="space-y-2">
+              {solicitacoes.map(s => {
+                const tipoLabel = TIPOS_SOLICITACAO.find(t => t.key === s.tipo)?.label
+                return (
+                  <div key={s.id} className="bg-white rounded-lg border border-indigo-100 p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-gray-900">{s.titulo}</p>
+                        {tipoLabel && (
+                          <span className="inline-block mt-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5">
+                            {tipoLabel}
+                          </span>
+                        )}
+                        {s.descricao && (
+                          <p className="text-xs text-gray-500 mt-1.5 leading-relaxed">{s.descricao}</p>
+                        )}
+                        {s.data_limite && (
+                          <p className="text-[11px] text-amber-600 font-medium mt-1.5">
+                            Prazo: {new Date(s.data_limite).toLocaleDateString('pt-BR')}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      {s.link_acao && (
+                        <button
+                          onClick={() => navigate(s.link_acao)}
+                          className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                        >
+                          Resolver agora <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => handleAtender(s.id)}
+                        disabled={atendendoId === s.id}
+                        className="ml-auto flex items-center gap-1 text-xs font-medium text-gray-400 hover:text-green-600 disabled:opacity-50"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        {atendendoId === s.id ? 'Marcando…' : 'Marcar como atendida'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Alerta equipe incompleta */}
         {!loading && bolsistas.length < MAX_BOLSISTAS && (

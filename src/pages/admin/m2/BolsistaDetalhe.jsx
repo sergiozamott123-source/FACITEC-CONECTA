@@ -175,6 +175,10 @@ export default function BolsistaDetalhe() {
   async function fetchDados() {
     setLoading(true)
     setError(null)
+    // reseta os dados dependentes do bolsista para não "vazar" valores
+    // (ex: numero_contrato) de uma navegação anterior entre bolsistas
+    setDados(d => ({ ...d, numero_contrato: '' }))
+    setProjeto(null)
     try {
       // 1 — bolsista pelo código
       const { data: b, error: e1 } = await supabase
@@ -216,9 +220,7 @@ export default function BolsistaDetalhe() {
           supabase.from('contrato').select('numero_contrato, status').eq('projeto_id', b.projeto_id).maybeSingle(),
         ])
         if (proj) setProjeto(proj)
-        if (cont?.numero_contrato) {
-          setDados(d => ({ ...d, numero_contrato: cont.numero_contrato }))
-        }
+        setDados(d => ({ ...d, numero_contrato: cont?.numero_contrato || '' }))
       }
     } catch (err) {
       setError(err.message)
@@ -232,6 +234,24 @@ export default function BolsistaDetalhe() {
     setGeneratingPDF(true)
     try {
       const ehMenor = isMenor(bolsista.data_nascimento)
+
+      // ── Número sequencial do Termo (ex: TERMO-2026-0001) ────────────────
+      // Reaproveita o número já existente em reimpressões; só gera um novo
+      // na primeira emissão deste bolsista.
+      let numeroTermo = bolsista.numero_termo
+      let termoGeradoEm = bolsista.termo_gerado_em
+      if (!numeroTermo) {
+        const prefixoAno = `TERMO-${ano}-`
+        const { count, error: errCount } = await supabase
+          .from('bolsista')
+          .select('id', { count: 'exact', head: true })
+          .like('numero_termo', `${prefixoAno}%`)
+        if (errCount) throw errCount
+        const seq = (count || 0) + 1
+        numeroTermo = `${prefixoAno}${String(seq).padStart(4, '0')}`
+        termoGeradoEm = new Date().toISOString()
+      }
+
       const doc = new jsPDF({ unit: 'mm', format: 'a4' })
 
       const mL = 30, mR = 20, mT = 30, mB = 25
@@ -310,6 +330,9 @@ export default function BolsistaDetalhe() {
       doc.setFontSize(10)
       y = checkPage(y, lineH)
       doc.text(`Edital FACITEC ${dados.numero_edital || '01/2026'}`, pgW - mR, y, { align: 'right' })
+      y += lineH
+      y = checkPage(y, lineH)
+      doc.text(`Termo nº ${numeroTermo}`, pgW - mR, y, { align: 'right' })
       y += lineH * 1.8
 
       // ── Parágrafo de adesão ────────────────────────────────────────────
@@ -390,7 +413,26 @@ export default function BolsistaDetalhe() {
       doc.text(sigTitulo, cx, y, { align: 'center' })
 
       // ── Download ───────────────────────────────────────────────────────
-      doc.save(`Termo_${bolsista.codigo_bolsista || bolsista.id}.pdf`)
+      const nomeArquivoTermo = `Termo_${bolsista.codigo_bolsista || bolsista.id}.pdf`
+      doc.save(nomeArquivoTermo)
+
+      // Registra no banco que o Termo foi gerado (usado no contador do Superpainel
+      // e nos relatórios de gestão por exercício)
+      const { error: errTermo } = await supabase
+        .from('bolsista')
+        .update({
+          nome_arquivo_termo: nomeArquivoTermo,
+          numero_termo: numeroTermo,
+          termo_gerado_em: termoGeradoEm,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', bolsista.id)
+      if (errTermo) {
+        console.error('Falha ao registrar geração do termo:', errTermo)
+      } else {
+        setBolsista(b => ({ ...b, nome_arquivo_termo: nomeArquivoTermo, numero_termo: numeroTermo, termo_gerado_em: termoGeradoEm }))
+      }
+
       showToast('Termo de adesão gerado com sucesso.', 'ok')
     } catch (err) {
       showToast(`Erro ao gerar PDF: ${err.message}`, 'err')

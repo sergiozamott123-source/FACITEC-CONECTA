@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
-import { Bell, FileText, FileCheck, ChevronRight, RefreshCw, Users, AlertCircle, CheckCircle2, Scroll } from 'lucide-react'
+import { Bell, FileText, FileCheck, ChevronRight, RefreshCw, Users, AlertCircle, CheckCircle2, Scroll, Download, FileSpreadsheet, MessageSquarePlus } from 'lucide-react'
+import { buscarDadosRelatorioFinanceiro, exportarExcelFinanceiro, exportarPDFFinanceiro } from '@/lib/relatorioFinanceiro'
+import { SolicitacoesModal } from './SolicitacoesModal'
 
 // ── DOCS ─────────────────────────────────────────────────────────────────────
 const DOCS_BASE = ['doc_identidade_aluno', 'doc_declaracao_matricula', 'doc_anuencia_direcao', 'doc_autorizacao_imagem']
@@ -55,8 +57,8 @@ function calcSteps(item) {
   const step2 = !!(orientador.cpf && orientador.doc_identidade && orientador.doc_diploma)
   const step3 = bolsistas.length > 0 && bolsistas.every(b => calcStatusBolsista(b) === 'completo')
   const step4 = !!(contrato?.status === 'emitido' || contrato?.status === 'assinado')
-  const step5 = false
-  const step6 = false
+  const step5 = bolsistas.length > 0 && bolsistas.every(b => !!b.nome_arquivo_termo)
+  const step6 = false // Relatórios — ainda não implementado (M3)
   return [step1, step2, step3, step4, step5, step6]
 }
 
@@ -133,13 +135,14 @@ function StatusBolsistaBadge({ status }) {
   )
 }
 
-function OrientadorCard({ item, ano }) {
+function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
   const navigate = useNavigate()
   const { orientador, projeto, bolsistas, contrato } = item
   const steps = calcSteps(item)
   const completoCount = bolsistas.filter(b => calcStatusBolsista(b) === 'completo').length
   const contratoGerado = contrato?.status === 'emitido' || contrato?.status === 'assinado'
   const contratoLabel = contrato?.status ? (CONTRACT_LABELS[contrato.status] ?? contrato.status) : '—'
+  const [menuAberto, setMenuAberto] = useState(false)
 
   return (
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
@@ -161,6 +164,40 @@ function OrientadorCard({ item, ano }) {
             )}
           </div>
         </div>
+        {bolsistas.length > 0 && (
+          <div className="relative shrink-0">
+            <button
+              onClick={() => setMenuAberto(v => !v)}
+              disabled={gerando}
+              title="Relatório Financeiro deste grupo"
+              className="w-8 h-8 rounded-lg border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 flex items-center justify-center transition-colors disabled:opacity-40"
+            >
+              <Download className="w-4 h-4 text-gray-500" />
+            </button>
+            {menuAberto && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setMenuAberto(false)} />
+                <div className="absolute right-0 top-full mt-1 w-44 bg-white rounded-lg shadow-xl border border-gray-200 z-20 overflow-hidden">
+                  <button
+                    onClick={() => { setMenuAberto(false); onGerarRelatorio('pdf', [orientador.id]) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 text-left"
+                  >
+                    <FileText className="w-3.5 h-3.5 text-red-500" />
+                    PDF deste grupo
+                  </button>
+                  <div className="border-t border-gray-100" />
+                  <button
+                    onClick={() => { setMenuAberto(false); onGerarRelatorio('excel', [orientador.id]) }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50 text-left"
+                  >
+                    <FileSpreadsheet className="w-3.5 h-3.5 text-green-600" />
+                    Excel deste grupo
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Barra de progresso ── */}
@@ -264,6 +301,10 @@ export default function SuperpainelM2() {
   const [loading, setLoading]           = useState(true)
   const [error, setError]               = useState(null)
   const [filtro, setFiltro]             = useState('todos')
+  const [gerandoRelatorio, setGerandoRelatorio]        = useState(false)
+  const [modalSelecaoAberto, setModalSelecaoAberto]    = useState(false)
+  const [idsSelecionados, setIdsSelecionados]          = useState([])
+  const [modalSolicitacoesAberto, setModalSolicitacoesAberto] = useState(false)
 
   useEffect(() => { fetchDados() }, [])
 
@@ -303,6 +344,7 @@ export default function SuperpainelM2() {
             'id', 'nome_completo', 'codigo_bolsista', 'tipo', 'data_nascimento', 'projeto_id',
             'doc_identidade_aluno', 'doc_declaracao_matricula', 'doc_anuencia_direcao',
             'doc_autorizacao_imagem', 'doc_autorizacao_responsavel', 'doc_identidade_responsavel',
+            'nome_arquivo_termo',
           ].join(', '))
           .in('projeto_id', projetoIds)
           .eq('status', 'ativo')
@@ -349,7 +391,38 @@ export default function SuperpainelM2() {
   const contratosProntos = orientadores.filter(item =>
     item.contrato?.status === 'emitido' || item.contrato?.status === 'assinado'
   ).length
-  const termosGerados = 0 // não implementado
+  const termosGerados = orientadores.reduce(
+    (total, item) => total + item.bolsistas.filter(b => !!b.nome_arquivo_termo).length,
+    0
+  )
+
+  async function handleGerarRelatorio(formato, orientadorIds = null) {
+    setModalSelecaoAberto(false)
+    setGerandoRelatorio(true)
+    setError(null)
+    try {
+      const linhas = await buscarDadosRelatorioFinanceiro(ano, orientadorIds)
+      if (!linhas.length) {
+        setError('Nenhum bolsista ativo encontrado para gerar o relatório.')
+        return
+      }
+      if (formato === 'excel') exportarExcelFinanceiro(linhas, ano)
+      else exportarPDFFinanceiro(linhas, ano)
+    } catch (err) {
+      setError(`Erro ao gerar relatório: ${err.message}`)
+    } finally {
+      setGerandoRelatorio(false)
+    }
+  }
+
+  function abrirModalSelecao() {
+    setIdsSelecionados(orientadores.map(o => o.orientador.id)) // todos marcados por padrão
+    setModalSelecaoAberto(true)
+  }
+
+  function toggleSelecionado(id) {
+    setIdsSelecionados(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])
+  }
 
   // ── Filtro ──
   const orientadoresFiltrados = filtro === 'todos'
@@ -384,6 +457,23 @@ export default function SuperpainelM2() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <div className="relative">
+              <button
+                onClick={abrirModalSelecao}
+                disabled={gerandoRelatorio}
+                className="flex items-center gap-1.5 text-xs font-semibold text-white bg-emerald-600/90 border border-emerald-400/30 rounded-lg px-3 py-1.5 hover:bg-emerald-600 disabled:opacity-50 transition-colors"
+              >
+                <Download className={`w-3.5 h-3.5 ${gerandoRelatorio ? 'animate-pulse' : ''}`} />
+                {gerandoRelatorio ? 'Gerando…' : 'Relatório Financeiro'}
+              </button>
+            </div>
+            <button
+              onClick={() => setModalSolicitacoesAberto(true)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600/90 border border-indigo-400/30 rounded-lg px-3 py-1.5 hover:bg-indigo-600 transition-colors"
+            >
+              <MessageSquarePlus className="w-3.5 h-3.5" />
+              Solicitações
+            </button>
             <button
               onClick={() => navigate(`/admin/pibic-jr/${ano}/m2/contratos`)}
               className="text-xs font-semibold text-white/70 hover:text-white border border-white/15 hover:border-white/30 rounded-lg px-3 py-1.5 transition-colors"
@@ -479,11 +569,93 @@ export default function SuperpainelM2() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {orientadoresFiltrados.map(item => (
-              <OrientadorCard key={item.orientador.id} item={item} ano={ano} />
+              <OrientadorCard key={item.orientador.id} item={item} ano={ano} onGerarRelatorio={handleGerarRelatorio} gerando={gerandoRelatorio} />
             ))}
           </div>
         )}
       </div>
+
+      {/* ── Modal de seleção de grupos para o Relatório Financeiro ──────── */}
+      {modalSelecaoAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setModalSelecaoAberto(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md max-h-[85vh] flex flex-col overflow-hidden">
+            <div className="px-5 py-4 border-b border-gray-100">
+              <h2 className="text-sm font-bold text-gray-900">Relatório Financeiro</h2>
+              <p className="text-xs text-gray-400 mt-0.5">Selecione o(s) grupo(s) de orientador para incluir no relatório</p>
+            </div>
+
+            <div className="px-5 py-3 border-b border-gray-100">
+              <button
+                onClick={() => setIdsSelecionados(
+                  idsSelecionados.length === orientadores.length ? [] : orientadores.map(o => o.orientador.id)
+                )}
+                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+              >
+                {idsSelecionados.length === orientadores.length ? 'Desmarcar todos' : 'Selecionar todos'}
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-5 py-2 space-y-1">
+              {orientadores.map(({ orientador, bolsistas }) => (
+                <label
+                  key={orientador.id}
+                  className="flex items-center gap-3 py-2 px-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                >
+                  <input
+                    type="checkbox"
+                    checked={idsSelecionados.includes(orientador.id)}
+                    onChange={() => toggleSelecionado(orientador.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-semibold text-gray-800 truncate">{orientador.nome_completo}</p>
+                    <p className="text-[10px] text-gray-400">{orientador.codigo_orientador} · {bolsistas.length} bolsista(s)</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+
+            <div className="px-5 py-4 border-t border-gray-100 space-y-2">
+              <p className="text-[10px] text-gray-400 mb-1">
+                {idsSelecionados.length} de {orientadores.length} grupo(s) selecionado(s)
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleGerarRelatorio('pdf', idsSelecionados)}
+                  disabled={idsSelecionados.length === 0 || gerandoRelatorio}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg px-3 py-2 transition-colors"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  PDF
+                </button>
+                <button
+                  onClick={() => handleGerarRelatorio('excel', idsSelecionados)}
+                  disabled={idsSelecionados.length === 0 || gerandoRelatorio}
+                  className="flex-1 flex items-center justify-center gap-1.5 text-xs font-semibold text-white bg-green-600 hover:bg-green-700 disabled:opacity-40 disabled:cursor-not-allowed rounded-lg px-3 py-2 transition-colors"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  Excel
+                </button>
+              </div>
+              <button
+                onClick={() => setModalSelecaoAberto(false)}
+                className="w-full text-xs font-medium text-gray-400 hover:text-gray-600 py-1.5"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {modalSolicitacoesAberto && (
+        <SolicitacoesModal
+          orientadores={orientadores}
+          ano={ano}
+          onClose={() => setModalSolicitacoesAberto(false)}
+        />
+      )}
     </div>
   )
 }

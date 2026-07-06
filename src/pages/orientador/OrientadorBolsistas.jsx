@@ -56,6 +56,19 @@ function faltaEmailResponsavel(b) {
   return isMenor(b.data_nascimento) && !b.email_responsavel
 }
 
+const CAMPOS_CADASTRAIS = [
+  ['escola',          'Escola'],
+  ['telefone',        'Telefone'],
+  ['endereco_rua',    'Rua'],
+  ['endereco_bairro', 'Bairro'],
+  ['endereco_cidade', 'Cidade'],
+  ['endereco_cep',    'CEP'],
+]
+
+function camposCadastraisFaltando(b) {
+  return CAMPOS_CADASTRAIS.filter(([key]) => !b[key]).map(([, label]) => label)
+}
+
 function calcChecklistStatus(b) {
   const dadosOk = !!(b.nome_completo && b.cpf && b.data_nascimento)
   if (!dadosOk) return 'incompleto'
@@ -157,6 +170,15 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
     cpf: bolsista.cpf ?? '',
     data_nascimento: bolsista.data_nascimento ?? '',
     ano_escolar: bolsista.ano_escolar ?? '',
+    escola: bolsista.escola ?? '',
+    telefone: bolsista.telefone ?? '',
+    email: bolsista.email ?? '',
+    endereco_rua: bolsista.endereco_rua ?? '',
+    endereco_numero: bolsista.endereco_numero ?? '',
+    endereco_complemento: bolsista.endereco_complemento ?? '',
+    endereco_bairro: bolsista.endereco_bairro ?? '',
+    endereco_cidade: bolsista.endereco_cidade ?? '',
+    endereco_cep: bolsista.endereco_cep ?? '',
     nome_responsavel: bolsista.nome_responsavel ?? '',
     cpf_responsavel: bolsista.cpf_responsavel ?? '',
     rg_responsavel: bolsista.rg_responsavel ?? '',
@@ -222,6 +244,14 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <StatusBadge bolsista={{ ...bolsista, ...form }} />
+          {camposCadastraisFaltando({ ...bolsista, ...form }).length > 0 && (
+            <span
+              title={`Faltam: ${camposCadastraisFaltando({ ...bolsista, ...form }).join(', ')}`}
+              className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border bg-orange-50 text-orange-700 border-orange-200"
+            >
+              {camposCadastraisFaltando({ ...bolsista, ...form }).length} dado(s) pendente(s)
+            </span>
+          )}
           {expanded ? <ChevronUp className="w-4 h-4 text-gray-400" /> : <ChevronDown className="w-4 h-4 text-gray-400" />}
         </div>
       </div>
@@ -261,6 +291,58 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
                   : `Maior de idade (${calcIdade(form.data_nascimento)} anos)`}
               </div>
             )}
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Contato e endereço</p>
+              {camposCadastraisFaltando(form).length > 0 && (
+                <span className="text-[10px] text-orange-600 font-medium">
+                  Pendente: {camposCadastraisFaltando(form).join(', ')}
+                </span>
+              )}
+            </div>
+            <p className="text-[11px] text-gray-400 -mt-1.5 mb-3">
+              Esses dados são usados pela Gerência Financeira para abertura de conta e cadastramento do bolsista.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Escola</label>
+                <input name="escola" value={form.escola} onChange={handleChange} onBlur={handleBlur} placeholder="Nome da escola" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Telefone</label>
+                <input name="telefone" value={form.telefone} onChange={handleChange} onBlur={handleBlur} placeholder="(27) 90000-0000" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">E-mail</label>
+                <input type="email" name="email" value={form.email} onChange={handleChange} onBlur={handleBlur} placeholder="email@exemplo.com" className={inputCls} />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">Rua</label>
+                <input name="endereco_rua" value={form.endereco_rua} onChange={handleChange} onBlur={handleBlur} placeholder="Rua / Avenida" className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Número</label>
+                <input name="endereco_numero" value={form.endereco_numero} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Complemento</label>
+                <input name="endereco_complemento" value={form.endereco_complemento} onChange={handleChange} onBlur={handleBlur} placeholder="Apto, bloco, etc." className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Bairro</label>
+                <input name="endereco_bairro" value={form.endereco_bairro} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Cidade</label>
+                <input name="endereco_cidade" value={form.endereco_cidade} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
+              </div>
+              <div className="col-span-2">
+                <label className="block text-xs font-medium text-gray-700 mb-1">CEP</label>
+                <input name="endereco_cep" value={form.endereco_cep} onChange={handleChange} onBlur={handleBlur} placeholder="00000-000" className={inputCls} />
+              </div>
+            </div>
           </div>
 
           {menor && (
