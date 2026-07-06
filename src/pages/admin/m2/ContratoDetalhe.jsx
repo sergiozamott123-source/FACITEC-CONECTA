@@ -396,12 +396,13 @@ export default function ContratoDetalhe() {
         if (ori) setOrientador(ori)
       }
 
-      const { data: bolsData } = await supabase
+      const { data: bolsData, error: eBols } = await supabase
         .from("bolsista")
-        .select("id, nome_completo, cpf, data_nascimento, ano_escolar, escola_origem")
+        .select("*")
         .eq("projeto_id", projetoId)
         .eq("status", "ativo")
         .order("created_at", { ascending: true })
+      if (eBols) throw new Error(`Falha ao carregar bolsistas: ${eBols.message}`)
       setBolsistas(bolsData ?? [])
 
       const { data: cont } = await supabase
@@ -847,7 +848,7 @@ export default function ContratoDetalhe() {
                       {b.data_nascimento ? new Date(b.data_nascimento).toLocaleDateString("pt-BR") : "—"}
                     </div>
                     <div style={{ fontSize: 12, color: C.gray, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {b.escola_origem ?? "—"}
+                      {b.escola ?? b.escola_origem ?? "—"}
                     </div>
                     <div>
                       <span style={{
