@@ -36,7 +36,7 @@ import { OrientadorProvider, useOrientador } from '@/contexts/OrientadorContext'
 import { LoginCandidato } from '@/pages/candidato/LoginCandidato'
 import { MeusRecursos } from '@/pages/candidato/MeusRecursos'
 import { RecursoWizard } from '@/pages/candidato/RecursoWizard'
-import { PortalOrientadorProvider, usePortalOrientador } from '@/contexts/PortalOrientadorContext'
+import { PortalOrientadorProvider } from '@/contexts/PortalOrientadorContext'
 import { OrientadorLogin } from '@/pages/orientador/OrientadorLogin'
 import { OrientadorDashboard } from '@/pages/orientador/OrientadorDashboard'
 import { OrientadorDados } from '@/pages/orientador/OrientadorDados'
@@ -48,6 +48,13 @@ import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
 import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
 import SuperpainelM2 from '@/pages/admin/m2/SuperpainelM2'
 import BolsistaDetalhe from '@/pages/admin/m2/BolsistaDetalhe'
+import { PortalEntrada } from '@/pages/PortalEntrada'
+import { LoginSecretaria } from '@/pages/LoginSecretaria'
+import { RedefinirSenhaSecretaria } from '@/pages/RedefinirSenhaSecretaria'
+import { GerenciarUsuariosOrientadores } from '@/pages/admin/GerenciarUsuariosOrientadores'
+import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
+import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
+import { RequireAcessoOrientador } from '@/components/RequireAcessoOrientador'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -59,19 +66,6 @@ function ProtectedAvaliador({ children }) {
     )
   }
   if (!avaliador) return <Navigate to="/avaliador/login" replace />
-  return children
-}
-
-function ProtectedOrientador({ children }) {
-  const { orientador, loading } = usePortalOrientador()
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <p className="text-gray-400 text-sm">Verificando acesso...</p>
-      </div>
-    )
-  }
-  if (!orientador) return <Navigate to="/orientador/login" replace />
   return children
 }
 
@@ -117,14 +111,21 @@ function App() {
           <PortalOrientadorProvider>
             <Routes>
               <Route path="login" element={<OrientadorLogin />} />
-              <Route path="dashboard" element={<ProtectedOrientador><OrientadorDashboard /></ProtectedOrientador>} />
-              <Route path="dados" element={<ProtectedOrientador><OrientadorDados /></ProtectedOrientador>} />
-              <Route path="meus-dados" element={<ProtectedOrientador><OrientadorMeusDados /></ProtectedOrientador>} />
-              <Route path="equipe" element={<ProtectedOrientador><OrientadorEquipe /></ProtectedOrientador>} />
-              <Route path="bolsistas" element={<ProtectedOrientador><OrientadorBolsistas /></ProtectedOrientador>} />
-              <Route path="documentos" element={<ProtectedOrientador><OrientadorDocumentos /></ProtectedOrientador>} />
+              <Route path="painel" element={<RequireAcessoOrientador><OrientadorDashboard /></RequireAcessoOrientador>} />
+              <Route path="dashboard" element={<RequireAcessoOrientador><OrientadorDashboard /></RequireAcessoOrientador>} />
+              <Route path="dados" element={<RequireAcessoOrientador><OrientadorDados /></RequireAcessoOrientador>} />
+              <Route path="meus-dados" element={<RequireAcessoOrientador><OrientadorMeusDados /></RequireAcessoOrientador>} />
+              <Route path="equipe" element={<RequireAcessoOrientador><OrientadorEquipe /></RequireAcessoOrientador>} />
+              <Route path="bolsistas" element={<RequireAcessoOrientador><OrientadorBolsistas /></RequireAcessoOrientador>} />
+              <Route path="documentos" element={<RequireAcessoOrientador><OrientadorDocumentos /></RequireAcessoOrientador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
+          </PortalOrientadorProvider>
+        } />
+        {/* Alias de entrada — landing linka pra cá; abre o login já existente do orientador */}
+        <Route path="/login/orientador" element={
+          <PortalOrientadorProvider>
+            <OrientadorLogin />
           </PortalOrientadorProvider>
         } />
         {/* Portal do candidato — recursos */}
@@ -138,8 +139,15 @@ function App() {
             </Routes>
           </OrientadorProvider>
         } />
-        {/* Portal de entrada — redireciona para o painel admin */}
-        <Route path="/" element={<Navigate to="/admin/pibic-jr/2026/painel" replace />} />
+        {/* Portal de entrada institucional */}
+        <Route path="/" element={<PortalEntrada />} />
+        {/* Login da Secretaria executiva */}
+        <Route path="/login/secretaria" element={
+          <SecretariaAuthProvider>
+            <LoginSecretaria />
+          </SecretariaAuthProvider>
+        } />
+        <Route path="/login/secretaria/redefinir-senha" element={<RedefinirSenhaSecretaria />} />
         {/* Hub de programas */}
         <Route path="/hub" element={<HubProgramas />} />
         {/* PIBIC Jr — visão geral e módulos */}
@@ -147,36 +155,41 @@ function App() {
         <Route path="/pibic-jr/selecao" element={<SelecaoM1 />} />
         {/* redirect de URL antiga */}
         <Route path="/painel" element={<Navigate to="/pibic-jr" replace />} />
-        {/* Área administrativa */}
+        {/* Área administrativa — restrita à Secretaria executiva */}
         <Route
           path="/*"
           element={
-            <Layout>
-              <Routes>
-                <Route path="/" element={<Dashboard />} />
-                <Route path="/edicoes" element={<Edicoes />} />
-                <Route path="/avaliacoes" element={<Avaliacoes />} />
-                <Route path="/equipes" element={<Equipes />} />
-                <Route path="/contratos" element={<Contratos />} />
-                <Route path="/bolsistas" element={<Bolsistas />} />
-                <Route path="/financeiro" element={<Financeiro />} />
-                <Route path="/historico" element={<Historico />} />
-                <Route path="/classificacao" element={<Classificacao />} />
-                <Route path="/recursos" element={<ConvocacaoRecurso />} />
-                <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
-                <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
-                <Route path="/importacao" element={<Importacao />} />
-                <Route path="/admin" element={<HomeAdmin />} />
-                <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
-                <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
-                <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
-                <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
-                <Route path="/admin/pibic-jr/:ano/m2" element={<SuperpainelM2 />} />
-                <Route path="/admin/pibic-jr/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
-                <Route path="/admin/pibic-jr/:ano/m2/contratos" element={<ContratosPainel />} />
-                <Route path="/admin/pibic-jr/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
-              </Routes>
-            </Layout>
+            <SecretariaAuthProvider>
+              <RequireAcessoSecretaria>
+                <Layout>
+                  <Routes>
+                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/edicoes" element={<Edicoes />} />
+                    <Route path="/avaliacoes" element={<Avaliacoes />} />
+                    <Route path="/equipes" element={<Equipes />} />
+                    <Route path="/contratos" element={<Contratos />} />
+                    <Route path="/bolsistas" element={<Bolsistas />} />
+                    <Route path="/financeiro" element={<Financeiro />} />
+                    <Route path="/historico" element={<Historico />} />
+                    <Route path="/classificacao" element={<Classificacao />} />
+                    <Route path="/recursos" element={<ConvocacaoRecurso />} />
+                    <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
+                    <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
+                    <Route path="/importacao" element={<Importacao />} />
+                    <Route path="/admin" element={<HomeAdmin />} />
+                    <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
+                    <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
+                    <Route path="/admin/gerenciar-usuarios-orientadores" element={<GerenciarUsuariosOrientadores />} />
+                    <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
+                    <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
+                    <Route path="/admin/pibic-jr/:ano/m2" element={<SuperpainelM2 />} />
+                    <Route path="/admin/pibic-jr/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
+                    <Route path="/admin/pibic-jr/:ano/m2/contratos" element={<ContratosPainel />} />
+                    <Route path="/admin/pibic-jr/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
+                  </Routes>
+                </Layout>
+              </RequireAcessoSecretaria>
+            </SecretariaAuthProvider>
           }
         />
       </Routes>

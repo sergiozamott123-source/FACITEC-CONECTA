@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { useAdmin } from '@/contexts/AdminContext'
+import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 
 // ── Programa dropdown data ──────────────────────────────────────────────────
 const PROGRAMAS = [
@@ -57,6 +58,7 @@ const GERAL_ITEMS = [
   { label: 'Programas', href: '/admin', icon: LayoutGrid, exact: true },
   { label: 'Portal público', href: '/hub', icon: Globe },
   { label: 'Avaliadores', href: '/avaliador/login', icon: Users, external: true },
+  { label: 'Usuários orientadores', href: '/admin/gerenciar-usuarios-orientadores', icon: Users },
   { label: 'Histórico', href: '/edicoes', icon: History },
   { label: 'Importação', href: '/importacao', icon: FileUp },
 ]
@@ -173,6 +175,7 @@ export function Sidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const { edicoes, edicaoSelecionada, setEdicaoSelecionada } = useAdmin()
+  const { logout } = useSecretaria()
 
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
   const edicaoItems = buildEdicaoItems(ano)
@@ -309,7 +312,7 @@ export function Sidebar() {
         </NavLink>
 
         <button
-          onClick={() => navigate('/hub')}
+          onClick={async () => { await logout(); navigate('/login/secretaria') }}
           title={collapsed ? 'Sair' : undefined}
           className="w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-white/10 transition-colors"
         >
