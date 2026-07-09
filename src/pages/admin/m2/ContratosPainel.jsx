@@ -103,19 +103,21 @@ export default function ContratosPainel() {
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState(null)
   const [filtro, setFiltro]     = useState("todos")
+  const [verTodos, setVerTodos] = useState(false)
 
-  useEffect(() => { fetchDados() }, [])
+  useEffect(() => { fetchDados() }, [verTodos])
 
   async function fetchDados() {
     setLoading(true)
     setError(null)
     try {
-      // 1 — projetos selecionados
-      const { data: projData, error: e1 } = await supabase
+      // 1 — projetos selecionados (ou todos os inscritos, se verTodos)
+      let query = supabase
         .from("projeto")
-        .select("id, titulo, codigo, orientador_id, ordem_classificacao")
-        .eq("status", "selecionado")
+        .select("id, titulo, codigo, orientador_id, ordem_classificacao, status")
         .order("ordem_classificacao", { ascending: true })
+      if (!verTodos) query = query.eq("status", "selecionado")
+      const { data: projData, error: e1 } = await query
       if (e1) throw e1
 
       if (!projData?.length) { setProjetos([]); setLoading(false); return }
@@ -208,19 +210,41 @@ export default function ContratosPainel() {
               Contratos
             </h1>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "4px 0 0" }}>
-              PibicJr · Edição {ano} · {loading ? "…" : `${projetos.length} projetos selecionados`}
+              PibicJr · Edição {ano} · {loading ? "…" : `${projetos.length} projeto(s) ${verTodos ? "inscritos" : "selecionados"}`}
             </p>
           </div>
-          <button
-            onClick={fetchDados}
-            style={{
-              background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.15)",
-              borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600,
-              padding: "7px 14px", cursor: "pointer",
-            }}
-          >
-            Atualizar
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", userSelect: "none" }}>
+              <span style={{ fontSize: 12, color: "rgba(255,255,255,0.7)", fontWeight: 600 }}>Ver todos os inscritos</span>
+              <span
+                role="switch"
+                aria-checked={verTodos}
+                onClick={() => setVerTodos(v => !v)}
+                style={{
+                  position: "relative", display: "inline-flex", alignItems: "center",
+                  width: 34, height: 18, borderRadius: 999,
+                  background: verTodos ? "#3aaa5c" : "rgba(255,255,255,0.2)",
+                  transition: "background 0.15s",
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 2, left: verTodos ? 18 : 2,
+                  width: 14, height: 14, borderRadius: "50%", background: "#fff",
+                  transition: "left 0.15s",
+                }} />
+              </span>
+            </label>
+            <button
+              onClick={fetchDados}
+              style={{
+                background: "rgba(255,255,255,0.10)", border: "1px solid rgba(255,255,255,0.15)",
+                borderRadius: 8, color: "#fff", fontSize: 12, fontWeight: 600,
+                padding: "7px 14px", cursor: "pointer",
+              }}
+            >
+              Atualizar
+            </button>
+          </div>
         </div>
       </div>
 

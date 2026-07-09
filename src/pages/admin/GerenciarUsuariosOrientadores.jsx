@@ -18,6 +18,12 @@ export function GerenciarUsuariosOrientadores() {
   const [uploadingId, setUploadingId] = useState(null)
   const [erro, setErro] = useState(null)
   const [resultado, setResultado] = useState(null) // { nome, email, senhaTemporaria }
+  const [verTodos, setVerTodos] = useState(false)
+
+  // Orientador "de verdade" (selecionado na edição, não mero inscrito): tem
+  // codigo_orientador atribuído — codigo_facitec está sempre vazio nesta
+  // tabela e orientador.status não distingue selecionado de inscrito.
+  const orientadoresExibidos = verTodos ? orientadores : orientadores.filter(o => o.codigo_orientador)
 
   async function carregar() {
     setLoading(true)
@@ -116,6 +122,23 @@ export function GerenciarUsuariosOrientadores() {
         </div>
       )}
 
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {loading ? 'Carregando...' : `${orientadoresExibidos.length} orientador(es)`}
+        </p>
+        <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+          <span>Ver todos os inscritos</span>
+          <span
+            role="switch"
+            aria-checked={verTodos}
+            onClick={() => setVerTodos(v => !v)}
+            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${verTodos ? 'bg-primary' : 'bg-muted-foreground/30'}`}
+          >
+            <span className={`inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform ${verTodos ? 'translate-x-5' : 'translate-x-1'}`} />
+          </span>
+        </label>
+      </div>
+
       <div className="border border-border rounded-lg overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-muted-foreground">
@@ -131,10 +154,10 @@ export function GerenciarUsuariosOrientadores() {
             {loading && (
               <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Carregando...</td></tr>
             )}
-            {!loading && orientadores.length === 0 && (
-              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Nenhum orientador cadastrado.</td></tr>
+            {!loading && orientadoresExibidos.length === 0 && (
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Nenhum orientador {verTodos ? 'cadastrado' : 'selecionado nesta edição'}.</td></tr>
             )}
-            {orientadores.map((o) => (
+            {orientadoresExibidos.map((o) => (
               <tr key={o.id} className="border-t border-border">
                 <td className="px-4 py-2.5">{o.nome_completo}</td>
                 <td className="px-4 py-2.5 text-muted-foreground">{o.codigo_orientador ?? '—'}</td>
