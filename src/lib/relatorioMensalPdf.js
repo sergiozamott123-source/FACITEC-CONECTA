@@ -85,24 +85,38 @@ export async function gerarPDFRelatorioMensal({ relatorio, ciclo, orientador, pr
   y += 10
 
   const codigo = orientador?.codigo_facitec || orientador?.codigo_orientador || '—'
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10.5)
+  const projetoLinhas = doc.splitTextToSize(projetoTitulo || '—', usableW - 8)
+  const lhTitulo = 4.8
+  const alturaBox = 8 + projetoLinhas.length * lhTitulo + 8
+
+  y = checkPage(y, alturaBox + 4)
+
   doc.setFillColor(...CINZA_CLARO)
-  doc.roundedRect(mL, y, usableW, 20, 2, 2, 'F')
+  doc.roundedRect(mL, y, usableW, alturaBox, 2, 2, 'F')
+
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10.5)
   doc.setTextColor(...AZUL)
-  const projetoLinhas = doc.splitTextToSize(projetoTitulo || '—', usableW - 8)
-  doc.text(projetoLinhas[0], mL + 4, y + 8)
+  let tituloY = y + 7
+  projetoLinhas.forEach(linha => {
+    doc.text(linha, mL + 4, tituloY)
+    tituloY += lhTitulo
+  })
+
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Orientador(a): ${orientador?.nome_completo ?? '—'}  ·  ${codigo}`, mL + 4, y + 14)
+  doc.text(`Orientador(a): ${orientador?.nome_completo ?? '—'}  ·  ${codigo}`, mL + 4, tituloY + 1)
+
   if (relatorio.enviado_em) {
     doc.setFont('helvetica', 'bold')
     doc.setTextColor(...VERDE)
-    doc.text(`Enviado em ${new Date(relatorio.enviado_em).toLocaleDateString('pt-BR')}`, pgW - mR - 4, y + 14, { align: 'right' })
+    doc.text(`Enviado em ${new Date(relatorio.enviado_em).toLocaleDateString('pt-BR')}`, pgW - mR - 4, y + 8, { align: 'right' })
   }
   doc.setTextColor(0, 0, 0)
-  y += 20 + 8
+  y += alturaBox + 8
 
   function secaoTitulo(texto) {
     y = checkPage(y, 10)
