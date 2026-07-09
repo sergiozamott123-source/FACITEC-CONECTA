@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useState } from 'react'
-import { CheckCircle2, Clock, AlertTriangle, RotateCcw, X } from 'lucide-react'
+import { CheckCircle2, Clock, AlertTriangle, RotateCcw, Download, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/common/Modal'
+import { RelatorioMensalDocumento } from '@/components/admin/RelatorioMensalDocumento'
 import {
   listarCiclos,
   atualizarJanelaCiclo,
@@ -13,6 +13,7 @@ import {
   statusRelatorioNoCiclo,
   formatarDataBR,
 } from '@/lib/relatorioMensal'
+import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
 
 const STATUS_INFO = {
   enviado:          { label: 'Enviado',          variant: 'success' },
@@ -36,6 +37,8 @@ export function RelatoriosMensais() {
   const [reabrindoId, setReabrindoId] = useState(null)
   const [janelas, setJanelas] = useState({})
   const [salvandoJanelaId, setSalvandoJanelaId] = useState(null)
+  const [exportandoPDF, setExportandoPDF] = useState(false)
+  const [exportandoLote, setExportandoLote] = useState(false)
 
   useEffect(() => {
     if (!edicaoSelecionada?.id) return
@@ -105,12 +108,58 @@ export function RelatoriosMensais() {
     atrasados: linhas.filter(l => l.status === 'atrasado').length,
   }), [linhas])
 
-  async function abrirVisualizacao(relatorio) {
-    setVisualizando(relatorio)
+  async function abrirVisualizacao(relatorio, orientador) {
+    setVisualizando({ relatorio, orientador })
     const ids = (relatorio.frequencia_bolsistas ?? []).map(f => f.bolsista_id)
     if (!ids.length) return
     const { data } = await supabase.from('bolsista').select('id, nome_completo').in('id', ids)
     setNomesBolsistas(Object.fromEntries((data ?? []).map(b => [b.id, b.nome_completo])))
+  }
+
+  async function handleExportarPDF() {
+    if (!visualizando) return
+    setExportandoPDF(true)
+    try {
+      await gerarPDFRelatorioMensal({
+        relatorio: visualizando.relatorio,
+        ciclo: cicloSelecionado,
+        orientador: visualizando.orientador,
+        projetoTitulo: visualizando.orientador?.projeto,
+        nomesBolsistas,
+      })
+    } catch {
+      setErro('Não foi possível gerar o PDF deste relatório.')
+    } finally {
+      setExportandoPDF(false)
+    }
+  }
+
+  async function handleExportarTodos() {
+    const enviados = linhas.filter(l => l.relatorio?.status === 'enviado')
+    if (!enviados.length || !cicloSelecionado) return
+    setExportandoLote(true)
+    try {
+      const idsBolsistas = [...new Set(enviados.flatMap(l => (l.relatorio.frequencia_bolsistas ?? []).map(f => f.bolsista_id)))]
+      let nomes = {}
+      if (idsBolsistas.length) {
+        const { data } = await supabase.from('bolsista').select('id, nome_completo').in('id', idsBolsistas)
+        nomes = Object.fromEntries((data ?? []).map(b => [b.id, b.nome_completo]))
+      }
+      for (const l of enviados) {
+        await gerarPDFRelatorioMensal({
+          relatorio: l.relatorio,
+          ciclo: cicloSelecionado,
+          orientador: l.orientador,
+          projetoTitulo: l.orientador?.projeto,
+          nomesBolsistas: nomes,
+        })
+        await new Promise(resolve => setTimeout(resolve, 350))
+      }
+    } catch {
+      setErro('Não foi possível exportar os relatórios em lote.')
+    } finally {
+      setExportandoLote(false)
+    }
   }
 
   async function handleReabrir(relatorioId) {
@@ -166,6 +215,16 @@ export function RelatoriosMensais() {
             Janela: {formatarDataBR(cicloSelecionado.data_abertura)} a {formatarDataBR(cicloSelecionado.data_fechamento)}
           </span>
         )}
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          disabled={exportandoLote || resumo.enviados === 0}
+          onClick={handleExportarTodos}
+        >
+          {exportandoLote ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          {exportandoLote ? 'Exportando...' : `Exportar todos enviados (${resumo.enviados})`}
+        </Button>
       </div>
 
       <div className="grid grid-cols-3 gap-4">
@@ -200,7 +259,7 @@ export function RelatoriosMensais() {
                 </td>
                 <td className="px-4 py-2.5 text-right space-x-2">
                   {relatorio && (
-                    <Button variant="outline" size="sm" onClick={() => abrirVisualizacao(relatorio)}>
+                    <Button variant="outline" size="sm" onClick={() => abrirVisualizacao(relatorio, orientador)}>
                       Ver relatório
                     </Button>
                   )}
@@ -271,41 +330,17 @@ export function RelatoriosMensais() {
         </div>
       </div>
 
-      <Modal open={!!visualizando} onClose={() => setVisualizando(null)} title="Relatório enviado" size="lg">
-        {visualizando && (
-          <div className="space-y-4">
-            <Secao titulo="Atividades realizadas" texto={visualizando.atividades_realizadas} />
-            <Secao titulo="Resultados alcançados" texto={visualizando.resultados_alcancados} />
-            <Secao titulo="Desafios enfrentados" texto={visualizando.desafios_enfrentados} />
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Frequência dos bolsistas</p>
-              <ul className="text-sm space-y-1">
-                {(visualizando.frequencia_bolsistas ?? []).map((f, i) => (
-                  <li key={i} className="flex items-center gap-2">
-                    {f.cumpriu_75_porcento
-                      ? <CheckCircle2 className="w-3.5 h-3.5 text-green-600" />
-                      : <X className="w-3.5 h-3.5 text-red-500" />}
-                    {nomesBolsistas[f.bolsista_id] ?? f.bolsista_id}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div>
-              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Evidências</p>
-              <div className="grid grid-cols-4 gap-2">
-                {(visualizando.evidencias_urls ?? []).map(url => (
-                  <a key={url} href={url} target="_blank" rel="noreferrer">
-                    <img src={url} alt="Evidência" className="w-full h-20 object-cover rounded-md border border-border" />
-                  </a>
-                ))}
-              </div>
-            </div>
-            {visualizando.enviado_em && (
-              <p className="text-xs text-muted-foreground">Enviado em {new Date(visualizando.enviado_em).toLocaleString('pt-BR')}</p>
-            )}
-          </div>
-        )}
-      </Modal>
+      <RelatorioMensalDocumento
+        open={!!visualizando}
+        onClose={() => setVisualizando(null)}
+        relatorio={visualizando?.relatorio}
+        ciclo={cicloSelecionado}
+        orientador={visualizando?.orientador}
+        projetoTitulo={visualizando?.orientador?.projeto}
+        nomesBolsistas={nomesBolsistas}
+        onExportarPDF={handleExportarPDF}
+        exportando={exportandoPDF}
+      />
     </div>
   )
 }
@@ -320,15 +355,6 @@ function Card({ icon: Icon, cor, label, valor }) {
         <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
       </div>
       <p className="text-2xl font-bold text-foreground">{valor}</p>
-    </div>
-  )
-}
-
-function Secao({ titulo, texto }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">{titulo}</p>
-      <p className="text-sm text-foreground whitespace-pre-wrap">{texto || '—'}</p>
     </div>
   )
 }
