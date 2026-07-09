@@ -45,6 +45,7 @@ import { OrientadorMeusDados } from '@/pages/orientador/OrientadorMeusDados'
 import { OrientadorEquipe } from '@/pages/orientador/OrientadorEquipe'
 import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
+import { RelatorioMensal } from '@/pages/orientador/RelatorioMensal'
 import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
 import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
 import SuperpainelM2 from '@/pages/admin/m2/SuperpainelM2'
@@ -53,6 +54,7 @@ import { PortalEntrada } from '@/pages/PortalEntrada'
 import { LoginSecretaria } from '@/pages/LoginSecretaria'
 import { RedefinirSenhaSecretaria } from '@/pages/RedefinirSenhaSecretaria'
 import { GerenciarUsuariosOrientadores } from '@/pages/admin/GerenciarUsuariosOrientadores'
+import { RelatoriosMensais } from '@/pages/admin/RelatoriosMensais'
 import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
 import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
 import { RequireAcessoOrientador } from '@/components/RequireAcessoOrientador'
@@ -118,6 +120,7 @@ function App() {
               <Route path="meus-dados" element={<RequireAcessoOrientador><OrientadorMeusDados /></RequireAcessoOrientador>} />
               <Route path="equipe" element={<RequireAcessoOrientador><OrientadorEquipe /></RequireAcessoOrientador>} />
               <Route path="bolsistas" element={<RequireAcessoOrientador><OrientadorBolsistas /></RequireAcessoOrientador>} />
+              <Route path="relatorio-mensal" element={<RequireAcessoOrientador><RelatorioMensal /></RequireAcessoOrientador>} />
               <Route path="documentos" element={<RequireAcessoOrientador><OrientadorDocumentos /></RequireAcessoOrientador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
@@ -182,6 +185,7 @@ function App() {
                     <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
                     <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
                     <Route path="/admin/gerenciar-usuarios-orientadores" element={<GerenciarUsuariosOrientadores />} />
+                    <Route path="/admin/relatorios-mensais" element={<RelatoriosMensais />} />
                     <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
                     <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
                     <Route path="/admin/pibic-jr/:ano/m2" element={<SuperpainelM2 />} />

@@ -5,6 +5,8 @@ import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
 import { listarSolicitacoesDoOrientador, marcarComoAtendida, TIPOS_SOLICITACAO } from '@/lib/solicitacoes'
+import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual, calcularBanner } from '@/lib/relatorioMensal'
+import { BannerRelatorioMensal } from '@/components/orientador/BannerRelatorioMensal'
 
 const MAX_BOLSISTAS = 8
 
@@ -59,6 +61,7 @@ export function OrientadorDashboard() {
   const [error, setError] = useState(null)
   const [solicitacoes, setSolicitacoes] = useState([])
   const [atendendoId, setAtendendoId] = useState(null)
+  const [bannerRelatorio, setBannerRelatorio] = useState(null)
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
@@ -69,6 +72,25 @@ export function OrientadorDashboard() {
     if (!orientador?.id) return
     fetchSolicitacoes()
   }, [orientador?.id])
+
+  useEffect(() => {
+    if (!orientador?.id || !projeto?.edicao_id) return
+    fetchBannerRelatorio()
+  }, [orientador?.id, projeto?.edicao_id])
+
+  async function fetchBannerRelatorio() {
+    try {
+      const [ciclos, relatorios] = await Promise.all([
+        listarCiclos(projeto.edicao_id),
+        listarRelatoriosDoOrientador(orientador.id),
+      ])
+      const porCiclo = Object.fromEntries(relatorios.map(r => [r.ciclo_id, r]))
+      const info = detectarCicloAtual(ciclos, porCiclo)
+      setBannerRelatorio(calcularBanner(info.ciclo, info.relatorio, info.atrasado))
+    } catch {
+      // falha silenciosa — não deve travar o dashboard
+    }
+  }
 
   async function fetchSolicitacoes() {
     try {
@@ -138,6 +160,9 @@ export function OrientadorDashboard() {
             </span>
           )}
         </div>
+
+        {/* Relatório mensal — janela aberta/urgente/atrasada */}
+        <BannerRelatorioMensal banner={bannerRelatorio} onClick={() => navigate('/orientador/relatorio-mensal')} />
 
         {/* Solicitações da Secretaria Executiva */}
         {solicitacoes.length > 0 && (
