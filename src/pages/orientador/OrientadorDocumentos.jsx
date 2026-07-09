@@ -163,6 +163,26 @@ export function OrientadorDocumentos() {
           <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{error}</div>
         )}
 
+        {/* Meu contrato — PDF assinado, enviado pela Secretaria */}
+        <div className="bg-white rounded-xl border border-gray-200 p-5">
+          <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-blue-600" />
+            Meu contrato
+          </h2>
+
+          {orientador?.contrato_url ? (
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <div className="flex items-center gap-2 min-w-0">
+                <FileText className="w-4 h-4 text-gray-400 shrink-0" />
+                <p className="text-sm text-gray-700 truncate">{orientador.nome_arquivo_contrato ?? 'Contrato assinado'}</p>
+              </div>
+              <DocActions url={orientador.contrato_url} />
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400">Seu contrato ainda não foi disponibilizado pela Secretaria.</p>
+          )}
+        </div>
+
         {/* Seção 1 — Contrato */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">

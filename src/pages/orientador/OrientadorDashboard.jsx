@@ -18,8 +18,8 @@ const ETAPAS = [
   'Contrato emitido',
 ]
 
-function calcEtapaAtual(orientador, bolsistas, contrato) {
-  if (contrato?.status === 'emitido') return 4
+function calcEtapaAtual(orientador, bolsistas) {
+  if (orientador?.contrato_url) return ETAPAS.length
   if (bolsistas?.length >= MAX_BOLSISTAS) return 3
   if (bolsistas?.length > 0) return 2
   if (orientador?.cpf) return 1
@@ -134,7 +134,7 @@ export function OrientadorDashboard() {
     setLoading(false)
   }
 
-  const etapaAtual = calcEtapaAtual(orientador, bolsistas, contrato)
+  const etapaAtual = calcEtapaAtual(orientador, bolsistas)
   const primeiroNome = orientador?.nome_completo?.split(' ')[0] ?? 'Orientador'
   const rankLabel = projeto?.rank ? `${String(projeto.rank).padStart(3, '0')}º` : null
 

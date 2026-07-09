@@ -1,14 +1,21 @@
-import { useEffect, useState } from 'react'
-import { KeyRound, ShieldCheck, UserPlus } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { KeyRound, ShieldCheck, UserPlus, FileText, CheckCircle2, Upload } from 'lucide-react'
 import { orientadorService } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
+const BUCKET_CONTRATOS = 'contratos-orientadores'
+
+function sanitizarNomeArquivo(nome) {
+  return nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9.\-_]/g, '_')
+}
+
 export function GerenciarUsuariosOrientadores() {
   const [orientadores, setOrientadores] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
+  const [uploadingId, setUploadingId] = useState(null)
   const [erro, setErro] = useState(null)
   const [resultado, setResultado] = useState(null) // { nome, email, senhaTemporaria }
 
@@ -41,6 +48,38 @@ export function GerenciarUsuariosOrientadores() {
       setErro(err.message || 'Não foi possível concluir a operação.')
     } finally {
       setBusyId(null)
+    }
+  }
+
+  async function handleUploadContrato(orientador, file) {
+    if (!file) return
+    if (file.type !== 'application/pdf') {
+      setErro('Envie o contrato em formato PDF.')
+      return
+    }
+    setErro(null)
+    setUploadingId(orientador.id)
+    try {
+      const nomeArquivo = sanitizarNomeArquivo(file.name)
+      const path = `${orientador.id}/${nomeArquivo}`
+      const { error: uploadError } = await supabase.storage
+        .from(BUCKET_CONTRATOS)
+        .upload(path, file, { upsert: true, contentType: 'application/pdf' })
+      if (uploadError) throw uploadError
+
+      const { data: { publicUrl } } = supabase.storage.from(BUCKET_CONTRATOS).getPublicUrl(path)
+
+      const { error: updateError } = await supabase
+        .from('orientador')
+        .update({ contrato_url: publicUrl, nome_arquivo_contrato: file.name })
+        .eq('id', orientador.id)
+      if (updateError) throw updateError
+
+      await carregar()
+    } catch (err) {
+      setErro(err.message || 'Não foi possível enviar o contrato.')
+    } finally {
+      setUploadingId(null)
     }
   }
 
@@ -84,15 +123,16 @@ export function GerenciarUsuariosOrientadores() {
               <th className="text-left font-medium px-4 py-2.5">Nome</th>
               <th className="text-left font-medium px-4 py-2.5">Código</th>
               <th className="text-left font-medium px-4 py-2.5">Acesso</th>
+              <th className="text-left font-medium px-4 py-2.5">Contrato</th>
               <th className="text-right font-medium px-4 py-2.5">Ação</th>
             </tr>
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Carregando...</td></tr>
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Carregando...</td></tr>
             )}
             {!loading && orientadores.length === 0 && (
-              <tr><td colSpan={4} className="px-4 py-6 text-center text-muted-foreground">Nenhum orientador cadastrado.</td></tr>
+              <tr><td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">Nenhum orientador cadastrado.</td></tr>
             )}
             {orientadores.map((o) => (
               <tr key={o.id} className="border-t border-border">
@@ -102,6 +142,13 @@ export function GerenciarUsuariosOrientadores() {
                   {o.auth_user_id
                     ? <Badge variant="success" className="text-xs">Ativo</Badge>
                     : <Badge variant="secondary" className="text-xs">Sem acesso</Badge>}
+                </td>
+                <td className="px-4 py-2.5">
+                  <ContratoCell
+                    orientador={o}
+                    uploading={uploadingId === o.id}
+                    onUpload={file => handleUploadContrato(o, file)}
+                  />
                 </td>
                 <td className="px-4 py-2.5 text-right">
                   {o.auth_user_id ? (
@@ -137,6 +184,45 @@ export function GerenciarUsuariosOrientadores() {
         <ShieldCheck className="w-3.5 h-3.5" />
         A conta é criada com o e-mail cadastrado do orientador — a senha temporária deve ser repassada por um canal seguro.
       </p>
+    </div>
+  )
+}
+
+function ContratoCell({ orientador, uploading, onUpload }) {
+  const inputRef = useRef()
+
+  return (
+    <div className="flex items-center gap-2">
+      {orientador.contrato_url ? (
+        <>
+          <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
+          <span className="text-xs text-muted-foreground truncate max-w-[140px]" title={orientador.nome_arquivo_contrato}>
+            {orientador.nome_arquivo_contrato ?? 'contrato.pdf'}
+          </span>
+        </>
+      ) : (
+        <span className="text-xs text-muted-foreground">Não enviado</span>
+      )}
+      <Button
+        variant="outline"
+        size="sm"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+      >
+        {orientador.contrato_url ? <FileText className="w-3.5 h-3.5 mr-1.5" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
+        {uploading ? 'Enviando...' : orientador.contrato_url ? 'Substituir' : 'Enviar contrato assinado'}
+      </Button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(file)
+          e.target.value = ''
+        }}
+      />
     </div>
   )
 }
