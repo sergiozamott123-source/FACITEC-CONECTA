@@ -10,6 +10,7 @@ import {
   ClipboardCheck,
   ClipboardList,
   DollarSign,
+  FileCheck2,
   ExternalLink,
   FileSignature,
   FileUp,
@@ -49,6 +50,7 @@ function buildEdicaoItems(ano) {
     { label: 'Recursos', href: '/recursos', icon: Inbox },
     { label: 'Contratos', href: '/contratos', icon: FileSignature },
     { label: 'Bolsistas', href: '/bolsistas', icon: GraduationCap },
+    { label: 'Relatórios mensais', href: '/admin/relatorios-mensais', icon: FileCheck2 },
     { label: 'Relatórios', href: '/historico', icon: BarChart2 },
     { label: 'Financeiro', href: '/financeiro', icon: DollarSign },
   ]
