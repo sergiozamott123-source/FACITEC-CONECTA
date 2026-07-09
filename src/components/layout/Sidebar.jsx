@@ -39,31 +39,55 @@ const PROGRAMAS = [
   { id: 'POSGRAD', label: 'Pós-graduação', ativo: false },
 ]
 
-// ── Menu sections ───────────────────────────────────────────────────────────
-function buildEdicaoItems(ano) {
+// ── Menu categories ─────────────────────────────────────────────────────────
+function buildCategorias(ano) {
   return [
-    { label: 'Painel', href: `/admin/pibic-jr/${ano}/painel`, icon: LayoutDashboard, exact: true },
-    { label: 'Configuração', href: `/admin/pibic-jr/${ano}/configuracao`, icon: Settings2, exact: true },
-    { label: 'Inscrições', href: '/inscricao', icon: ClipboardList, external: true },
-    { label: 'Avaliação', href: '/avaliacoes', icon: ClipboardCheck },
-    { label: 'Classificação', href: '/classificacao', icon: Trophy },
-    { label: 'Recursos', href: '/recursos', icon: Inbox },
-    { label: 'Contratos', href: '/contratos', icon: FileSignature },
-    { label: 'Bolsistas', href: '/bolsistas', icon: GraduationCap },
-    { label: 'Relatórios mensais', href: '/admin/relatorios-mensais', icon: FileCheck2 },
-    { label: 'Relatórios', href: '/historico', icon: BarChart2 },
-    { label: 'Financeiro', href: '/financeiro', icon: DollarSign },
+    {
+      titulo: 'Visão geral',
+      itens: [
+        { label: 'Painel', href: `/admin/pibic-jr/${ano}/painel`, icon: LayoutDashboard, exact: true },
+        { label: 'Configuração da edição', href: `/admin/pibic-jr/${ano}/configuracao`, icon: Settings2, exact: true },
+      ],
+    },
+    {
+      titulo: 'Processo seletivo',
+      itens: [
+        { label: 'Inscrições', href: '/inscricao', icon: ClipboardList, external: true },
+        { label: 'Avaliação', href: '/avaliacoes', icon: ClipboardCheck },
+        { label: 'Classificação', href: '/classificacao', icon: Trophy },
+        { label: 'Recursos', href: '/recursos', icon: Inbox },
+      ],
+    },
+    {
+      titulo: 'Orientadores e bolsistas',
+      itens: [
+        { label: 'Orientadores', href: '/admin/gerenciar-usuarios-orientadores', icon: Users },
+        { label: 'Bolsistas', href: '/bolsistas', icon: GraduationCap },
+        { label: 'Contratos', href: `/admin/pibic-jr/${ano}/m2/contratos`, icon: FileSignature },
+        { label: 'Relatórios mensais', href: '/admin/relatorios-mensais', icon: FileCheck2 },
+      ],
+    },
+    {
+      titulo: 'Relatórios e financeiro',
+      itens: [
+        { label: 'Central de relatórios', href: '/historico', icon: BarChart2 },
+        { label: 'Financeiro', href: '/financeiro', icon: DollarSign },
+      ],
+    },
+    {
+      titulo: 'Geral do sistema',
+      sempreVisivel: true,
+      itens: [
+        { label: 'Programas', href: '/admin', icon: LayoutGrid, exact: true },
+        { label: 'Edições anteriores', href: '/edicoes', icon: History },
+        { label: 'Portal público', href: '/hub', icon: Globe },
+        { label: 'Avaliadores (cadastro geral)', href: '/avaliador/login', icon: Users, external: true },
+        { label: 'Importação', href: '/importacao', icon: FileUp },
+        { label: 'Configurações do sistema', href: '/admin/configuracao-inscricao', icon: Settings2 },
+      ],
+    },
   ]
 }
-
-const GERAL_ITEMS = [
-  { label: 'Programas', href: '/admin', icon: LayoutGrid, exact: true },
-  { label: 'Portal público', href: '/hub', icon: Globe },
-  { label: 'Avaliadores', href: '/avaliador/login', icon: Users, external: true },
-  { label: 'Usuários orientadores', href: '/admin/gerenciar-usuarios-orientadores', icon: Users },
-  { label: 'Histórico', href: '/edicoes', icon: History },
-  { label: 'Importação', href: '/importacao', icon: FileUp },
-]
 
 const OUTROS_PROGRAMAS = [
   { label: 'PROFIC Jr', icon: FlaskConical },
@@ -180,7 +204,7 @@ export function Sidebar() {
   const { logout } = useSecretaria()
 
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
-  const edicaoItems = buildEdicaoItems(ano)
+  const categorias = buildCategorias(ano)
   const isHome = location.pathname === '/admin'
 
   return (
@@ -259,20 +283,14 @@ export function Sidebar() {
 
       {/* ── Navigation ── */}
       <nav className="flex-1 px-2 py-2 overflow-y-auto">
-        {/* Edição atual — oculta na home de programas */}
-        {!isHome && (
-          <>
-            <SectionLabel collapsed={collapsed}>Edição atual</SectionLabel>
-            {edicaoItems.map((item) => (
+        {/* Categorias — as ligadas à edição ficam ocultas na home de programas */}
+        {categorias.filter(cat => cat.sempreVisivel || !isHome).map((cat) => (
+          <div key={cat.titulo}>
+            <SectionLabel collapsed={collapsed}>{cat.titulo}</SectionLabel>
+            {cat.itens.map((item) => (
               <NavItem key={item.href} item={item} collapsed={collapsed} pathname={location.pathname} />
             ))}
-          </>
-        )}
-
-        {/* Geral */}
-        <SectionLabel collapsed={collapsed}>Geral</SectionLabel>
-        {GERAL_ITEMS.map((item) => (
-          <NavItem key={item.href} item={item} collapsed={collapsed} pathname={location.pathname} />
+          </div>
         ))}
 
         {/* Outros programas */}
@@ -296,23 +314,6 @@ export function Sidebar() {
 
       {/* ── Footer ── */}
       <div className="px-2 py-2 space-y-0.5">
-        <NavLink
-          to="/admin/configuracao-inscricao"
-          title={collapsed ? 'Configurações' : undefined}
-          className={cn(
-            'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
-            location.pathname.startsWith('/admin/configuracao-inscricao')
-              ? 'bg-white border border-[#E2E8F0] text-[#534AB7] shadow-sm'
-              : 'text-sidebar-foreground/80 hover:bg-white/10'
-          )}
-        >
-          <Settings2 className={cn(
-            'w-5 h-5 shrink-0',
-            location.pathname.startsWith('/admin/configuracao-inscricao') ? 'text-[#534AB7]' : ''
-          )} />
-          {!collapsed && <span className="truncate">Configurações</span>}
-        </NavLink>
-
         <button
           onClick={async () => { await logout(); navigate('/login/secretaria') }}
           title={collapsed ? 'Sair' : undefined}
