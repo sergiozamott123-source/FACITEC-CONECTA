@@ -64,29 +64,15 @@ export function PortalOrientadorProvider({ children }) {
     setLoading(false)
   }
 
-  async function login(codigo, senha) {
-    const { data: orientador, error: fetchError } = await supabase
-      .from('orientador')
-      .select('*')
-      .eq('codigo_orientador', codigo.toUpperCase().trim())
-      .single()
-
-    if (fetchError || !orientador) {
-      throw new Error('Código de acesso não encontrado.')
-    }
-
-    const emailFicticio = gerarEmailOrientador(codigo)
-
+  async function login(email, senha) {
     const { error: authError } = await supabase.auth.signInWithPassword({
-      email: emailFicticio,
+      email: email.trim(),
       password: senha,
     })
 
     if (authError) {
-      throw new Error('Senha incorreta. Tente novamente.')
+      throw new Error('E-mail ou senha incorretos.')
     }
-
-    return orientador
   }
 
   async function logout() {
@@ -102,9 +88,6 @@ export function PortalOrientadorProvider({ children }) {
     </PortalOrientadorContext.Provider>
   )
 }
-
-export const gerarEmailOrientador = (codigo) =>
-  `${codigo.toLowerCase().trim()}@facitec.vitoria.es.gov.br`
 
 export function usePortalOrientador() {
   const ctx = useContext(PortalOrientadorContext)

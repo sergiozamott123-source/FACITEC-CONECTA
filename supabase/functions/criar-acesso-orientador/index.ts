@@ -5,10 +5,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-function gerarEmailOrientador(codigo: string) {
-  return `${codigo.toLowerCase().trim()}@facitec.vitoria.es.gov.br`
-}
-
 function gerarSenhaTemporaria() {
   const bytes = new Uint8Array(9)
   crypto.getRandomValues(bytes)
@@ -34,15 +30,15 @@ Deno.serve(async (req) => {
 
     const { data: orientador, error: orErr } = await supabase
       .from('orientador')
-      .select('id, nome_completo, codigo_orientador, auth_user_id')
+      .select('id, nome_completo, email, auth_user_id')
       .eq('id', orientador_id)
       .single()
     if (orErr) throw orErr
-    if (!orientador.codigo_orientador) {
-      throw new Error('Orientador não tem código de acesso (codigo_orientador) cadastrado.')
+    if (!orientador.email) {
+      throw new Error('Orientador não tem e-mail cadastrado.')
     }
 
-    const email = gerarEmailOrientador(orientador.codigo_orientador)
+    const email = orientador.email
     const senhaTemporaria = gerarSenhaTemporaria()
 
     if (action === 'criar') {

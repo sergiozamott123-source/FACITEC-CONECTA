@@ -108,7 +108,7 @@ export function GerenciarUsuariosOrientadores() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={busyId === o.id || !o.codigo_orientador}
+                      disabled={busyId === o.id || !o.email}
                       onClick={() => chamarFuncao('resetar_senha', o)}
                     >
                       <KeyRound className="w-3.5 h-3.5 mr-1.5" />
@@ -118,9 +118,9 @@ export function GerenciarUsuariosOrientadores() {
                     <Button
                       variant="outline"
                       size="sm"
-                      disabled={busyId === o.id || !o.codigo_orientador}
+                      disabled={busyId === o.id || !o.email}
                       onClick={() => chamarFuncao('criar', o)}
-                      title={!o.codigo_orientador ? 'Orientador sem código de acesso cadastrado' : undefined}
+                      title={!o.email ? 'Orientador sem e-mail cadastrado' : undefined}
                     >
                       <UserPlus className="w-3.5 h-3.5 mr-1.5" />
                       {busyId === o.id ? 'Criando...' : 'Criar acesso'}
@@ -135,7 +135,7 @@ export function GerenciarUsuariosOrientadores() {
 
       <p className="text-xs text-muted-foreground flex items-center gap-1.5">
         <ShieldCheck className="w-3.5 h-3.5" />
-        A conta é criada com um e-mail de acesso derivado do código do orientador — a senha temporária deve ser repassada por um canal seguro.
+        A conta é criada com o e-mail cadastrado do orientador — a senha temporária deve ser repassada por um canal seguro.
       </p>
     </div>
   )

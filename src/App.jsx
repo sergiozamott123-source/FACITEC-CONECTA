@@ -37,7 +37,8 @@ import { LoginCandidato } from '@/pages/candidato/LoginCandidato'
 import { MeusRecursos } from '@/pages/candidato/MeusRecursos'
 import { RecursoWizard } from '@/pages/candidato/RecursoWizard'
 import { PortalOrientadorProvider } from '@/contexts/PortalOrientadorContext'
-import { OrientadorLogin } from '@/pages/orientador/OrientadorLogin'
+import { LoginOrientador } from '@/pages/orientador/LoginOrientador'
+import { RedefinirSenhaOrientador } from '@/pages/orientador/RedefinirSenhaOrientador'
 import { OrientadorDashboard } from '@/pages/orientador/OrientadorDashboard'
 import { OrientadorDados } from '@/pages/orientador/OrientadorDados'
 import { OrientadorMeusDados } from '@/pages/orientador/OrientadorMeusDados'
@@ -110,7 +111,7 @@ function App() {
         <Route path="/orientador/*" element={
           <PortalOrientadorProvider>
             <Routes>
-              <Route path="login" element={<OrientadorLogin />} />
+              <Route path="login" element={<LoginOrientador />} />
               <Route path="painel" element={<RequireAcessoOrientador><OrientadorDashboard /></RequireAcessoOrientador>} />
               <Route path="dashboard" element={<RequireAcessoOrientador><OrientadorDashboard /></RequireAcessoOrientador>} />
               <Route path="dados" element={<RequireAcessoOrientador><OrientadorDados /></RequireAcessoOrientador>} />
@@ -122,12 +123,13 @@ function App() {
             </Routes>
           </PortalOrientadorProvider>
         } />
-        {/* Alias de entrada — landing linka pra cá; abre o login já existente do orientador */}
+        {/* Alias de entrada — landing linka pra cá; abre o login do orientador */}
         <Route path="/login/orientador" element={
           <PortalOrientadorProvider>
-            <OrientadorLogin />
+            <LoginOrientador />
           </PortalOrientadorProvider>
         } />
+        <Route path="/login/orientador/redefinir-senha" element={<RedefinirSenhaOrientador />} />
         {/* Portal do candidato — recursos */}
         <Route path="/candidato/*" element={
           <OrientadorProvider>
