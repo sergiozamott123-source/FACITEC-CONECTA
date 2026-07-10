@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
-  ChevronDown, DollarSign, FileCheck2, FileSignature, ClipboardCheck,
+  ChevronDown, DollarSign, FileCheck2, FileSignature, ClipboardCheck, Settings2,
   CheckCircle2, Clock, AlertTriangle, Download, Loader2, ExternalLink,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
@@ -14,6 +14,10 @@ import { buscarDadosRelatorioFinanceiro, exportarPDFFinanceiro, exportarExcelFin
 import { listarCiclos, statusRelatorioNoCiclo } from '@/lib/relatorioMensal'
 import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
 import { computarRanking, CONSENSO_VARIANT } from '@/lib/classificacaoRanking'
+import {
+  CATEGORIAS_COLUNAS, buscarDadosRelatorioPersonalizado,
+  exportarPDFPersonalizado, exportarExcelPersonalizado, exportarWordPersonalizado,
+} from '@/lib/relatorioPersonalizado'
 
 const STATUS_INFO = {
   enviado: { label: 'Enviado', variant: 'success' },
@@ -437,6 +441,100 @@ function AvaliacaoBody({ edicaoId, statusTallyInicial }) {
   )
 }
 
+// ── Card 5 — Relatório Personalizado ─────────────────────────────────────────
+function RelatorioPersonalizadoBody({ ano }) {
+  const [linhas, setLinhas] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [exportando, setExportando] = useState(null)
+  const [selecionadas, setSelecionadas] = useState(() => {
+    const s = new Set()
+    CATEGORIAS_COLUNAS.forEach(cat => cat.campos.forEach(c => { if (c.default) s.add(c.key) }))
+    return s
+  })
+
+  useEffect(() => {
+    buscarDadosRelatorioPersonalizado()
+      .then(setLinhas)
+      .catch(() => setErro('Não foi possível carregar os dados do relatório.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function toggleCampo(key) {
+    setSelecionadas(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const colunasSelecionadas = useMemo(
+    () => CATEGORIAS_COLUNAS.flatMap(cat => cat.campos).filter(c => selecionadas.has(c.key)),
+    [selecionadas],
+  )
+
+  async function handleExportar(formato) {
+    if (!linhas || !colunasSelecionadas.length) return
+    setExportando(formato)
+    setErro(null)
+    try {
+      if (formato === 'pdf') exportarPDFPersonalizado(linhas, colunasSelecionadas, ano)
+      else if (formato === 'excel') exportarExcelPersonalizado(linhas, colunasSelecionadas, ano)
+      else await exportarWordPersonalizado(linhas, colunasSelecionadas, ano)
+    } catch {
+      setErro('Não foi possível gerar o relatório personalizado.')
+    } finally {
+      setExportando(null)
+    }
+  }
+
+  if (loading) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="space-y-3">
+        {CATEGORIAS_COLUNAS.map(cat => (
+          <div key={cat.categoria}>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{cat.categoria}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {cat.campos.map(c => (
+                <label key={c.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selecionadas.has(c.key)}
+                    onChange={() => toggleCampo(c.key)}
+                    className="rounded border-border"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Prévia: {colunasSelecionadas.length} coluna{colunasSelecionadas.length === 1 ? '' : 's'} selecionada{colunasSelecionadas.length === 1 ? '' : 's'} · {linhas?.length ?? 0} orientadores
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('pdf')}>
+          {exportando === 'pdf' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar PDF
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('excel')}>
+          {exportando === 'excel' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Excel
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('word')}>
+          {exportando === 'word' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Word
+        </Button>
+      </div>
+    </>
+  )
+}
+
 // ── Hub — Central de relatórios ──────────────────────────────────────────────
 // Mantém o nome "Historico" porque é o componente já roteado em /historico
 // (App.jsx) — trocar o nome exigiria tocar o roteamento sem necessidade.
@@ -547,6 +645,15 @@ export function Historico() {
           expanded={expanded.has('avaliacao')} onToggle={() => toggle('avaliacao')}
         >
           {loaded.has('avaliacao') ? <AvaliacaoBody edicaoId={edicaoId} statusTallyInicial={statusTally} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={Settings2} iconBg="bg-slate-100" iconColor="text-slate-600"
+          title="Relatório Personalizado"
+          headerRight={<Badge variant="secondary" className="text-xs">Monte sua própria planilha</Badge>}
+          expanded={expanded.has('personalizado')} onToggle={() => toggle('personalizado')}
+        >
+          {loaded.has('personalizado') ? <RelatorioPersonalizadoBody ano={ano} /> : null}
         </RelatorioCard>
       </div>
     </div>
