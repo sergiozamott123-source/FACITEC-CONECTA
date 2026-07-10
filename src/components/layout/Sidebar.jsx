@@ -42,7 +42,7 @@ const PROGRAMAS = [
 ]
 
 // ── Rotas do nível Sistema (fora de qualquer programa) ──────────────────────
-const SISTEMA_PATHS = ['/admin', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
+const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
 
 function isSistemaPath(pathname) {
   return SISTEMA_PATHS.includes(pathname)
@@ -54,6 +54,7 @@ function buildCategoriasSistema() {
     {
       titulo: 'Sistema',
       itens: [
+        { label: 'Painel', href: '/admin/painel', icon: LayoutDashboard, exact: true },
         { label: 'Programas', href: '/admin', icon: LayoutGrid, exact: true },
         { label: 'Portal público', href: URL_PORTAL_PUBLICO, icon: Globe, external: true },
       ],

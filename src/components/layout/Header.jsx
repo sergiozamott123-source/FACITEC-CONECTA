@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { useAdmin } from '@/contexts/AdminContext'
 
 const PAGE_NAMES = [
+  { pattern: /^\/admin\/painel$/, label: 'Painel' },
   { pattern: /^\/admin$/, label: 'Programas' },
   { pattern: /^\/admin\/pibic-jr\/[^/]+\/painel/, label: 'Painel do PIBIC Jr' },
   { pattern: /^\/admin\/pibic-jr\/[^/]+\/configuracao/, label: 'Ficha de inscrição' },
@@ -28,7 +29,7 @@ function getPageLabel(pathname) {
   return PAGE_NAMES.find(({ pattern }) => pattern.test(pathname))?.label ?? 'FACITEC Conecta'
 }
 
-const SISTEMA_PATHS = ['/admin', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
+const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
 
 const PROGRAMA_LABELS = { PIBICJR: 'PIBIC Jr' }
 

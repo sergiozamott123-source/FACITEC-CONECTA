@@ -168,7 +168,7 @@ function App() {
               <RequireAcessoSecretaria>
                 <Layout>
                   <Routes>
-                    <Route path="/" element={<Dashboard />} />
+                    <Route path="/admin/painel" element={<Dashboard />} />
                     <Route path="/edicoes" element={<Edicoes />} />
                     <Route path="/avaliacoes" element={<Avaliacoes />} />
                     <Route path="/equipes" element={<Equipes />} />

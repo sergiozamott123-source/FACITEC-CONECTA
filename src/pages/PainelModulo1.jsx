@@ -10,7 +10,10 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
+import { useAdmin } from "../contexts/AdminContext";
+import { listarCiclos, statusRelatorioNoCiclo } from "../lib/relatorioMensal";
 
 // ── PALETA ───────────────────────────────────────────────────────────
 const C = {
@@ -661,8 +664,145 @@ function FluxoRecursos({ onVoltar }) {
   );
 }
 
+// ── RESUMO DA EDIÇÃO (Fase 2 — Painel do Programa) ────────────────────
+function useResumoPrograma(edicaoId) {
+  const [resumo, setResumo] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!edicaoId) return;
+    let cancelado = false;
+
+    async function load() {
+      setLoading(true);
+      try {
+        const { data: projetos, error: e1 } = await supabase
+          .from("projeto")
+          .select("id, orientador_id, orientador:orientador_id(id, contrato_url)")
+          .eq("edicao_id", edicaoId)
+          .eq("status", "selecionado");
+        if (e1) throw e1;
+
+        const projetoIds = (projetos ?? []).map(p => p.id);
+        const orientadoresPorId = {};
+        (projetos ?? []).forEach(p => {
+          if (p.orientador_id) orientadoresPorId[p.orientador_id] = p.orientador;
+        });
+        const orientadorIds = Object.keys(orientadoresPorId);
+        const totalOrientadores = orientadorIds.length;
+        const comContrato = orientadorIds.filter(id => orientadoresPorId[id]?.contrato_url).length;
+
+        let bolsistasAtivos = 0;
+        if (projetoIds.length) {
+          const { count, error: e2 } = await supabase
+            .from("bolsista")
+            .select("*", { count: "exact", head: true })
+            .in("projeto_id", projetoIds)
+            .eq("status", "ativo");
+          if (e2) throw e2;
+          bolsistasAtivos = count ?? 0;
+        }
+
+        // Relatório mensal — ciclo com janela aberta hoje
+        const ciclos = await listarCiclos(edicaoId);
+        const hoje = new Date().toISOString().slice(0, 10);
+        const cicloAberto = ciclos.find(c => hoje >= c.data_abertura && hoje <= c.data_fechamento) ?? null;
+
+        let cicloResumo = null;
+        if (cicloAberto) {
+          const { data: relatorios, error: e3 } = await supabase
+            .from("relatorio_mensal")
+            .select("orientador_id, status, enviado_em")
+            .eq("ciclo_id", cicloAberto.id);
+          if (e3) throw e3;
+
+          let enviados = 0, pendentes = 0, atrasados = 0;
+          orientadorIds.forEach(oid => {
+            const relatorio = (relatorios ?? []).find(r => r.orientador_id === oid) ?? null;
+            const status = statusRelatorioNoCiclo(cicloAberto, relatorio);
+            if (status === "enviado" || status === "enviado_atrasado") enviados++;
+            else if (status === "atrasado") atrasados++;
+            else pendentes++;
+          });
+          cicloResumo = { numero: cicloAberto.numero_ciclo, enviados, pendentes, atrasados };
+        }
+
+        if (!cancelado) {
+          setResumo({ bolsistasAtivos, contratosEmitidos: comContrato, totalOrientadores, ciclo: cicloResumo });
+        }
+      } catch {
+        if (!cancelado) setResumo({ bolsistasAtivos: 0, contratosEmitidos: 0, totalOrientadores: 0, ciclo: null });
+      } finally {
+        if (!cancelado) setLoading(false);
+      }
+    }
+    load();
+    return () => { cancelado = true; };
+  }, [edicaoId]);
+
+  return { resumo, loading };
+}
+
+function MiniStat({ label, value, color }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+      <span style={{ fontSize: 22, fontWeight: 700, color }}>{value}</span>
+      <span style={{ fontSize: 11, color: C.gray }}>{label}</span>
+    </div>
+  );
+}
+
+function ResumoPrograma({ ano, edicaoId }) {
+  const { resumo, loading } = useResumoPrograma(edicaoId);
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>PIBIC Jr · Edição {ano}</div>
+        <div style={{ fontSize: 13, color: C.gray, marginTop: 2 }}>Acompanhamento da edição em andamento.</div>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 12 }}>
+        <Card>
+          <SectionLabel>Bolsistas ativos</SectionLabel>
+          <div style={{ fontSize: 26, fontWeight: 700, color: C.dark }}>
+            {loading ? "…" : resumo.bolsistasAtivos}
+          </div>
+        </Card>
+        <Card>
+          <SectionLabel>Contratos emitidos</SectionLabel>
+          <div style={{ fontSize: 26, fontWeight: 700, color: C.dark }}>
+            {loading ? "…" : `${resumo.contratosEmitidos}/${resumo.totalOrientadores}`}
+          </div>
+        </Card>
+      </div>
+
+      <Card>
+        <SectionLabel>
+          Relatório mensal{!loading && resumo.ciclo ? ` · Ciclo ${resumo.ciclo.numero}` : ""}
+        </SectionLabel>
+        {loading ? (
+          <div style={{ color: C.grayL, fontSize: 12 }}>Carregando…</div>
+        ) : !resumo.ciclo ? (
+          <div style={{ color: C.grayL, fontSize: 12, padding: "8px 0" }}>
+            Nenhuma janela de relatório aberta no momento.
+          </div>
+        ) : (
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+            <MiniStat label="Enviados" value={resumo.ciclo.enviados} color={C.green} />
+            <MiniStat label="Pendentes" value={resumo.ciclo.pendentes} color={C.amber} />
+            <MiniStat label="Atrasados" value={resumo.ciclo.atrasados} color={C.red} />
+          </div>
+        )}
+      </Card>
+    </div>
+  );
+}
+
 // ── PAINEL PRINCIPAL DO MÓDULO 1 ─────────────────────────────────────
 export default function PainelModulo1() {
+  const { ano = "2026" } = useParams();
+  const { edicaoSelecionada } = useAdmin();
   const [tela, setTela] = useState("menu"); // menu | projetos | detalhe | avaliadores | recursos
   const [projetoSelecionado, setProjetoSelecionado] = useState(null);
   const [stats, setStats] = useState({ projetos:0, avaliacoes:0, avaliadores:0, recursos:0, loading:true });
@@ -696,6 +836,9 @@ export default function PainelModulo1() {
   // Menu principal
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
+
+      {/* Resumo do Painel do Programa (Fase 2) */}
+      <ResumoPrograma ano={ano} edicaoId={edicaoSelecionada?.id} />
 
       {/* Header */}
       <div style={{ background:C.navy, borderRadius:12, padding:"20px 24px" }}>
