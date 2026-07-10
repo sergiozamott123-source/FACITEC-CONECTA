@@ -55,7 +55,12 @@
       "Bash(node -e \"const d = require\\('docx'\\); console.log\\(Object.keys\\(d\\).filter\\(k => /Orientation|Page|Width|Table|Shading/i.test\\(k\\)\\)\\)\")",
       "Bash(node scratch-test-export.mjs)",
       "Bash(rm -f Relatorio_Personalizado_2026_*.*)",
-      "Bash(node scratch-test-export.mjs all)"
+      "Bash(node scratch-test-export.mjs all)",
+      "Bash(cat /tmp/vite_dev.log)",
+      "Bash(node _tmp_test_jspdf_node.cjs)",
+      "Bash(ls -la _tmp_output.pdf)",
+      "Bash(node _tmp_test_inscricao_pdf.mjs)",
+      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\(typeof p, Object.keys\\(p\\)\\)\")"
     ]
   }
 }

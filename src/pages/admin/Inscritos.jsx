@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react'
-import { Search } from 'lucide-react'
+import { Search, Download, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/contexts/AdminContext'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { gerarPDFInscricao, gerarPDFInscritosLote } from '@/lib/inscricaoPdf'
 
 function Row({ label, value }) {
   return (
@@ -50,6 +51,14 @@ export function Inscritos() {
   const [selecionado, setSelecionado] = useState(null)
   const [detalhe, setDetalhe] = useState(null)
   const [carregandoDetalhe, setCarregandoDetalhe] = useState(false)
+  const [exportandoLote, setExportandoLote] = useState(false)
+
+  const SELECT_DETALHE = `
+    *,
+    orientador:orientador_id ( * ),
+    projeto_eixo ( eixo_tematico:eixo_tematico_id ( id, nome ) ),
+    resposta_inscricao ( resposta, campo:campo_id ( id, pergunta, ordem ) )
+  `
 
   async function carregar() {
     setLoading(true)
@@ -89,12 +98,7 @@ export function Inscritos() {
     try {
       const { data, error } = await supabase
         .from('projeto')
-        .select(`
-          *,
-          orientador:orientador_id ( * ),
-          projeto_eixo ( eixo_tematico:eixo_tematico_id ( id, nome ) ),
-          resposta_inscricao ( resposta, campo:campo_id ( id, pergunta, ordem ) )
-        `)
+        .select(SELECT_DETALHE)
         .eq('id', item.id)
         .single()
       if (error) throw error
@@ -109,6 +113,36 @@ export function Inscritos() {
   function fecharDetalhe() {
     setSelecionado(null)
     setDetalhe(null)
+  }
+
+  function exportarDetalheEmPDF() {
+    if (!detalhe) return
+    try {
+      gerarPDFInscricao(detalhe)
+    } catch {
+      setErro('Não foi possível gerar o PDF desta inscrição.')
+    }
+  }
+
+  async function exportarTodasEmPDF() {
+    if (!filtrados.length) return
+    setExportandoLote(true)
+    setErro(null)
+    try {
+      const ids = filtrados.map(i => i.id)
+      const { data, error } = await supabase
+        .from('projeto')
+        .select(SELECT_DETALHE)
+        .in('id', ids)
+      if (error) throw error
+      const porId = Object.fromEntries((data ?? []).map(d => [d.id, d]))
+      const ordenados = filtrados.map(i => porId[i.id]).filter(Boolean)
+      gerarPDFInscritosLote(ordenados, ano)
+    } catch {
+      setErro('Não foi possível gerar o PDF em lote.')
+    } finally {
+      setExportandoLote(false)
+    }
   }
 
   const eixosNomes = (detalhe?.projeto_eixo ?? []).map(pe => pe.eixo_tematico?.nome).filter(Boolean)
@@ -128,14 +162,25 @@ export function Inscritos() {
         <p className="text-sm text-muted-foreground">
           {loading ? 'Carregando...' : `${inscritos.length} inscrito${inscritos.length === 1 ? '' : 's'}`}
         </p>
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input
-            value={busca}
-            onChange={e => setBusca(e.target.value)}
-            placeholder="Buscar por nome..."
-            className="h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring w-64"
-          />
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              value={busca}
+              onChange={e => setBusca(e.target.value)}
+              placeholder="Buscar por nome..."
+              className="h-9 pl-8 pr-3 text-sm rounded-md border border-input bg-background focus:outline-none focus:ring-2 focus:ring-ring w-64"
+            />
+          </div>
+          <button
+            type="button"
+            onClick={exportarTodasEmPDF}
+            disabled={exportandoLote || !filtrados.length}
+            className="h-9 inline-flex items-center gap-1.5 px-3 text-sm font-medium border border-border rounded-md bg-background hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
+          >
+            {exportandoLote ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {exportandoLote ? 'Gerando PDF...' : 'Baixar todas em PDF'}
+          </button>
         </div>
       </div>
 
@@ -173,6 +218,17 @@ export function Inscritos() {
         onClose={fecharDetalhe}
         title={selecionado?.orientador?.nome_completo ?? 'Detalhe da inscrição'}
         size="xl"
+        actions={
+          <button
+            type="button"
+            onClick={exportarDetalheEmPDF}
+            disabled={carregandoDetalhe || !detalhe}
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-border text-xs font-medium hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download className="w-3.5 h-3.5" />
+            Baixar PDF
+          </button>
+        }
       >
         {carregandoDetalhe || !detalhe ? (
           <LoadingState />
