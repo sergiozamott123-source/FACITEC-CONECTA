@@ -30,9 +30,8 @@ import { Separator } from '@/components/ui/separator'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 
-// URL do site público institucional do FACITEC.
-// TODO(Sérgio): definir VITE_URL_PORTAL_PUBLICO no .env com a URL real — placeholder abaixo.
-const URL_PORTAL_PUBLICO = import.meta.env.VITE_URL_PORTAL_PUBLICO || 'https://exemplo-preencher-url-portal-publico.facitec.gov.br'
+// URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
+const URL_PORTAL_PUBLICO = import.meta.env.VITE_URL_PORTAL_PUBLICO || 'https://facitecnews.com.br'
 
 // ── Programa dropdown data ──────────────────────────────────────────────────
 const PROGRAMAS = [
