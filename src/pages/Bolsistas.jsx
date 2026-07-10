@@ -1,5 +1,5 @@
-import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, GraduationCap, User, Search } from 'lucide-react'
+import { useState, useCallback, useMemo } from 'react'
+import { Plus, Pencil, Trash2, GraduationCap, User, Search, ChevronDown, FolderKanban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -84,6 +84,92 @@ function OrientadorForm({ value, onChange }) {
   )
 }
 
+function groupBolsistasPorOrientador(bolsistas) {
+  const map = new Map()
+  for (const b of bolsistas) {
+    const key = b.orientador_id ?? 'sem-orientador'
+    if (!map.has(key)) {
+      map.set(key, {
+        key,
+        orientadorNome: b.orientador?.nome_completo ?? 'Sem orientador',
+        projetoTitulo: b.projeto?.titulo ?? null,
+        bolsistas: [],
+      })
+    }
+    const grupo = map.get(key)
+    grupo.bolsistas.push(b)
+    if (!grupo.projetoTitulo && b.projeto?.titulo) grupo.projetoTitulo = b.projeto.titulo
+  }
+
+  const grupos = Array.from(map.values())
+  grupos.forEach((g) => {
+    g.bolsistas.sort((a, b) => (a.nome_completo ?? '').localeCompare(b.nome_completo ?? '', 'pt-BR'))
+  })
+  grupos.sort((a, b) => {
+    if (a.key === 'sem-orientador') return 1
+    if (b.key === 'sem-orientador') return -1
+    return a.orientadorNome.localeCompare(b.orientadorNome, 'pt-BR')
+  })
+  return grupos
+}
+
+function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete }) {
+  const qtd = grupo.bolsistas.length
+  return (
+    <Card className="overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-violet-100 shrink-0">
+            <User className="w-5 h-5 text-violet-600" />
+          </div>
+          <div className="min-w-0">
+            <p className="font-medium text-sm text-foreground truncate">{grupo.orientadorNome}</p>
+            {grupo.projetoTitulo && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+                <FolderKanban className="w-3 h-3 shrink-0" />
+                <span className="truncate">{grupo.projetoTitulo}</span>
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          <Badge variant="secondary" className="text-xs">{qtd} {qtd === 1 ? 'bolsista' : 'bolsistas'}</Badge>
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+
+      {expanded && (
+        <div className="border-t border-border divide-y divide-border">
+          {grupo.bolsistas.map((b) => (
+            <div key={b.id} className="flex items-start justify-between gap-4 px-4 py-3 pl-[4.25rem]">
+              <div className="flex gap-3">
+                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 shrink-0">
+                  <GraduationCap className="w-4 h-4 text-primary" />
+                </div>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="font-medium text-sm text-foreground">{b.nome_completo ?? '—'}</span>
+                    <Badge variant="outline" className="text-xs">{b.tipo?.toUpperCase()}</Badge>
+                    <Badge variant={STATUS_VARIANT[b.status] ?? 'secondary'} className="text-xs">{b.status}</Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{b.email ?? ''} {b.cpf ? `· CPF: ${b.cpf}` : ''}</p>
+                </div>
+              </div>
+              <div className="flex gap-1 shrink-0">
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(b)}><Pencil className="w-4 h-4" /></Button>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(b.id)}><Trash2 className="w-4 h-4" /></Button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </Card>
+  )
+}
+
 export function Bolsistas() {
   const [tab, setTab] = useState('bolsistas')
   const [query, setQuery] = useState('')
@@ -104,6 +190,16 @@ export function Bolsistas() {
   const [modal, setModal] = useState(null)
   const [form, setForm] = useState({})
   const [confirm, setConfirm] = useState(null)
+  const [expandedGrupos, setExpandedGrupos] = useState(() => new Set())
+
+  function toggleGrupo(key) {
+    setExpandedGrupos((prev) => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
 
   function openCreate(type) { setForm(type === 'bolsista' ? EMPTY_B : EMPTY_O); setModal({ mode: 'create', type }) }
   function openEdit(type, item) {
@@ -147,6 +243,8 @@ export function Bolsistas() {
 
   const filteredB = bolsistas.filter(filterFn)
   const filteredO = orientadores.filter(filterFn)
+  const buscando = query.trim() !== ''
+  const gruposB = useMemo(() => groupBolsistasPorOrientador(filteredB), [filteredB])
 
   return (
     <div className="space-y-6">
@@ -171,36 +269,17 @@ export function Bolsistas() {
       {tab === 'bolsistas' && (
         <>
           <ErrorAlert message={bError} />
-          {bLoading ? <LoadingState /> : filteredB.length === 0 ? <EmptyState message="Nenhum bolsista encontrado." /> : (
+          {bLoading ? <LoadingState /> : gruposB.length === 0 ? <EmptyState message="Nenhum bolsista encontrado." /> : (
             <div className="space-y-3">
-              {filteredB.map(b => (
-                <Card key={b.id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex gap-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-primary/10 shrink-0">
-                          <GraduationCap className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-medium text-sm text-foreground">{b.nome_completo ?? '—'}</span>
-                            <Badge variant="outline" className="text-xs">{b.tipo?.toUpperCase()}</Badge>
-                            <Badge variant={STATUS_VARIANT[b.status] ?? 'secondary'} className="text-xs">{b.status}</Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground">{b.email ?? ''} {b.cpf ? `· CPF: ${b.cpf}` : ''}</p>
-                          {b.projeto?.titulo && <p className="text-xs text-muted-foreground">{b.projeto.titulo}</p>}
-                          {b.orientador?.nome_completo && (
-                            <p className="text-xs text-muted-foreground flex items-center gap-1"><User className="w-3 h-3" />{b.orientador.nome_completo}</p>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit('bolsista', b)}><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirm({ type: 'bolsista', id: b.id })}><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+              {gruposB.map((grupo) => (
+                <GrupoOrientadorCard
+                  key={grupo.key}
+                  grupo={grupo}
+                  expanded={buscando || expandedGrupos.has(grupo.key)}
+                  onToggle={() => toggleGrupo(grupo.key)}
+                  onEdit={(b) => openEdit('bolsista', b)}
+                  onDelete={(id) => setConfirm({ type: 'bolsista', id })}
+                />
               ))}
             </div>
           )}
