@@ -54,6 +54,7 @@ import { PortalEntrada } from '@/pages/PortalEntrada'
 import { LoginSecretaria } from '@/pages/LoginSecretaria'
 import { RedefinirSenhaSecretaria } from '@/pages/RedefinirSenhaSecretaria'
 import { GerenciarUsuariosOrientadores } from '@/pages/admin/GerenciarUsuariosOrientadores'
+import { Inscritos } from '@/pages/admin/Inscritos'
 import { RelatoriosMensais } from '@/pages/admin/RelatoriosMensais'
 import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
 import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
@@ -170,6 +171,7 @@ function App() {
                   <Routes>
                     <Route path="/admin/painel" element={<Dashboard />} />
                     <Route path="/edicoes" element={<Edicoes />} />
+                    <Route path="/inscritos" element={<Inscritos />} />
                     <Route path="/avaliacoes" element={<Avaliacoes />} />
                     <Route path="/equipes" element={<Equipes />} />
                     <Route path="/contratos" element={<Contratos />} />

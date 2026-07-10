@@ -93,7 +93,7 @@ function buildCategoriasPrograma(ano) {
     {
       titulo: 'Processo seletivo',
       itens: [
-        { label: 'Inscritos', href: '/inscricao', icon: ClipboardList, external: true },
+        { label: 'Inscritos', href: '/inscritos', icon: ClipboardList },
         { label: 'Avaliação', href: '/avaliacoes', icon: ClipboardCheck },
         { label: 'Classificação', href: '/classificacao', icon: Trophy },
         { label: 'Recursos', href: '/recursos', icon: Inbox },
