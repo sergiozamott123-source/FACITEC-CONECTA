@@ -45,9 +45,32 @@ export const db = {
   },
 }
 
+// --- Filtro por edição ---
+// Várias tabelas (bolsista, contrato, termo_adesao, avaliacao, relatorio_mensal)
+// só têm `projeto_id`, não `edicao_id` direto — e `orientador.edicao_id` existe
+// mas não é preenchido pelo fluxo real de inscrição (FichaInscricao.jsx cria/atualiza
+// o orientador por auth_user_id, reaproveitado entre edições, sem gravar edicao_id).
+// Por isso resolvemos "quais registros pertencem a esta edição" em duas etapas,
+// via `projeto`, que sempre tem `edicao_id` correto.
+async function projetoIdsDaEdicao(edicaoId) {
+  const { data, error } = await supabase.from('projeto').select('id').eq('edicao_id', edicaoId)
+  if (error) throw error
+  return (data ?? []).map((r) => r.id)
+}
+
+async function orientadorIdsDaEdicao(edicaoId) {
+  const { data, error } = await supabase.from('projeto').select('orientador_id').eq('edicao_id', edicaoId)
+  if (error) throw error
+  return [...new Set((data ?? []).map((r) => r.orientador_id).filter(Boolean))]
+}
+
+const EMPTY_LIST = { data: [], count: 0 }
+
 // --- Domain services ---
 export const edicaoService = {
-  list: () => db.list('edicao'),
+  list: (programaId) => db.list('edicao', {
+    filters: programaId ? [['programa_id', 'eq', programaId]] : undefined,
+  }),
   get: (id) => db.get('edicao', id),
   create: (p) => db.insert('edicao', p),
   update: (id, p) => db.update('edicao', id, p),
@@ -67,7 +90,12 @@ export const projetoService = {
 }
 
 export const orientadorService = {
-  list: () => db.list('orientador'),
+  list: async (edicaoId) => {
+    if (!edicaoId) return db.list('orientador')
+    const ids = await orientadorIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('orientador', { filters: [['id', 'in', `(${ids.join(',')})`]] })
+  },
   listAll: () => db.list('orientador', { select: 'id, nome_completo, email', order: 'nome_completo', asc: true }),
   get: (id) => db.get('orientador', id),
   create: (p) => db.insert('orientador', p),
@@ -76,9 +104,13 @@ export const orientadorService = {
 }
 
 export const bolsistaService = {
-  list: () => db.list('bolsista', {
-    select: '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)',
-  }),
+  list: async (edicaoId) => {
+    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)'
+    if (!edicaoId) return db.list('bolsista', { select })
+    const ids = await projetoIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('bolsista', { select, filters: [['projeto_id', 'in', `(${ids.join(',')})`]] })
+  },
   listAll: () => db.list('bolsista', { select: 'id, nome_completo, tipo, codigo_bolsista', order: 'nome_completo', asc: true }),
   get: (id) => db.get('bolsista', id),
   create: (p) => db.insert('bolsista', p),
@@ -87,9 +119,13 @@ export const bolsistaService = {
 }
 
 export const contratoService = {
-  list: () => db.list('contrato', {
-    select: '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)',
-  }),
+  list: async (edicaoId) => {
+    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)'
+    if (!edicaoId) return db.list('contrato', { select })
+    const ids = await projetoIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('contrato', { select, filters: [['projeto_id', 'in', `(${ids.join(',')})`]] })
+  },
   get: (id) => db.get('contrato', id),
   create: (p) => db.insert('contrato', p),
   update: (id, p) => db.update('contrato', id, p),
@@ -97,9 +133,13 @@ export const contratoService = {
 }
 
 export const termoAdesaoService = {
-  list: () => db.list('termo_adesao', {
-    select: '*, projeto:projeto_id(id, titulo), bolsista:bolsista_id(id, nome_completo)',
-  }),
+  list: async (edicaoId) => {
+    const select = '*, projeto:projeto_id(id, titulo), bolsista:bolsista_id(id, nome_completo)'
+    if (!edicaoId) return db.list('termo_adesao', { select })
+    const ids = await projetoIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('termo_adesao', { select, filters: [['projeto_id', 'in', `(${ids.join(',')})`]] })
+  },
   get: (id) => db.get('termo_adesao', id),
   create: (p) => db.insert('termo_adesao', p),
   update: (id, p) => db.update('termo_adesao', id, p),
@@ -107,27 +147,31 @@ export const termoAdesaoService = {
 }
 
 export const pagamentoService = {
-  list: () => db.list('pagamento', {
+  list: (edicaoId) => db.list('pagamento', {
     select: '*, bolsista:bolsista_id(id, nome_completo, tipo), edicao:edicao_id(id, data_inicio)',
+    filters: edicaoId ? [['edicao_id', 'eq', edicaoId]] : undefined,
   }),
   get: (id) => db.get('pagamento', id),
   create: (p) => db.insert('pagamento', p),
   update: (id, p) => db.update('pagamento', id, p),
   remove: (id) => db.remove('pagamento', id),
-  sumPago: async () => {
-    const { data, error } = await supabase
-      .from('pagamento')
-      .select('valor')
-      .eq('status', 'pago')
+  sumPago: async (edicaoId) => {
+    let q = supabase.from('pagamento').select('valor').eq('status', 'pago')
+    if (edicaoId) q = q.eq('edicao_id', edicaoId)
+    const { data, error } = await q
     if (error) return 0
     return (data ?? []).reduce((acc, r) => acc + (Number(r.valor) || 0), 0)
   },
 }
 
 export const avaliacaoService = {
-  list: () => db.list('avaliacao', {
-    select: '*, projeto:projeto_id(id, titulo, area_conhecimento, edicao_id), avaliador:avaliador_id(id, nome, extrato_url)',
-  }),
+  list: async (edicaoId) => {
+    const select = '*, projeto:projeto_id(id, titulo, area_conhecimento, edicao_id), avaliador:avaliador_id(id, nome, extrato_url)'
+    if (!edicaoId) return db.list('avaliacao', { select })
+    const ids = await projetoIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('avaliacao', { select, filters: [['projeto_id', 'in', `(${ids.join(',')})`]] })
+  },
   get: (id) => db.get('avaliacao', id),
   create: (p) => db.insert('avaliacao', p),
   update: (id, p) => db.update('avaliacao', id, p),
@@ -135,7 +179,11 @@ export const avaliacaoService = {
 }
 
 export const avaliadorService = {
-  list: () => db.list('avaliador'),
+  // avaliador.edicao_id é gravado de forma confiável (ver Avaliacoes.jsx), diferente
+  // de orientador.edicao_id — por isso aqui o filtro direto é seguro.
+  list: (edicaoId) => db.list('avaliador', {
+    filters: edicaoId ? [['edicao_id', 'eq', edicaoId]] : undefined,
+  }),
   listAll: () => db.list('avaliador', { select: 'id, nome, email', order: 'nome', asc: true }),
   get: (id) => db.get('avaliador', id),
   create: (p) => db.insert('avaliador', p),
@@ -144,8 +192,11 @@ export const avaliadorService = {
 }
 
 export const recursoService = {
-  list: () => db.list('recurso', {
+  // recurso.edicao_id é gravado diretamente na criação (copiado do projeto,
+  // ver RecursoWizard.jsx) — filtro direto é seguro aqui.
+  list: (edicaoId) => db.list('recurso', {
     select: '*, projeto:projeto_id(id, titulo)',
+    filters: edicaoId ? [['edicao_id', 'eq', edicaoId]] : undefined,
   }),
   get: (id) => db.get('recurso', id),
   create: (p) => db.insert('recurso', p),
@@ -154,9 +205,13 @@ export const recursoService = {
 }
 
 export const relatorioMensalService = {
-  list: () => db.list('relatorio_mensal', {
-    select: '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)',
-  }),
+  list: async (edicaoId) => {
+    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)'
+    if (!edicaoId) return db.list('relatorio_mensal', { select })
+    const ids = await projetoIdsDaEdicao(edicaoId)
+    if (ids.length === 0) return EMPTY_LIST
+    return db.list('relatorio_mensal', { select, filters: [['projeto_id', 'in', `(${ids.join(',')})`]] })
+  },
   get: (id) => db.get('relatorio_mensal', id),
   create: (p) => db.insert('relatorio_mensal', p),
   update: (id, p) => db.update('relatorio_mensal', id, p),

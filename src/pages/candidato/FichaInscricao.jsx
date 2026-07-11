@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check, ChevronLeft, ChevronRight, Upload, FileText, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { getProgramaByProgramaId } from '@/lib/programas'
 
 // ── Componentes auxiliares internos ──────────────────────────────────────
 
@@ -754,10 +755,16 @@ export function FichaInscricao() {
     try {
       const { data: { session: sess } } = await supabase.auth.getSession()
 
+      // TODO(Fase 3): trocar 'PIBICJR' fixo pelo programa resolvido via rota (:programaSlug)
+      // quando esta ficha for parametrizada por programa. Sem esse filtro, uma edição
+      // PROFICJR ativa poderia "vazar" para a inscrição do PIBIC Jr (e vice-versa).
+      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir
+      // (mesmo critério usado em HomeAdmin.jsx para o PIBIC Jr).
       const { data: ed, error: edErr } = await supabase
         .from('edicao')
         .select('*')
         .eq('status', 'ativo')
+        .or('programa_id.eq.PIBICJR,programa_id.is.null')
         .order('ano_referencia', { ascending: false })
         .limit(1)
         .maybeSingle()
@@ -1013,13 +1020,14 @@ export function FichaInscricao() {
 
       const { data: edAtual, error: edErr } = await supabase
         .from('edicao')
-        .select('ultimo_sequencial, ano_referencia')
+        .select('ultimo_sequencial, ano_referencia, programa_id')
         .eq('id', edicaoAtiva.id)
         .single()
       if (edErr) throw new Error(edErr.message)
 
       const novoSeq = (edAtual.ultimo_sequencial ?? 0) + 1
-      const codigo = `PibicJr${edAtual.ano_referencia}-${String(novoSeq).padStart(4, '0')}`
+      const nomePrograma = getProgramaByProgramaId(edAtual.programa_id)?.nome ?? 'PIBIC Jr'
+      const codigo = `${nomePrograma.replace(/\s+/g, '')}${edAtual.ano_referencia}-${String(novoSeq).padStart(4, '0')}`
 
       const { error: projErr } = await supabase
         .from('projeto')
@@ -1050,7 +1058,9 @@ export function FichaInscricao() {
           </div>
           <div>
             <p className="text-white font-bold text-base leading-tight">FACITEC Conecta</p>
-            <p className="text-white/60 text-xs leading-tight">Ficha de Inscrição · PibicJr</p>
+            <p className="text-white/60 text-xs leading-tight">
+              Ficha de Inscrição · {getProgramaByProgramaId(edicaoAtiva?.programa_id)?.nome ?? 'PIBIC Jr'}
+            </p>
           </div>
         </div>
       </header>

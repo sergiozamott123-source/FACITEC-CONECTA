@@ -158,7 +158,7 @@ export function ProjetosAvaliador() {
           {/* Boas-vindas */}
           <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
             <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">
-              PibicJr · Edição 2026
+              FACITEC Conecta
             </p>
             <h1 className="text-xl font-bold mb-1">
               Olá, {avaliador?.nome?.split(' ')[0]}!

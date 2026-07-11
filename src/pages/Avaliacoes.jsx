@@ -107,16 +107,16 @@ function ExtratoRow({ av, onUpload, uploading }) {
 }
 
 export function Avaliacoes() {
-  const fetch = useCallback(() => avaliacaoService.list(), [])
-  const fetchProjetos = useCallback(() => projetoService.listAll(), [])
-  const fetchAvaliadores = useCallback(() => avaliadorService.listAll(), [])
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+  const fetch = useCallback(() => avaliacaoService.list(edicaoId), [edicaoId])
+  const fetchProjetos = useCallback(() => projetoService.list(edicaoId), [edicaoId])
+  const fetchAvaliadores = useCallback(() => avaliadorService.list(edicaoId), [edicaoId])
 
   const { data, loading, error, reload } = useTable(fetch)
   const { data: projetos } = useTable(fetchProjetos)
   const { data: avaliadores } = useTable(fetchAvaliadores)
   const { saving, crudError, create, update, remove } = useCrud(avaliacaoService)
-
-  const { edicaoSelecionada } = useAdmin()
   const [avEdicao, setAvEdicao] = useState([])
   const [loadingAvEdicao, setLoadingAvEdicao] = useState(false)
 

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { jsPDF } from "jspdf"
 import { supabase } from "@/lib/supabase"
+import { getPrograma, getMaxBolsistas } from "@/lib/programas"
 
 // ── PALETA ───────────────────────────────────────────────────────────────────
 const C = {
@@ -40,7 +41,7 @@ A COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA - CDTIV, empres
 
 CLÁUSULA PRIMEIRA: DO OBJETO.
 
-O objeto deste instrumento é a concessão de 01 (uma) Bolsa de Orientação e 08 (oito) Bolsas de Iniciação Científica Júnior, conforme termos de adesão, para realização do projeto de pesquisa: {{titulo_projeto}}, aprovado no âmbito do Edital {{numero_edital}}.
+O objeto deste instrumento é a concessão de 01 (uma) Bolsa de Orientação e {{qtd_bolsistas_extenso}} Bolsas de Iniciação Científica Júnior, conforme termos de adesão, para realização do projeto de pesquisa: {{titulo_projeto}}, aprovado no âmbito do Edital {{numero_edital}}.
 
 As bolsas são concedidas em razão de terem sido atendidos os requisitos e critérios de avaliação previstos no Edital.
 
@@ -56,7 +57,7 @@ CLÁUSULA TERCEIRA: DA VIGÊNCIA.
 
 CLÁUSULA QUARTA: DA EQUIPE DO PROJETO, DESLIGAMENTOS E SUBSTITUIÇÕES.
 
-A equipe do Projeto será formada pelo(a) Orientador(a) e por até 08 (oito) estudantes bolsistas que aderirem ao presente instrumento.
+A equipe do Projeto será formada pelo(a) Orientador(a) e por até {{qtd_bolsistas_extenso}} estudantes bolsistas que aderirem ao presente instrumento.
 
 O(A) Orientador(a) poderá utilizar estudantes voluntários em suas equipes para o desenvolvimento de seus projetos.
 
@@ -68,7 +69,7 @@ CLÁUSULA QUINTA: DAS OBRIGAÇÕES.
 
 Da CDTIV: Liberar os recursos conforme estabelecido na Cláusula Segunda; emitir certificado de participação para os Orientadores, estudantes bolsistas e eventuais voluntários.
 
-Do(a) Orientador(a): Orientar, monitorar e acompanhar as atividades de cada bolsista; encaminhar à CDTIV/FACITEC os relatórios mensais do projeto até o quinto dia útil do mês subsequente; solicitar à CDTIV/FACITEC a suspensão do pagamento e o desligamento do estudante bolsista que descumprir o plano de trabalho; entregar à CDTIV/FACITEC, no prazo de até 60 (sessenta) dias após o encerramento do PibicJr, o relatório final do projeto; produzir junto com os estudantes todo material necessário para apresentação do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal.
+Do(a) Orientador(a): Orientar, monitorar e acompanhar as atividades de cada bolsista; encaminhar à CDTIV/FACITEC os relatórios mensais do projeto até o quinto dia útil do mês subsequente; solicitar à CDTIV/FACITEC a suspensão do pagamento e o desligamento do estudante bolsista que descumprir o plano de trabalho; entregar à CDTIV/FACITEC, no prazo de até 60 (sessenta) dias após o encerramento do {{nome_programa}}, o relatório final do projeto; produzir junto com os estudantes todo material necessário para apresentação do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal.
 
 Do(a) Estudante Bolsista: Cumprir todas as atividades previstas no plano de trabalho; apresentar os resultados do projeto, caso seja convocado; ter frequência mínima mensal de 75% nas atividades do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal; efetuar o cadastro junto ao Banco autorizado. O estudante bolsista formalizará sua participação mediante assinatura do Termo de Adesão. Para os menores de dezoito anos, o Termo deve ser assinado pelo responsável.
 
@@ -122,12 +123,12 @@ function calcIdade(dataNasc) {
   return age
 }
 
-function calcStatus({ orientador, bolsistas, contrato }) {
+function calcStatus({ orientador, bolsistas, contrato }, maxBolsistas) {
   if (contrato?.status === "assinado") return "assinado"
   if (contrato?.status === "emitido")  return "emitido"
   const docsOk = orientador?.cpf && orientador?.doc_identidade && orientador?.doc_diploma
   if (!docsOk) return "aguardando_dados"
-  if ((bolsistas?.length ?? 0) < 8) return "aguardando_equipe"
+  if ((bolsistas?.length ?? 0) < maxBolsistas) return "aguardando_equipe"
   return "pronto"
 }
 
@@ -181,10 +182,15 @@ function porExtenso(valor) {
   return res
 }
 
-function gerarTextoContrato(projeto, orientador, dados) {
+const EXTENSO_BOLSISTAS = { 5: "cinco", 8: "oito" }
+function qtdBolsistasExtenso(n) {
+  return `${String(n).padStart(2, "0")} (${EXTENSO_BOLSISTAS[n] ?? n})`
+}
+
+function gerarTextoContrato(projeto, orientador, dados, nomePrograma = "PIBIC Jr", maxBolsistas = 8) {
   const vOri    = Number(dados.valor_bolsa_orientador || 1000)
   const vEst    = Number(dados.valor_bolsa_estudante  || 300)
-  const vGlobal = vOri * 6 + 8 * vEst * 6
+  const vGlobal = vOri * 6 + maxBolsistas * vEst * 6
 
   const endParts = orientador
     ? [orientador.logradouro, orientador.numero, orientador.complemento,
@@ -224,6 +230,8 @@ function gerarTextoContrato(projeto, orientador, dados) {
     "{{dia_assinatura}}":                dataObj.dia,
     "{{mes_assinatura}}":                dataObj.mes,
     "{{ano_assinatura}}":                dataObj.ano,
+    "{{nome_programa}}":                 nomePrograma,
+    "{{qtd_bolsistas_extenso}}":         qtdBolsistasExtenso(maxBolsistas),
   }
 
   let texto = TEMPLATE_CONTRATO
@@ -339,8 +347,10 @@ const CONTRATO_INICIAL = {
 
 // ── TELA PRINCIPAL ───────────────────────────────────────────────────────────
 export default function ContratoDetalhe() {
-  const { ano = "2026", projetoId } = useParams()
+  const { ano = "2026", programa: slug = "pibic-jr", projetoId } = useParams()
   const navigate = useNavigate()
+  const programa = getPrograma(slug)
+  const maxBolsistas = getMaxBolsistas(programa?.programaId)
 
   const [projeto,        setProjeto]        = useState(null)
   const [orientador,     setOrientador]     = useState(null)
@@ -507,7 +517,7 @@ export default function ContratoDetalhe() {
   }
 
   function handleRegenerarTexto() {
-    const texto = gerarTextoContrato(projeto, orientador, dados)
+    const texto = gerarTextoContrato(projeto, orientador, dados, programa?.nome, maxBolsistas)
     handleDadosChange("conteudo_editavel", texto)
   }
 
@@ -734,10 +744,10 @@ export default function ContratoDetalhe() {
   }
 
   // ── VALORES COMPUTADOS ────────────────────────────────────────────────────
-  const status = loading ? null : calcStatus({ orientador, bolsistas, contrato })
+  const status = loading ? null : calcStatus({ orientador, bolsistas, contrato }, maxBolsistas)
   const dadosOk = calcDadosContratoOk(dados)
   const prontoParaPDF = dadosOk && !!dados.conteudo_editavel.trim()
-  const valorGlobal = (Number(dados.valor_bolsa_orientador || 0) * 6) + (8 * Number(dados.valor_bolsa_estudante || 0) * 6)
+  const valorGlobal = (Number(dados.valor_bolsa_orientador || 0) * 6) + (maxBolsistas * Number(dados.valor_bolsa_estudante || 0) * 6)
   const endereco = orientador
     ? [orientador.logradouro, orientador.numero, orientador.complemento,
        orientador.bairro, orientador.municipio, orientador.uf].filter(Boolean).join(", ")
@@ -761,7 +771,7 @@ export default function ContratoDetalhe() {
       {/* ── HEADER ─────────────────────────────────────────────────────────── */}
       <div style={{ background: C.header, padding: "20px 32px 24px" }}>
         <button
-          onClick={() => navigate(`/admin/pibic-jr/${ano}/m2/contratos`)}
+          onClick={() => navigate(`/admin/${slug}/${ano}/m2/contratos`)}
           style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.45)", fontSize: 13, padding: "0 0 14px", display: "flex", alignItems: "center", gap: 6 }}
         >
           ← Voltar aos contratos
@@ -820,7 +830,7 @@ export default function ContratoDetalhe() {
         </Card>
 
         {/* 2 — Equipe de bolsistas */}
-        <Card title={`Equipe de bolsistas — ${bolsistas.length} / 8`}>
+        <Card title={`Equipe de bolsistas — ${bolsistas.length} / ${maxBolsistas}`}>
           {bolsistas.length === 0 ? (
             <p style={{ fontSize: 13, color: C.grayL, margin: 0 }}>Nenhum bolsista cadastrado.</p>
           ) : (
@@ -968,7 +978,7 @@ export default function ContratoDetalhe() {
                 }}>
                   R$ {fmtBRL(valorGlobal)}
                   <span style={{ fontSize: 11, fontWeight: 400, color: C.grayL }}>
-                    ({dados.valor_bolsa_orientador}×6 parcelas + 8 × {dados.valor_bolsa_estudante}×6 parcelas)
+                    ({dados.valor_bolsa_orientador}×6 parcelas + {maxBolsistas} × {dados.valor_bolsa_estudante}×6 parcelas)
                     = {porExtenso(valorGlobal)}
                   </span>
                 </div>

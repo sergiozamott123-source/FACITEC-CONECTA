@@ -155,9 +155,14 @@ function App() {
         <Route path="/login/secretaria/redefinir-senha" element={<RedefinirSenhaSecretaria />} />
         {/* Hub de programas */}
         <Route path="/hub" element={<HubProgramas />} />
-        {/* PIBIC Jr — visão geral e módulos */}
-        <Route path="/pibic-jr" element={<PibicJr />} />
-        <Route path="/pibic-jr/selecao" element={<SelecaoM1 />} />
+        {/* Programas — visão geral e módulos.
+            Rotas explícitas por slug (em vez de /:programa) para não colidir
+            em especificidade com o catch-all /* da área administrativa mais
+            abaixo, que hospeda /edicoes, /avaliacoes, /contratos etc. */}
+        <Route path="/pibic-jr" element={<PibicJr slug="pibic-jr" />} />
+        <Route path="/pibic-jr/selecao" element={<SelecaoM1 slug="pibic-jr" />} />
+        <Route path="/profic-jr" element={<PibicJr slug="profic-jr" />} />
+        <Route path="/profic-jr/selecao" element={<SelecaoM1 slug="profic-jr" />} />
         {/* redirect de URL antiga */}
         <Route path="/painel" element={<Navigate to="/pibic-jr" replace />} />
         {/* Área administrativa — restrita à Secretaria executiva */}
@@ -170,28 +175,41 @@ function App() {
                   <Routes>
                     <Route path="/admin/painel" element={<Dashboard />} />
                     <Route path="/edicoes" element={<Edicoes />} />
-                    <Route path="/avaliacoes" element={<Avaliacoes />} />
+                    {/* Órfãs — não linkadas em nenhum menu hoje (verificado via grep),
+                        mantidas na URL antiga em vez de migradas para não adivinhar intenção. */}
                     <Route path="/equipes" element={<Equipes />} />
                     <Route path="/contratos" element={<Contratos />} />
-                    <Route path="/bolsistas" element={<Bolsistas />} />
-                    <Route path="/financeiro" element={<Financeiro />} />
-                    <Route path="/historico" element={<Historico />} />
-                    <Route path="/classificacao" element={<Classificacao />} />
-                    <Route path="/recursos" element={<ConvocacaoRecurso />} />
-                    <Route path="/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
-                    <Route path="/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                     <Route path="/importacao" element={<Importacao />} />
                     <Route path="/admin" element={<HomeAdmin />} />
                     <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
                     <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
                     <Route path="/admin/gerenciar-usuarios-orientadores" element={<GerenciarUsuariosOrientadores />} />
                     <Route path="/admin/relatorios-mensais" element={<RelatoriosMensais />} />
-                    <Route path="/admin/pibic-jr/:ano/painel" element={<PainelModulo1 />} />
-                    <Route path="/admin/pibic-jr/:ano/configuracao" element={<ConfiguracaoInscricao />} />
-                    <Route path="/admin/pibic-jr/:ano/m2" element={<SuperpainelM2 />} />
-                    <Route path="/admin/pibic-jr/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
-                    <Route path="/admin/pibic-jr/:ano/m2/contratos" element={<ContratosPainel />} />
-                    <Route path="/admin/pibic-jr/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
+                    {/* Redirects de compatibilidade — URLs antigas linkadas em favoritos/e-mails
+                        continuam funcionando, apontando para o programa/edição padrão. */}
+                    <Route path="/avaliacoes" element={<Navigate to="/admin/pibic-jr/2026/avaliacoes" replace />} />
+                    <Route path="/classificacao" element={<Navigate to="/admin/pibic-jr/2026/classificacao" replace />} />
+                    <Route path="/recursos" element={<Navigate to="/admin/pibic-jr/2026/recursos" replace />} />
+                    <Route path="/bolsistas" element={<Navigate to="/admin/pibic-jr/2026/bolsistas" replace />} />
+                    <Route path="/financeiro" element={<Navigate to="/admin/pibic-jr/2026/financeiro" replace />} />
+                    <Route path="/historico" element={<Navigate to="/admin/pibic-jr/2026/historico" replace />} />
+                    {/* Generalizado por :programa — 4+ segmentos, não colide com
+                        as rotas admin de 1-2 segmentos acima. URLs antigas
+                        /admin/pibic-jr/:ano/... continuam funcionando (programa="pibic-jr"). */}
+                    <Route path="/admin/:programa/:ano/painel" element={<PainelModulo1 />} />
+                    <Route path="/admin/:programa/:ano/configuracao" element={<ConfiguracaoInscricao />} />
+                    <Route path="/admin/:programa/:ano/avaliacoes" element={<Avaliacoes />} />
+                    <Route path="/admin/:programa/:ano/classificacao" element={<Classificacao />} />
+                    <Route path="/admin/:programa/:ano/recursos" element={<ConvocacaoRecurso />} />
+                    <Route path="/admin/:programa/:ano/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
+                    <Route path="/admin/:programa/:ano/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
+                    <Route path="/admin/:programa/:ano/bolsistas" element={<Bolsistas />} />
+                    <Route path="/admin/:programa/:ano/financeiro" element={<Financeiro />} />
+                    <Route path="/admin/:programa/:ano/historico" element={<Historico />} />
+                    <Route path="/admin/:programa/:ano/m2" element={<SuperpainelM2 />} />
+                    <Route path="/admin/:programa/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
+                    <Route path="/admin/:programa/:ano/m2/contratos" element={<ContratosPainel />} />
+                    <Route path="/admin/:programa/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
                   </Routes>
                 </Layout>
               </RequireAcessoSecretaria>

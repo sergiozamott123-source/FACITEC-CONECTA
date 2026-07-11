@@ -53,7 +53,7 @@ export function PortalOrientadorProvider({ children }) {
 
     const { data: prData } = await supabase
       .from('projeto')
-      .select('*')
+      .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
       .eq('orientador_id', orData.id)
       .eq('status', 'selecionado')
       .maybeSingle()

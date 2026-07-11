@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable, useCrud } from '@/hooks/useTable'
 import { bolsistaService, orientadorService, projetoService } from '@/lib/db'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const TIPO_OPTS = ['IC', 'mestrado', 'doutorado', 'pos_doutorado']
 const MODAL_OPTS = ['presencial', 'remoto', 'hibrido']
@@ -171,13 +172,15 @@ function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete }) {
 }
 
 export function Bolsistas() {
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
   const [tab, setTab] = useState('bolsistas')
   const [query, setQuery] = useState('')
 
-  const fetchB = useCallback(() => bolsistaService.list(), [])
-  const fetchO = useCallback(() => orientadorService.list(), [])
-  const fetchP = useCallback(() => projetoService.listAll(), [])
-  const fetchOAll = useCallback(() => orientadorService.listAll(), [])
+  const fetchB = useCallback(() => bolsistaService.list(edicaoId), [edicaoId])
+  const fetchO = useCallback(() => orientadorService.list(edicaoId), [edicaoId])
+  const fetchP = useCallback(() => projetoService.list(edicaoId), [edicaoId])
+  const fetchOAll = useCallback(() => orientadorService.list(edicaoId), [edicaoId])
 
   const { data: bolsistas, loading: bLoading, error: bError, reload: bReload } = useTable(fetchB)
   const { data: orientadores, loading: oLoading, error: oError, reload: oReload } = useTable(fetchO)

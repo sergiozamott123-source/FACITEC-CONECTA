@@ -2,13 +2,14 @@ import { Bell, ChevronRight, Search, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAdmin } from '@/contexts/AdminContext'
+import { PROGRAMAS } from '@/lib/programas'
 
 const PAGE_NAMES = [
   { pattern: /^\/admin\/painel$/, label: 'Painel' },
   { pattern: /^\/admin$/, label: 'Programas' },
-  { pattern: /^\/admin\/pibic-jr\/[^/]+\/painel/, label: 'Painel do PIBIC Jr' },
-  { pattern: /^\/admin\/pibic-jr\/[^/]+\/configuracao/, label: 'Ficha de inscrição' },
-  { pattern: /^\/admin\/pibic-jr\/[^/]+\/m2\/contratos/, label: 'Contratos' },
+  { pattern: /^\/admin\/[^/]+\/[^/]+\/painel/, label: 'Painel do programa' },
+  { pattern: /^\/admin\/[^/]+\/[^/]+\/configuracao/, label: 'Ficha de inscrição' },
+  { pattern: /^\/admin\/[^/]+\/[^/]+\/m2\/contratos/, label: 'Contratos' },
   { pattern: /^\/admin\/configuracao-inscricao/, label: 'Configurações do sistema' },
   { pattern: /^\/admin\/gerenciar-usuarios-orientadores/, label: 'Orientadores' },
   { pattern: /^\/admin\/relatorios-mensais/, label: 'Obrigações do orientador' },
@@ -31,12 +32,10 @@ function getPageLabel(pathname) {
 
 const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
 
-const PROGRAMA_LABELS = { PIBICJR: 'PIBIC Jr' }
-
 export function Header({ pathname }) {
   const { programaSelecionado, edicaoSelecionada } = useAdmin()
 
-  const programaLabel = PROGRAMA_LABELS[programaSelecionado] ?? programaSelecionado
+  const programaLabel = PROGRAMAS.find((p) => p.programaId === programaSelecionado)?.nome ?? programaSelecionado
   const edicaoLabel = edicaoSelecionada
     ? `Edição ${edicaoSelecionada.ano_referencia}`
     : 'Edição'

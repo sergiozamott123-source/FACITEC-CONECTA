@@ -42,10 +42,13 @@ export function ConfiguracaoInscricao() {
 
   useEffect(() => {
     async function fetchEdicao() {
+      // TODO(Fase 3): trocar 'PIBICJR' fixo pelo programa resolvido via rota (:programaSlug).
+      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir.
       const { data: edicaoData, error } = await supabase
         .from('edicao')
         .select('*')
         .eq('status', 'ativo')
+        .or('programa_id.eq.PIBICJR,programa_id.is.null')
         .order('ano_referencia', { ascending: false })
         .limit(1)
         .single()

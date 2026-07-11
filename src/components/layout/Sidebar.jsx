@@ -29,17 +29,15 @@ import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
+import { PROGRAMAS as PROGRAMAS_REGISTRO } from '@/lib/programas'
 
 // URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
 const URL_PORTAL_PUBLICO = import.meta.env.VITE_URL_PORTAL_PUBLICO || 'https://facitecnews.com.br'
 
-// ── Programa dropdown data ──────────────────────────────────────────────────
-const PROGRAMAS = [
-  { id: 'PIBICJR', label: 'PIBIC Jr', cor: '#534AB7', ativo: true },
-  { id: 'PROFICJR', label: 'PROFIC Jr', ativo: false },
-  { id: 'PROFICJOVEM', label: 'PROFIC Jovem', ativo: false },
-  { id: 'POSGRAD', label: 'Pós-graduação', ativo: false },
-]
+// ── Programa dropdown data — deriva de src/lib/programas.js (fonte única) ──
+const PROGRAMAS = PROGRAMAS_REGISTRO.map((p) => ({ id: p.programaId, slug: p.slug, label: p.nome, cor: p.cor, ativo: p.ativo }))
+
+const ICONS_OUTROS_PROGRAMAS = { PROFICJR: FlaskConical, PROFICJOVEM: BookOpen, POSGRADUACAO: GraduationCap }
 
 // ── Rotas do nível Sistema (fora de qualquer programa) ──────────────────────
 const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
@@ -76,16 +74,16 @@ function buildCategoriasSistema() {
 }
 
 // ── Menu — nível Programa/Edição ─────────────────────────────────────────────
-function buildCategoriasPrograma(ano) {
+function buildCategoriasPrograma(ano, slug, programaNome) {
   return [
     {
       titulo: 'Visão geral',
       itens: [
-        { label: 'Painel do PIBIC Jr', href: `/admin/pibic-jr/${ano}/painel`, icon: LayoutDashboard, exact: true },
+        { label: `Painel do ${programaNome}`, href: `/admin/${slug}/${ano}/painel`, icon: LayoutDashboard, exact: true },
         {
           label: 'Configurações', icon: Settings2, group: true,
           itens: [
-            { label: 'Ficha de inscrição', href: `/admin/pibic-jr/${ano}/configuracao`, exact: true },
+            { label: 'Ficha de inscrição', href: `/admin/${slug}/${ano}/configuracao`, exact: true },
           ],
         },
       ],
@@ -94,35 +92,33 @@ function buildCategoriasPrograma(ano) {
       titulo: 'Processo seletivo',
       itens: [
         { label: 'Inscritos', href: '/inscricao', icon: ClipboardList, external: true },
-        { label: 'Avaliação', href: '/avaliacoes', icon: ClipboardCheck },
-        { label: 'Classificação', href: '/classificacao', icon: Trophy },
-        { label: 'Recursos', href: '/recursos', icon: Inbox },
+        { label: 'Avaliação', href: `/admin/${slug}/${ano}/avaliacoes`, icon: ClipboardCheck },
+        { label: 'Classificação', href: `/admin/${slug}/${ano}/classificacao`, icon: Trophy },
+        { label: 'Recursos', href: `/admin/${slug}/${ano}/recursos`, icon: Inbox },
       ],
     },
     {
       titulo: 'Orientadores e bolsistas',
       itens: [
         { label: 'Orientadores', href: '/admin/gerenciar-usuarios-orientadores', icon: Users },
-        { label: 'Bolsistas', href: '/bolsistas', icon: GraduationCap },
-        { label: 'Contratos', href: `/admin/pibic-jr/${ano}/m2/contratos`, icon: FileSignature },
+        { label: 'Bolsistas', href: `/admin/${slug}/${ano}/bolsistas`, icon: GraduationCap },
+        { label: 'Contratos', href: `/admin/${slug}/${ano}/m2/contratos`, icon: FileSignature },
         { label: 'Obrigações do orientador', href: '/admin/relatorios-mensais', icon: FileCheck2 },
       ],
     },
     {
       titulo: 'Relatórios e financeiro',
       itens: [
-        { label: 'Central de relatórios', href: '/historico', icon: BarChart2 },
-        { label: 'Financeiro', href: '/financeiro', icon: DollarSign },
+        { label: 'Central de relatórios', href: `/admin/${slug}/${ano}/historico`, icon: BarChart2 },
+        { label: 'Financeiro', href: `/admin/${slug}/${ano}/financeiro`, icon: DollarSign },
       ],
     },
   ]
 }
 
-const OUTROS_PROGRAMAS = [
-  { label: 'PROFIC Jr', icon: FlaskConical },
-  { label: 'PROFIC Jovem', icon: BookOpen },
-  { label: 'Pós-graduação', icon: GraduationCap },
-]
+const OUTROS_PROGRAMAS = PROGRAMAS
+  .filter((p) => !p.ativo)
+  .map((p) => ({ label: p.label, icon: ICONS_OUTROS_PROGRAMAS[p.id] ?? FlaskConical }))
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function isItemActive(pathname, item) {
@@ -298,12 +294,15 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const location = useLocation()
   const navigate = useNavigate()
-  const { edicoes, edicaoSelecionada, setEdicaoSelecionada } = useAdmin()
+  const { edicoes, edicaoSelecionada, setEdicaoSelecionada, programaSelecionado } = useAdmin()
   const { logout } = useSecretaria()
 
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
   const isSistema = isSistemaPath(location.pathname)
-  const categorias = isSistema ? buildCategoriasSistema() : buildCategoriasPrograma(ano)
+  const programaAtual = PROGRAMAS.find((p) => p.id === programaSelecionado)
+  const categorias = isSistema
+    ? buildCategoriasSistema()
+    : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa')
 
   return (
     <aside
@@ -331,7 +330,7 @@ export function Sidebar() {
       {!collapsed && !isSistema && (
         <div className="px-2 pt-3 pb-1 space-y-1">
           {/* Programa */}
-          <Dropdown label="PIBIC Jr" icon={FlaskConical} collapsed={collapsed}>
+          <Dropdown label={programaAtual?.label ?? 'Programa'} icon={FlaskConical} collapsed={collapsed}>
             {PROGRAMAS.map((p) => (
               <button
                 key={p.id}

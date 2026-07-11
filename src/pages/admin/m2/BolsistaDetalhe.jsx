@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
+import { getPrograma } from '@/lib/programas'
 import {
   ChevronRight, ChevronLeft, ExternalLink, Download, FileText,
   CheckCircle, Clock, AlertTriangle, X,
@@ -141,7 +142,7 @@ function DocRow({ label, reference, url, filename }) {
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function BolsistaDetalhe() {
-  const { ano = '2026', codigoBolsista } = useParams()
+  const { ano = '2026', programa: slug = 'pibic-jr', codigoBolsista } = useParams()
   const navigate = useNavigate()
 
   const [bolsista,      setBolsista]      = useState(null)
@@ -373,7 +374,7 @@ export default function BolsistaDetalhe() {
 
       doc.setFont('helvetica', 'normal')
       y = addJustified(
-        'O descumprimento das obrigações previstas na Cláusula Primeira acarretará no desligamento do estudante bolsista do projeto e na impossibilidade de participação no Programa PibicJr por 12 (doze) meses.',
+        `O descumprimento das obrigações previstas na Cláusula Primeira acarretará no desligamento do estudante bolsista do projeto e na impossibilidade de participação no Programa ${getPrograma(slug)?.nome ?? 'PIBIC Jr'} por 12 (doze) meses.`,
         mL, y, usableW, lineH,
       )
       y += lineH * 2.5
@@ -456,7 +457,7 @@ export default function BolsistaDetalhe() {
         <div className="text-center">
           <p className="text-red-600 text-sm font-medium">{error ?? 'Bolsista não encontrado.'}</p>
           <button
-            onClick={() => navigate(`/admin/pibic-jr/${ano}/m2`)}
+            onClick={() => navigate(`/admin/${slug}/${ano}/m2`)}
             className="mt-3 text-xs text-blue-600 hover:underline"
           >
             ← Voltar ao Superpainel
@@ -504,7 +505,7 @@ export default function BolsistaDetalhe() {
 
         {/* Botão fechar (X) */}
         <button
-          onClick={() => navigate(`/admin/pibic-jr/${ano}/m2`)}
+          onClick={() => navigate(`/admin/${slug}/${ano}/m2`)}
           title="Fechar — voltar ao Superpainel"
           className="absolute top-4 right-6 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors"
         >
@@ -514,7 +515,7 @@ export default function BolsistaDetalhe() {
         {/* Breadcrumb */}
         <nav className="flex items-center gap-1.5 text-xs text-white/40 mb-5 flex-wrap">
           <button
-            onClick={() => navigate(`/admin/pibic-jr/${ano}/m2`)}
+            onClick={() => navigate(`/admin/${slug}/${ano}/m2`)}
             className="hover:text-white/70 transition-colors"
           >
             M2 — Organização
@@ -529,7 +530,7 @@ export default function BolsistaDetalhe() {
         <div className="flex items-center gap-3">
           {/* Seta anterior */}
           <button
-            onClick={() => prevColega && navigate(`/admin/pibic-jr/${ano}/m2/bolsista/${prevColega.codigo_bolsista}`)}
+            onClick={() => prevColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${prevColega.codigo_bolsista}`)}
             disabled={!prevColega}
             title={prevColega ? `← ${prevColega.nome_completo}` : 'Primeiro bolsista'}
             className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
@@ -564,7 +565,7 @@ export default function BolsistaDetalhe() {
 
           {/* Seta próximo */}
           <button
-            onClick={() => nextColega && navigate(`/admin/pibic-jr/${ano}/m2/bolsista/${nextColega.codigo_bolsista}`)}
+            onClick={() => nextColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${nextColega.codigo_bolsista}`)}
             disabled={!nextColega}
             title={nextColega ? `${nextColega.nome_completo} →` : 'Último bolsista'}
             className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors mr-8 transition-colors"

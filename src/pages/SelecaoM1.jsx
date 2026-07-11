@@ -1,5 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { ClipboardList } from "lucide-react"
+import { getPrograma } from "@/lib/programas"
 import avaliacoesImg from "../assets/programas/avaliacoes_square.png"
 import classificacaoImg from "../assets/programas/classificacao_square.png"
 import convocacaoImg from "../assets/programas/convocacao_square.png"
@@ -11,29 +12,31 @@ const C = {
   coral:  "#993C1D", coralBg:  "#FAECE7",
 }
 
-const FERRAMENTAS = [
-  {
-    img: avaliacoesImg,
-    titulo: "Avaliações",
-    desc: "Painel de progresso dos avaliadores e status das avaliações por projeto",
-    cor: C.purple, corBg: C.purpleBg,
-    rota: "/avaliacoes",
-  },
-  {
-    img: classificacaoImg,
-    titulo: "Classificação",
-    desc: "Ranking geral dos projetos com notas, consenso e classificação detalhada",
-    cor: C.teal, corBg: C.tealBg,
-    rota: "/classificacao",
-  },
-  {
-    img: convocacaoImg,
-    titulo: "Convocação de Recursos",
-    desc: "Gestão dos recursos interpostos pelos candidatos após o resultado",
-    cor: C.coral, corBg: C.coralBg,
-    rota: "/recursos",
-  },
-]
+function buildFerramentas(slug) {
+  return [
+    {
+      img: avaliacoesImg,
+      titulo: "Avaliações",
+      desc: "Painel de progresso dos avaliadores e status das avaliações por projeto",
+      cor: C.purple, corBg: C.purpleBg,
+      rota: `/admin/${slug}/2026/avaliacoes`,
+    },
+    {
+      img: classificacaoImg,
+      titulo: "Classificação",
+      desc: "Ranking geral dos projetos com notas, consenso e classificação detalhada",
+      cor: C.teal, corBg: C.tealBg,
+      rota: `/admin/${slug}/2026/classificacao`,
+    },
+    {
+      img: convocacaoImg,
+      titulo: "Convocação de Recursos",
+      desc: "Gestão dos recursos interpostos pelos candidatos após o resultado",
+      cor: C.coral, corBg: C.coralBg,
+      rota: `/admin/${slug}/2026/recursos`,
+    },
+  ]
+}
 
 function FerramentaCard({ f }) {
   const navigate = useNavigate()
@@ -75,7 +78,10 @@ function FerramentaCard({ f }) {
   )
 }
 
-export default function SelecaoM1() {
+export default function SelecaoM1({ slug = "pibic-jr" }) {
+  const programaSlug = slug
+  const programa = getPrograma(programaSlug)
+
   return (
     <div style={{
       minHeight: "100vh", background: "#F8FAFC",
@@ -85,11 +91,11 @@ export default function SelecaoM1() {
       {/* Breadcrumb */}
       <div style={{ background: C.navy, padding: "11px 32px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ maxWidth: 960, margin: "0 auto" }}>
-          <Link to="/pibic-jr" style={{
+          <Link to={`/${programaSlug}`} style={{
             color: "rgba(255,255,255,0.45)", fontSize: 13,
             textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 6,
           }}>
-            ← PIBIC Jr
+            ← {programa?.nome ?? 'Programa'}
           </Link>
         </div>
       </div>
@@ -110,7 +116,7 @@ export default function SelecaoM1() {
                 fontSize: 10, fontWeight: 700, textTransform: "uppercase",
                 letterSpacing: "0.1em", color: "#AFA9EC", marginBottom: 5,
               }}>
-                PIBIC Jr · Edição 2026
+                {programa?.nome ?? 'Programa'} · Edição 2026
               </div>
               <h1 style={{ fontSize: 22, fontWeight: 700, color: "#fff", margin: 0 }}>
                 M1 · Seleção
@@ -129,7 +135,7 @@ export default function SelecaoM1() {
           Ferramentas administrativas
         </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {FERRAMENTAS.map(f => <FerramentaCard key={f.rota} f={f} />)}
+          {buildFerramentas(programaSlug).map(f => <FerramentaCard key={f.rota} f={f} />)}
         </div>
       </div>
     </div>

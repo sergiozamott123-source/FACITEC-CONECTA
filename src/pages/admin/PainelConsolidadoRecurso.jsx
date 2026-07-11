@@ -20,7 +20,7 @@ function tipoIcon(tipo) {
 }
 
 export function PainelConsolidadoRecurso() {
-  const { recursoId } = useParams()
+  const { recursoId, programa, ano } = useParams()
   const navigate = useNavigate()
 
   const [recurso,        setRecurso]        = useState(null)
@@ -234,7 +234,7 @@ export function PainelConsolidadoRecurso() {
       <div className="flex items-start gap-3">
         <Button
           variant="ghost" size="sm"
-          onClick={() => navigate('/recursos')}
+          onClick={() => navigate(`/admin/${programa}/${ano}/recursos`)}
           className="gap-1 -ml-1 mt-0.5 shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -441,7 +441,7 @@ export function PainelConsolidadoRecurso() {
         <span title={!todosResponderam ? 'Disponível quando todos os convocados responderem' : undefined}>
           <Button
             disabled={!todosResponderam}
-            onClick={() => navigate(`/recursos/${recursoId}/decisao`)}
+            onClick={() => navigate(`/admin/${programa}/${ano}/recursos/${recursoId}/decisao`)}
             className="gap-2"
           >
             <Scale className="w-4 h-4" />

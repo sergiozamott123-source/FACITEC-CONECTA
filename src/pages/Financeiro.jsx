@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable, useCrud } from '@/hooks/useTable'
 import { pagamentoService, bolsistaService, edicaoService } from '@/lib/db'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const STATUS_OPTS = ['pendente', 'agendado', 'pago', 'cancelado', 'devolvido']
 const STATUS_VARIANT = { pago: 'success', pendente: 'warning', agendado: 'secondary', cancelado: 'destructive', devolvido: 'destructive' }
@@ -57,9 +58,11 @@ function PagamentoForm({ value, onChange, bolsistas, edicoes }) {
 }
 
 export function Financeiro() {
-  const fetchP = useCallback(() => pagamentoService.list(), [])
+  const { edicaoSelecionada, programaSelecionado } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+  const fetchP = useCallback(() => pagamentoService.list(edicaoId), [edicaoId])
   const fetchB = useCallback(() => bolsistaService.listAll(), [])
-  const fetchE = useCallback(() => edicaoService.list(), [])
+  const fetchE = useCallback(() => edicaoService.list(programaSelecionado), [programaSelecionado])
 
   const { data, loading, error, reload } = useTable(fetchP)
   const { data: bolsistas } = useTable(fetchB)

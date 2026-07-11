@@ -184,7 +184,7 @@ export function exportarExcelFinanceiro(linhas, ano = '2026') {
 
 // ── Exportação em PDF ─────────────────────────────────────────────────────
 
-export function exportarPDFFinanceiro(linhas, ano = '2026') {
+export function exportarPDFFinanceiro(linhas, ano = '2026', nomePrograma = 'PIBIC Jr') {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 20, mR = 20, mT = 26, mB = 20
   const pgW = 210, pgH = 297
@@ -248,7 +248,7 @@ export function exportarPDFFinanceiro(linhas, ano = '2026') {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(12)
   doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Programa Institucional de Iniciação Científica Júnior — PibicJr`, pgW / 2, y, { align: 'center' })
+  doc.text(`Programa ${nomePrograma}`, pgW / 2, y, { align: 'center' })
   y += 7
   doc.text(`Edição ${ano}`, pgW / 2, y, { align: 'center' })
   y += 20

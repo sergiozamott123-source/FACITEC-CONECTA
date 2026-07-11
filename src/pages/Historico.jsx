@@ -8,6 +8,7 @@ import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable, useCrud } from '@/hooks/useTable'
 import { relatorioMensalService, importacaoLogService, projetoService, orientadorService } from '@/lib/db'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const R_STATUS = ['pendente', 'enviado', 'aprovado', 'reprovado']
 const STATUS_VARIANT = { aprovado: 'success', pendente: 'warning', enviado: 'default', reprovado: 'destructive' }
@@ -48,11 +49,13 @@ function RelatorioForm({ value, onChange, projetos, orientadores }) {
 }
 
 export function Historico() {
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
   const [tab, setTab] = useState('relatorios')
 
-  const fetchR = useCallback(() => relatorioMensalService.list(), [])
+  const fetchR = useCallback(() => relatorioMensalService.list(edicaoId), [edicaoId])
   const fetchI = useCallback(() => importacaoLogService.list(), [])
-  const fetchP = useCallback(() => projetoService.listAll(), [])
+  const fetchP = useCallback(() => projetoService.list(edicaoId), [edicaoId])
   const fetchO = useCallback(() => orientadorService.listAll(), [])
 
   const { data: relatorios, loading: rLoading, error: rError, reload: rReload } = useTable(fetchR)

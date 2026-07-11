@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
+import { useAdmin } from '@/contexts/AdminContext'
+import { getPrograma, getMaxBolsistas } from '@/lib/programas'
 import { Bell, FileText, FileCheck, ChevronRight, RefreshCw, Users, AlertCircle, CheckCircle2, Scroll, Download, FileSpreadsheet, MessageSquarePlus } from 'lucide-react'
 import { buscarDadosRelatorioFinanceiro, exportarExcelFinanceiro, exportarPDFFinanceiro } from '@/lib/relatorioFinanceiro'
 import { SolicitacoesModal } from './SolicitacoesModal'
@@ -135,10 +137,11 @@ function StatusBolsistaBadge({ status }) {
   )
 }
 
-function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
+function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
   const navigate = useNavigate()
   const { orientador, projeto, bolsistas, contrato } = item
   const steps = calcSteps(item)
+  const maxBolsistas = getMaxBolsistas(getPrograma(slug)?.programaId)
   const completoCount = bolsistas.filter(b => calcStatusBolsista(b) === 'completo').length
   const contratoGerado = contrato?.status === 'emitido' || contrato?.status === 'assinado'
   const contratoLabel = contrato?.status ? (CONTRACT_LABELS[contrato.status] ?? contrato.status) : '—'
@@ -219,7 +222,7 @@ function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
               return (
                 <div
                   key={b.id}
-                  onClick={() => clicavel && navigate(`/admin/pibic-jr/${ano}/m2/bolsista/${b.codigo_bolsista}`)}
+                  onClick={() => clicavel && navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.codigo_bolsista}`)}
                   className={`border border-gray-100 rounded-lg p-2.5 bg-gray-50 space-y-1 transition-colors ${
                     clicavel ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-200' : ''
                   }`}
@@ -247,7 +250,7 @@ function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
           {/* Counters */}
           <div className="flex items-center gap-3 text-xs text-gray-500 flex-wrap">
             <span>
-              <span className="font-semibold text-gray-800">{bolsistas.length}</span>/8 bolsistas
+              <span className="font-semibold text-gray-800">{bolsistas.length}</span>/{maxBolsistas} bolsistas
             </span>
             <span>
               <span className="font-semibold text-gray-800">{completoCount}</span> docs completos
@@ -270,7 +273,7 @@ function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
               Avisar
             </button>
             <button
-              onClick={() => projeto && navigate(`/admin/pibic-jr/${ano}/m2/contratos/${projeto.id}`)}
+              onClick={() => projeto && navigate(`/admin/${slug}/${ano}/m2/contratos/${projeto.id}`)}
               disabled={!projeto}
               className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
@@ -294,8 +297,11 @@ function OrientadorCard({ item, ano, onGerarRelatorio, gerando }) {
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function SuperpainelM2() {
-  const { ano = '2026' } = useParams()
+  const { ano = '2026', programa: slug = 'pibic-jr' } = useParams()
   const navigate = useNavigate()
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+  const programa = getPrograma(slug)
 
   const [orientadores, setOrientadores] = useState([])
   const [loading, setLoading]           = useState(true)
@@ -306,31 +312,32 @@ export default function SuperpainelM2() {
   const [idsSelecionados, setIdsSelecionados]          = useState([])
   const [modalSolicitacoesAberto, setModalSolicitacoesAberto] = useState(false)
 
-  useEffect(() => { fetchDados() }, [])
+  useEffect(() => { if (edicaoId) fetchDados() }, [edicaoId])
 
   async function fetchDados() {
     setLoading(true)
     setError(null)
     try {
-      // 1 — orientadores com código atribuído
-      const { data: orientData, error: e1 } = await supabase
-        .from('orientador')
-        .select('id, nome_completo, codigo_orientador, email, cpf, doc_identidade, doc_diploma')
-        .not('codigo_orientador', 'is', null)
-        .order('codigo_orientador', { ascending: true })
-      if (e1) throw e1
-
-      if (!orientData?.length) { setOrientadores([]); setLoading(false); return }
-
-      const orientIds = orientData.map(o => o.id)
-
-      // 2 — projetos selecionados desses orientadores
+      // 1 — projetos selecionados da edição atual (fonte da verdade para "quem é desta edição")
       const { data: projData, error: e2 } = await supabase
         .from('projeto')
         .select('id, titulo, codigo, orientador_id')
-        .in('orientador_id', orientIds)
+        .eq('edicao_id', edicaoId)
         .eq('status', 'selecionado')
       if (e2) throw e2
+
+      const orientIds = [...new Set((projData ?? []).map(p => p.orientador_id).filter(Boolean))]
+      if (orientIds.length === 0) { setOrientadores([]); setLoading(false); return }
+
+      // 2 — orientadores com código atribuído, restritos aos da edição atual
+      const { data: orientData, error: e1 } = await supabase
+        .from('orientador')
+        .select('id, nome_completo, codigo_orientador, email, cpf, doc_identidade, doc_diploma')
+        .in('id', orientIds)
+        .not('codigo_orientador', 'is', null)
+        .order('codigo_orientador', { ascending: true })
+      if (e1) throw e1
+      if (!orientData?.length) { setOrientadores([]); setLoading(false); return }
 
       const projetoMap = Object.fromEntries((projData ?? []).map(p => [p.orientador_id, p]))
       const projetoIds = (projData ?? []).map(p => p.id)
@@ -407,7 +414,7 @@ export default function SuperpainelM2() {
         return
       }
       if (formato === 'excel') exportarExcelFinanceiro(linhas, ano)
-      else exportarPDFFinanceiro(linhas, ano)
+      else exportarPDFFinanceiro(linhas, ano, programa?.nome)
     } catch (err) {
       setError(`Erro ao gerar relatório: ${err.message}`)
     } finally {
@@ -441,10 +448,10 @@ export default function SuperpainelM2() {
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div style={{ background: '#1a2744' }} className="px-8 pt-6 pb-7">
         <button
-          onClick={() => navigate('/pibic-jr')}
+          onClick={() => navigate(`/${slug}`)}
           className="text-xs text-white/40 hover:text-white/70 mb-4 flex items-center gap-1.5 transition-colors"
         >
-          ← PibicJr
+          ← {programa?.nome ?? 'Programa'}
         </button>
         <div className="flex items-end justify-between gap-4 flex-wrap">
           <div>
@@ -453,7 +460,7 @@ export default function SuperpainelM2() {
             </p>
             <h1 className="text-2xl font-bold text-white leading-tight">Superpainel</h1>
             <p className="text-sm text-white/40 mt-1">
-              PibicJr · Edição {ano} · {loading ? '…' : `${totalOrientadores} orientadores`}
+              {programa?.nome ?? 'Programa'} · Edição {ano} · {loading ? '…' : `${totalOrientadores} orientadores`}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -475,7 +482,7 @@ export default function SuperpainelM2() {
               Solicitações
             </button>
             <button
-              onClick={() => navigate(`/admin/pibic-jr/${ano}/m2/contratos`)}
+              onClick={() => navigate(`/admin/${slug}/${ano}/m2/contratos`)}
               className="text-xs font-semibold text-white/70 hover:text-white border border-white/15 hover:border-white/30 rounded-lg px-3 py-1.5 transition-colors"
             >
               Ver contratos
@@ -569,7 +576,7 @@ export default function SuperpainelM2() {
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
             {orientadoresFiltrados.map(item => (
-              <OrientadorCard key={item.orientador.id} item={item} ano={ano} onGerarRelatorio={handleGerarRelatorio} gerando={gerandoRelatorio} />
+              <OrientadorCard key={item.orientador.id} item={item} ano={ano} slug={slug} onGerarRelatorio={handleGerarRelatorio} gerando={gerandoRelatorio} />
             ))}
           </div>
         )}

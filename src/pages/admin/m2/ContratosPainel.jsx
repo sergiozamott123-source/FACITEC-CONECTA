@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react"
 import { useNavigate, useParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { useAdmin } from "@/contexts/AdminContext"
+import { getPrograma, getMaxBolsistas } from "@/lib/programas"
 
 // ── PALETA ───────────────────────────────────────────────────────────────────
 const C = {
@@ -37,12 +39,12 @@ const FILTROS = [
   { key: "assinado",         label: "Assinados"       },
 ]
 
-function calcStatus(p) {
+function calcStatus(p, maxBolsistas) {
   if (p.contrato?.status === "assinado") return "assinado"
   if (p.contrato?.status === "emitido")  return "emitido"
   const docsOk = p.orientador?.cpf && p.orientador?.doc_identidade && p.orientador?.doc_diploma
   if (!docsOk) return "aguardando_dados"
-  if (p.numBolsistas < 8) return "aguardando_equipe"
+  if (p.numBolsistas < maxBolsistas) return "aguardando_equipe"
   return "pronto"
 }
 
@@ -96,8 +98,12 @@ function PillBtn({ active, onClick, children }) {
 
 // ── MAIN ─────────────────────────────────────────────────────────────────────
 export default function ContratosPainel() {
-  const { ano = "2026" } = useParams()
+  const { ano = "2026", programa: slug = "pibic-jr" } = useParams()
   const navigate = useNavigate()
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+  const programa = getPrograma(slug)
+  const maxBolsistas = getMaxBolsistas(programa?.programaId)
 
   const [projetos, setProjetos] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -105,16 +111,17 @@ export default function ContratosPainel() {
   const [filtro, setFiltro]     = useState("todos")
   const [verTodos, setVerTodos] = useState(false)
 
-  useEffect(() => { fetchDados() }, [verTodos])
+  useEffect(() => { if (edicaoId) fetchDados() }, [verTodos, edicaoId])
 
   async function fetchDados() {
     setLoading(true)
     setError(null)
     try {
-      // 1 — projetos selecionados (ou todos os inscritos, se verTodos)
+      // 1 — projetos selecionados (ou todos os inscritos, se verTodos) da edição atual
       let query = supabase
         .from("projeto")
         .select("id, titulo, codigo, orientador_id, ordem_classificacao, status")
+        .eq("edicao_id", edicaoId)
         .order("ordem_classificacao", { ascending: true })
       if (!verTodos) query = query.eq("status", "selecionado")
       const { data: projData, error: e1 } = await query
@@ -172,16 +179,16 @@ export default function ContratosPainel() {
 
   // métricas
   const porStatus = projetos.reduce((acc, p) => {
-    const s = calcStatus(p)
+    const s = calcStatus(p, maxBolsistas)
     acc[s] = (acc[s] ?? 0) + 1
     return acc
   }, {})
 
   const projetosFiltrados = filtro === "todos"
     ? projetos
-    : projetos.filter(p => calcStatus(p) === filtro)
+    : projetos.filter(p => calcStatus(p, maxBolsistas) === filtro)
 
-  const baseRoute = `/admin/pibic-jr/${ano}/m2/contratos`
+  const baseRoute = `/admin/${slug}/${ano}/m2/contratos`
 
   return (
     <div style={{
@@ -192,14 +199,14 @@ export default function ContratosPainel() {
       {/* ── HEADER ─────────────────────────────────────────────────── */}
       <div style={{ background: C.header, padding: "24px 32px 28px" }}>
         <button
-          onClick={() => navigate("/pibic-jr")}
+          onClick={() => navigate(`/${slug}`)}
           style={{
             background: "none", border: "none", cursor: "pointer",
             color: "rgba(255,255,255,0.45)", fontSize: 13, padding: "0 0 16px",
             display: "flex", alignItems: "center", gap: 6,
           }}
         >
-          ← PibicJr
+          ← {programa?.nome ?? 'Programa'}
         </button>
         <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", flexWrap: "wrap", gap: 12 }}>
           <div>
@@ -210,7 +217,7 @@ export default function ContratosPainel() {
               Contratos
             </h1>
             <p style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", margin: "4px 0 0" }}>
-              PibicJr · Edição {ano} · {loading ? "…" : `${projetos.length} projeto(s) ${verTodos ? "inscritos" : "selecionados"}`}
+              {programa?.nome ?? 'Programa'} · Edição {ano} · {loading ? "…" : `${projetos.length} projeto(s) ${verTodos ? "inscritos" : "selecionados"}`}
             </p>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -314,7 +321,7 @@ export default function ContratosPainel() {
 
             {/* linhas */}
             {projetosFiltrados.map((p, idx) => {
-              const status   = calcStatus(p)
+              const status   = calcStatus(p, maxBolsistas)
               const numDocs  = calcDocs(p.orientador)
               const pronto   = status === "pronto"
               const detailRoute = `${baseRoute}/${p.id}`
@@ -358,11 +365,11 @@ export default function ContratosPainel() {
                   <div style={{ textAlign: "center" }}>
                     <span style={{
                       fontSize: 13, fontWeight: 700,
-                      color: p.numBolsistas >= 8 ? C.green.fg : C.amber.fg,
+                      color: p.numBolsistas >= maxBolsistas ? C.green.fg : C.amber.fg,
                     }}>
                       {p.numBolsistas}
                     </span>
-                    <span style={{ fontSize: 12, color: C.grayL }}>/8</span>
+                    <span style={{ fontSize: 12, color: C.grayL }}>/{maxBolsistas}</span>
                   </div>
 
                   {/* Docs orientador */}

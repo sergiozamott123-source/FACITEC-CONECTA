@@ -3,9 +3,9 @@ import { Plus, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertTrian
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
+import { getMaxBolsistas, gerarPrefixoCodigo } from '@/lib/programas'
 
 const BUCKET = 'inscricoes'
-const MAX_BOLSISTAS = 8
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ACEITOS = '.pdf,.jpg,.jpeg,.png'
 
@@ -474,7 +474,7 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
         .eq('tipo', form.tipo)
         .eq('status', 'ativo')
       const seq = String(count).padStart(2, '0')
-      const codigo_bolsista = `PIBIC26-${numOr}-${tipoCod}${seq}`
+      const codigo_bolsista = `${gerarPrefixoCodigo(projeto?.edicao)}-${numOr}-${tipoCod}${seq}`
       await supabase.from('bolsista').update({ codigo_bolsista }).eq('id', data.id)
 
       onInserted({ ...data, codigo_bolsista })
@@ -860,6 +860,7 @@ function ChecklistEnvio({ bolsistas, orientador }) {
 
 export function OrientadorBolsistas() {
   const { orientador, projeto } = usePortalOrientador()
+  const MAX_BOLSISTAS = getMaxBolsistas(projeto?.edicao?.programa_id)
   const [bolsistas, setBolsistas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

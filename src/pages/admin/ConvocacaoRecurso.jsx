@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const TIPO_LABEL = {
   recurso_interposto: 'Recurso interposto',
@@ -29,6 +30,9 @@ function buildCriterioGroups(rcList, avList) {
 }
 
 export function ConvocacaoRecurso() {
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+
   const [recursos,        setRecursos]        = useState([])
   const [loading,         setLoading]         = useState(true)
   const [error,           setError]           = useState(null)
@@ -45,18 +49,21 @@ export function ConvocacaoRecurso() {
   const [loadingDocs,     setLoadingDocs]     = useState(true)
   const [docsError,       setDocsError]       = useState(null)
 
-  useEffect(() => { fetchRecursos() }, [])
+  useEffect(() => { if (edicaoId) fetchRecursos() }, [edicaoId])
 
   useEffect(() => {
+    if (!edicaoId) return
+    setLoadingDocs(true)
     supabase
       .from('recurso_documento')
-      .select('id, nome_arquivo, tipo, url')
+      .select('id, nome_arquivo, tipo, url, recurso:recurso_id!inner(projeto:projeto_id!inner(edicao_id))')
+      .eq('recurso.projeto.edicao_id', edicaoId)
       .then(({ data, error: err }) => {
         if (err) setDocsError(err.message)
         else setDocumentos(data ?? [])
         setLoadingDocs(false)
       })
-  }, [])
+  }, [edicaoId])
 
   async function fetchRecursos() {
     setLoading(true)
@@ -65,11 +72,12 @@ export function ConvocacaoRecurso() {
       .from('recurso')
       .select(`
         id, codigo_recurso, status, assinado_em, projeto_id,
-        projeto:projeto_id(id, titulo),
+        projeto:projeto_id!inner(id, titulo, edicao_id),
         orientador:orientador_id(id, nome_completo),
         recurso_criterio(id)
       `)
       .eq('status', 'enviado')
+      .eq('projeto.edicao_id', edicaoId)
       .order('assinado_em', { ascending: false })
     if (err) { setError(err.message); setLoading(false); return }
     setRecursos(data ?? [])
@@ -438,7 +446,9 @@ export function ConvocacaoRecurso() {
 
       {/* Documentos do processo */}
       <div className="space-y-3 pt-2 border-t border-border">
-        <h3 className="text-sm font-semibold text-foreground">Documentos do processo — Edição 2026</h3>
+        <h3 className="text-sm font-semibold text-foreground">
+          Documentos do processo{edicaoSelecionada?.ano_referencia ? ` — Edição ${edicaoSelecionada.ano_referencia}` : ''}
+        </h3>
         {loadingDocs ? <LoadingState /> : docsError ? <ErrorAlert message={docsError} /> : documentos.length === 0 ? (
           <EmptyState message="Nenhum documento encontrado." />
         ) : (

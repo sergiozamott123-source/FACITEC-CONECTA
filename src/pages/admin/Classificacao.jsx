@@ -3,6 +3,8 @@ import { AlertCircle, ChevronRight, Download, FileText, Loader2 } from 'lucide-r
 import { Link } from 'react-router-dom'
 import { Card, CardContent } from '@/components/ui/card'
 import { supabase } from '@/lib/supabase'
+import { useAdmin } from '@/contexts/AdminContext'
+import { PROGRAMAS } from '@/lib/programas'
 
 const VAGAS = 10
 
@@ -36,11 +38,15 @@ function StatusBadge({ status }) {
 }
 
 export function ClassificacaoAdmin() {
+  const { edicaoSelecionada, programaSelecionado } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+  const programaNome = PROGRAMAS.find((p) => p.programaId === programaSelecionado)?.nome ?? 'Programa'
+  const ano = edicaoSelecionada?.ano_referencia ?? '—'
   const [projetos, setProjetos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => { fetchProjetos() }, [])
+  useEffect(() => { if (edicaoId) fetchProjetos() }, [edicaoId])
 
   async function fetchProjetos() {
     setLoading(true)
@@ -57,7 +63,7 @@ export function ClassificacaoAdmin() {
         status,
         orientador:orientador_id ( nome_completo )
       `)
-      .like('codigo_inscricao', 'PIBIC26-%')
+      .eq('edicao_id', edicaoId)
       .order('ordem_classificacao', { ascending: true })
 
     if (err) {
@@ -83,12 +89,12 @@ export function ClassificacaoAdmin() {
             <ChevronRight className="w-3 h-3 shrink-0" />
             <Link to="/admin" className="hover:text-foreground transition-colors">Admin</Link>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span>PIBIC Jr</span>
+            <span>{programaNome}</span>
             <ChevronRight className="w-3 h-3 shrink-0" />
-            <span className="text-foreground font-medium">Classificação — Edição 2026</span>
+            <span className="text-foreground font-medium">Classificação — Edição {ano}</span>
           </nav>
           <h1 className="text-xl font-bold text-foreground">Classificação geral dos projetos</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Resultado final oficial — Edição 2026</p>
+          <p className="text-sm text-muted-foreground mt-0.5">Resultado final oficial — Edição {ano}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           <button

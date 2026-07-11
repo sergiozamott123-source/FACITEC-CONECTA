@@ -2,59 +2,26 @@ import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Microscope, School, Lightbulb, Award, ChevronRight, Hash } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { db } from '@/lib/db'
-import { useAdmin } from '@/contexts/AdminContext'
+import { db, edicaoService } from '@/lib/db'
+import { PROGRAMAS, PROGRAMA_ID_PADRAO } from '@/lib/programas'
 
-const PROGRAMAS_CONFIG = [
-  {
-    id: 'PIBICJR',
-    nome: 'PIBIC Jr',
-    nomeCompleto: 'Programa Institucional de Bolsas de Iniciação Científica Júnior',
-    icon: Microscope,
-    bg: '#EEEDFE',
-    border: '#C5C1F5',
-    cor: '#534AB7',
-    badgeLabel: 'ativo',
-    badgeCls: 'bg-green-100 text-green-700',
-    ativo: true,
-  },
-  {
-    id: 'PROFICJR',
-    nome: 'PROFIC Jr',
-    nomeCompleto: 'Programa de Fomento à Iniciação Científica Júnior',
-    icon: School,
-    bg: '#F0FDFA',
-    border: '#99F6E4',
-    cor: '#0D9488',
-    badgeLabel: 'em breve',
-    badgeCls: 'bg-gray-100 text-gray-400',
-    ativo: false,
-  },
-  {
-    id: 'PROFICJOVEM',
-    nome: 'PROFIC Jovem',
-    nomeCompleto: 'Programa de Fomento à Iniciação Científica Jovem',
-    icon: Lightbulb,
-    bg: '#FFF7F5',
-    border: '#FDC5B0',
-    cor: '#EA6C47',
-    badgeLabel: 'em breve',
-    badgeCls: 'bg-gray-100 text-gray-400',
-    ativo: false,
-  },
-  {
-    id: 'POSGRAD',
-    nome: 'Pós-graduação',
-    nomeCompleto: 'Programa de Apoio à Pós-Graduação',
-    icon: Award,
-    bg: '#FFFBEB',
-    border: '#FDE68A',
-    cor: '#D97706',
-    badgeLabel: 'em breve',
-    badgeCls: 'bg-gray-100 text-gray-400',
-    ativo: false,
-  },
-]
+const ICONS = { PIBICJR: Microscope, PROFICJR: School, PROFICJOVEM: Lightbulb, POSGRADUACAO: Award }
+const BORDERS = { PIBICJR: '#C5C1F5', PROFICJR: '#99F6E4', PROFICJOVEM: '#FDC5B0', POSGRADUACAO: '#FDE68A' }
+
+// Deriva do registro único (src/lib/programas.js), só decorando com ícone/borda/badge locais.
+const PROGRAMAS_CONFIG = PROGRAMAS.map((p) => ({
+  id: p.programaId,
+  slug: p.slug,
+  nome: p.nome,
+  nomeCompleto: p.nomeCompleto,
+  icon: ICONS[p.programaId] ?? Microscope,
+  bg: p.corBg,
+  border: BORDERS[p.programaId] ?? p.cor + '55',
+  cor: p.cor,
+  badgeLabel: p.ativo ? 'ativo' : 'em breve',
+  badgeCls: p.ativo ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400',
+  ativo: p.ativo,
+}))
 
 function ProgramaCard({ config, qtdEdicoes, selecionado, onClick }) {
   const Icon = config.icon
@@ -158,35 +125,51 @@ function EdicaoRow({ edicao, selecionada, contagem, onClick }) {
 
 export function HomeAdmin() {
   const navigate = useNavigate()
-  const { edicoes, edicaoSelecionada, setEdicaoSelecionada } = useAdmin()
 
+  const [edicoesTodas, setEdicoesTodas] = useState([])
   const [programaAberto, setProgramaAberto] = useState(null)
   const [edicaoDestaque, setEdicaoDestaque] = useState(null)
   const [contagens, setContagens] = useState({})
 
-  const edicoesPibic = edicoes.filter(
-    (e) => !e.programa_id || e.programa_id === 'PIBICJR'
-  )
+  useEffect(() => {
+    edicaoService.list().then(({ data }) => setEdicoesTodas(data ?? [])).catch(() => {})
+  }, [])
 
-  const edicoesPibicAtivas = edicoesPibic.filter((e) => e.status === 'ativo')
+  function edicoesDoPrograma(programaId) {
+    return edicoesTodas.filter(
+      (e) => (e.programa_id ?? PROGRAMA_ID_PADRAO) === programaId
+    )
+  }
+
+  const cfgAberto = PROGRAMAS_CONFIG.find((c) => c.id === programaAberto) ?? null
+  const edicoesAtivasAberto = cfgAberto ? edicoesDoPrograma(cfgAberto.id).filter((e) => e.status === 'ativo') : []
 
   useEffect(() => {
-    if (programaAberto !== 'PIBICJR' || edicoesPibicAtivas.length === 0) return
-    edicoesPibicAtivas.forEach((e) => {
+    if (!programaAberto || edicoesAtivasAberto.length === 0) return
+    edicoesAtivasAberto.forEach((e) => {
       db.count('projeto', [['edicao_id', 'eq', e.id]])
         .then((n) => setContagens((prev) => ({ ...prev, [e.id]: n })))
         .catch(() => setContagens((prev) => ({ ...prev, [e.id]: 0 })))
     })
-  }, [programaAberto, edicoes])
+  }, [programaAberto, edicoesTodas])
 
-  function handleProgramaClick(id) {
-    if (id === programaAberto) {
+  function irParaPainel(cfg, edicao) {
+    navigate(`/admin/${cfg.slug}/${edicao.ano_referencia}/painel`)
+  }
+
+  function handleProgramaClick(cfg) {
+    if (cfg.id === programaAberto) {
       setProgramaAberto(null)
       setEdicaoDestaque(null)
-    } else {
-      setProgramaAberto(id)
-      setEdicaoDestaque(null)
+      return
     }
+    const ativas = edicoesDoPrograma(cfg.id).filter((e) => e.status === 'ativo')
+    if (ativas.length === 1) {
+      irParaPainel(cfg, ativas[0])
+      return
+    }
+    setProgramaAberto(cfg.id)
+    setEdicaoDestaque(null)
   }
 
   function handleEdicaoClick(edicao) {
@@ -194,20 +177,24 @@ export function HomeAdmin() {
   }
 
   function handleAcessarPainel() {
-    const edicao = edicoesPibicAtivas.find((e) => e.id === edicaoDestaque)
-    if (!edicao) return
-    setEdicaoSelecionada(edicao)
-    navigate(`/admin/pibic-jr/${edicao.ano_referencia}/painel`)
+    const edicao = edicoesAtivasAberto.find((e) => e.id === edicaoDestaque)
+    if (!edicao || !cfgAberto) return
+    irParaPainel(cfgAberto, edicao)
   }
 
-  const edicaoDestak = edicoesPibicAtivas.find((e) => e.id === edicaoDestaque)
+  const edicaoDestak = edicoesAtivasAberto.find((e) => e.id === edicaoDestaque)
 
   return (
     <div className="max-w-4xl mx-auto space-y-8">
-      {/* Cabeçalho */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">Programas FACITEC</h1>
-        <p className="text-sm text-gray-500 mt-1">
+      {/* Cabeçalho com hero fotográfico */}
+      <div
+        className="rounded-2xl px-6 py-8 sm:px-10 sm:py-10 bg-cover bg-center"
+        style={{
+          backgroundImage: `linear-gradient(180deg, rgba(15,30,45,0.55) 0%, rgba(15,30,45,0.75) 100%), url('/images/hero-vitoria.jpg')`,
+        }}
+      >
+        <h1 className="text-2xl font-bold text-white">Programas FACITEC</h1>
+        <p className="text-sm text-white/70 mt-1">
           Selecione um programa e uma edição para acessar o painel de gestão.
         </p>
       </div>
@@ -215,29 +202,29 @@ export function HomeAdmin() {
       {/* Grid 2x2 */}
       <div className="grid grid-cols-2 gap-4">
         {PROGRAMAS_CONFIG.map((cfg) => {
-          const qtd = cfg.id === 'PIBICJR' ? edicoesPibicAtivas.length : 0
+          const qtd = edicoesDoPrograma(cfg.id).filter((e) => e.status === 'ativo').length
           return (
             <ProgramaCard
               key={cfg.id}
               config={cfg}
               qtdEdicoes={qtd}
               selecionado={programaAberto === cfg.id}
-              onClick={() => handleProgramaClick(cfg.id)}
+              onClick={() => handleProgramaClick(cfg)}
             />
           )
         })}
       </div>
 
-      {/* Painel de edições — visível só quando PIBIC Jr selecionado */}
-      {programaAberto === 'PIBICJR' && (
+      {/* Painel de edições — visível só quando um programa com mais de uma edição está selecionado */}
+      {cfgAberto && (
         <div className="border border-[#E2E8F0] rounded-xl bg-white overflow-hidden shadow-sm">
           <div className="px-5 py-4 border-b border-[#E2E8F0] flex items-center justify-between">
             <div>
-              <p className="font-semibold text-sm text-gray-800">Edições — PIBIC Jr</p>
+              <p className="font-semibold text-sm text-gray-800">Edições — {cfgAberto.nome}</p>
               <p className="text-xs text-gray-400 mt-0.5">
-                {edicoesPibicAtivas.length === 0
+                {edicoesAtivasAberto.length === 0
                   ? 'Nenhuma edição ativa'
-                  : `${edicoesPibicAtivas.length} edição${edicoesPibicAtivas.length !== 1 ? 'ões' : ''} ativa${edicoesPibicAtivas.length !== 1 ? 's' : ''}`}
+                  : `${edicoesAtivasAberto.length} edição${edicoesAtivasAberto.length !== 1 ? 'ões' : ''} ativa${edicoesAtivasAberto.length !== 1 ? 's' : ''}`}
               </p>
             </div>
             {edicaoDestaque && (
@@ -252,12 +239,12 @@ export function HomeAdmin() {
           </div>
 
           <div className="p-4 space-y-2">
-            {edicoesPibicAtivas.length === 0 ? (
+            {edicoesAtivasAberto.length === 0 ? (
               <p className="text-sm text-gray-400 text-center py-6">
                 Nenhuma edição ativa encontrada para este programa.
               </p>
             ) : (
-              edicoesPibicAtivas.map((e) => (
+              edicoesAtivasAberto.map((e) => (
                 <EdicaoRow
                   key={e.id}
                   edicao={e}

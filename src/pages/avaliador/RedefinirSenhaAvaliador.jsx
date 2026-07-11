@@ -71,7 +71,7 @@ export function RedefinirSenhaAvaliador() {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-white">Redefinir senha</h1>
             <p className="text-white/70 text-sm mt-1">
-              Programa de Iniciação Científica Júnior · PibicJr 2026
+              FACITEC Conecta · Portal do Avaliador
             </p>
           </div>
 

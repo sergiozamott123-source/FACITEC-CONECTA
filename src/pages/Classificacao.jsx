@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge'
 import { ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useTable } from '@/hooks/useTable'
 import { edicaoService } from '@/lib/db'
+import { useAdmin } from '@/contexts/AdminContext'
 import { ClassificacaoDetalhe } from './ClassificacaoDetalhe'
 
 const CONSENSO_VARIANT = {
@@ -100,7 +101,8 @@ function posClassName(pos) {
 }
 
 export function Classificacao() {
-  const fetchEdicoes = useCallback(() => edicaoService.list(), [])
+  const { programaSelecionado } = useAdmin()
+  const fetchEdicoes = useCallback(() => edicaoService.list(programaSelecionado), [programaSelecionado])
   const { data: edicoes, loading: edicaoLoading } = useTable(fetchEdicoes)
 
   const [edicaoId, setEdicaoId] = useState(null)

@@ -3,61 +3,7 @@ import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import logoFacitec from "@/assets/facitec_logo_cropped.png"
 import logoCdtiv from "@/assets/logo-cdtiv.jpg.jpg"
-
-import pibicJrImg from "@/assets/programas/pibic-jr.jpg"
-import proficJrImg from "@/assets/programas/profic-jr.jpg"
-import proficJovemImg from "@/assets/programas/profic-jovem.jpg"
-import posGraduacaoImg from "@/assets/programas/pos-graduacao.jpg"
-const PROGRAMAS = [
-  {
-    slug: "pibic-jr",
-    nome: "PIBIC Jr",
-    nomeCompleto: "Programa de Iniciação Científica Júnior",
-    publico: "Ensino Fundamental II · 6º ao 9º ano",
-    descricao: "Formação científica desde cedo, conectando alunos a orientadores e projetos de pesquisa aplicada.",
-    cor: "#534AB7",
-    corBg: "#EEEDFE",
-    ativo: true,
-    rota: "/pibic-jr",
-    image: pibicJrImg,
-  },
-  {
-    slug: "profic-jr",
-    nome: "PROFIC Jr",
-    nomeCompleto: "Programa de Fomento à Iniciação Científica Jr",
-    publico: "Ensino Fundamental I · 1º ao 5º ano",
-    descricao: "Estímulo à curiosidade científica nos primeiros anos escolares.",
-    cor: "#0F6E56",
-    corBg: "#E1F5EE",
-    ativo: false,
-    rota: null,
-    image: proficJrImg,
-  },
-  {
-    slug: "profic-jovem",
-    nome: "PROFIC Jovem",
-    nomeCompleto: "Programa de Fomento à Iniciação Científica",
-    publico: "Ensino Médio · 1º ao 3º ano",
-    descricao: "Pesquisa aplicada e inovação para estudantes do ensino médio de Vitória.",
-    cor: "#993C1D",
-    corBg: "#FAECE7",
-    ativo: false,
-    rota: null,
-    image: proficJovemImg,
-  },
-  {
-    slug: "pos-graduacao",
-    nome: "Pós-Graduação",
-    nomeCompleto: "Programa de Bolsas para Pós-Graduação",
-    publico: "Mestrado e Doutorado",
-    descricao: "Apoio à pesquisa avançada em parceria com universidades e institutos de pesquisa.",
-    cor: "#854F0B",
-    corBg: "#FAEEDA",
-    ativo: false,
-    rota: null,
-    image: posGraduacaoImg,
-  },
-]
+import { PROGRAMAS, rotaPrograma } from "@/lib/programas"
 
 function ProgramaCover({ programa }) {
   if (programa.image) {
@@ -93,7 +39,8 @@ function ProgramaCard({ programa, totalProjetos }) {
   const navigate = useNavigate()
 
   function handleClick() {
-    if (programa.rota) navigate(programa.rota)
+    const rota = rotaPrograma(programa)
+    if (rota) navigate(rota)
   }
 
   return (
@@ -168,13 +115,29 @@ function ProgramaCard({ programa, totalProjetos }) {
 }
 
 export default function HubProgramas() {
-  const [totalProjetos, setTotalProjetos] = useState(null)
+  const [totaisPorPrograma, setTotaisPorPrograma] = useState({})
 
   useEffect(() => {
-    supabase
-      .from("projeto")
-      .select("*", { count: "exact", head: true })
-      .then(({ count }) => setTotalProjetos(count ?? 0))
+    let cancelado = false
+
+    async function contarProjetos(programaId) {
+      const { data: edicoes } = await supabase.from("edicao").select("id").eq("programa_id", programaId)
+      const ids = (edicoes ?? []).map((e) => e.id)
+      if (ids.length === 0) return 0
+      const { count } = await supabase
+        .from("projeto")
+        .select("*", { count: "exact", head: true })
+        .in("edicao_id", ids)
+      return count ?? 0
+    }
+
+    Promise.all(
+      PROGRAMAS.filter((p) => p.ativo).map(async (p) => [p.programaId, await contarProjetos(p.programaId)])
+    ).then((entries) => {
+      if (!cancelado) setTotaisPorPrograma(Object.fromEntries(entries))
+    })
+
+    return () => { cancelado = true }
   }, [])
 
   return (
@@ -245,7 +208,7 @@ export default function HubProgramas() {
             <ProgramaCard
               key={p.slug}
               programa={p}
-              totalProjetos={p.ativo ? totalProjetos : null}
+              totalProjetos={p.ativo ? totaisPorPrograma[p.programaId] ?? null : null}
             />
           ))}
         </div>

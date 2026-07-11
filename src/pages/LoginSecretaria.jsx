@@ -27,7 +27,7 @@ export function LoginSecretaria() {
     setLoading(true)
     try {
       await login(email, senha)
-      navigate('/admin/pibic-jr/2026/painel')
+      navigate('/admin')
     } catch (err) {
       setError(err.message || 'Não foi possível entrar. Verifique seus dados e tente novamente.')
     } finally {

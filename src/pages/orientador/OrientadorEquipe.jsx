@@ -3,9 +3,9 @@ import { Plus, Pencil, X, Upload, FileText, ChevronDown, ChevronUp } from 'lucid
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
+import { getMaxBolsistas, gerarPrefixoCodigo } from '@/lib/programas'
 
 const ACEITOS = '.pdf,.jpg,.jpeg,.png,.webp'
-const MAX_BOLSISTAS = 8
 const BUCKET = 'inscricoes'
 
 function calcIdade(dataNasc) {
@@ -26,7 +26,7 @@ function isMenor(dataNasc) {
 function gerarCodigo(projeto, count) {
   const rank = String(projeto?.rank ?? 1).padStart(3, '0')
   const seq = String(count + 1).padStart(2, '0')
-  return `PIBIC26-${rank}-B${seq}`
+  return `${gerarPrefixoCodigo(projeto?.edicao)}-${rank}-B${seq}`
 }
 
 async function uploadArquivo(file, path) {
@@ -166,6 +166,7 @@ function Section({ id, title, openSection, setOpenSection, children }) {
 
 export function OrientadorEquipe() {
   const { orientador, projeto } = usePortalOrientador()
+  const MAX_BOLSISTAS = getMaxBolsistas(projeto?.edicao?.programa_id)
   const [bolsistas, setBolsistas] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)

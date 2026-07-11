@@ -7,8 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { listarSolicitacoesDoOrientador, marcarComoAtendida, TIPOS_SOLICITACAO } from '@/lib/solicitacoes'
 import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual, calcularBanner } from '@/lib/relatorioMensal'
 import { BannerRelatorioMensal } from '@/components/orientador/BannerRelatorioMensal'
-
-const MAX_BOLSISTAS = 8
+import { getMaxBolsistas } from '@/lib/programas'
 
 const ETAPAS = [
   'Acesso criado',
@@ -18,9 +17,9 @@ const ETAPAS = [
   'Contrato emitido',
 ]
 
-function calcEtapaAtual(orientador, bolsistas) {
+function calcEtapaAtual(orientador, bolsistas, maxBolsistas) {
   if (orientador?.contrato_url) return ETAPAS.length
-  if (bolsistas?.length >= MAX_BOLSISTAS) return 3
+  if (bolsistas?.length >= maxBolsistas) return 3
   if (bolsistas?.length > 0) return 2
   if (orientador?.cpf) return 1
   return 0
@@ -54,6 +53,7 @@ function TipoBadge({ tipo }) {
 
 export function OrientadorDashboard() {
   const { orientador, projeto } = usePortalOrientador()
+  const MAX_BOLSISTAS = getMaxBolsistas(projeto?.edicao?.programa_id)
   const navigate = useNavigate()
   const [bolsistas, setBolsistas] = useState([])
   const [contrato, setContrato] = useState(null)
@@ -134,7 +134,7 @@ export function OrientadorDashboard() {
     setLoading(false)
   }
 
-  const etapaAtual = calcEtapaAtual(orientador, bolsistas)
+  const etapaAtual = calcEtapaAtual(orientador, bolsistas, MAX_BOLSISTAS)
   const primeiroNome = orientador?.nome_completo?.split(' ')[0] ?? 'Orientador'
   const rankLabel = projeto?.rank ? `${String(projeto.rank).padStart(3, '0')}º` : null
 

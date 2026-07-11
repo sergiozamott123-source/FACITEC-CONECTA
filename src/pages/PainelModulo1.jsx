@@ -13,7 +13,13 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "../lib/supabase";
 import { useAdmin } from "../contexts/AdminContext";
+import { getPrograma } from "../lib/programas";
 import { listarCiclos, statusRelatorioNoCiclo } from "../lib/relatorioMensal";
+
+function useProgramaAtual() {
+  const { programa: slug } = useParams();
+  return getPrograma(slug)?.nome ?? "Programa";
+}
 
 // ── PALETA ───────────────────────────────────────────────────────────
 const C = {
@@ -102,7 +108,8 @@ function NotaBar({ label, nota, max }) {
 }
 
 // ── TELA: LISTA DE PROJETOS ──────────────────────────────────────────
-function ListaProjetos({ onSelect }) {
+function ListaProjetos({ onSelect, edicaoId }) {
+  const programaNome = useProgramaAtual();
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
@@ -111,6 +118,7 @@ function ListaProjetos({ onSelect }) {
   const POR_PAGINA = 10;
 
   useEffect(() => {
+    if (!edicaoId) return;
     async function fetchProjetos() {
       setLoading(true);
       const { data, error } = await supabase
@@ -120,13 +128,14 @@ function ListaProjetos({ onSelect }) {
           ordem_classificacao, area_conhecimento, instituicao, created_at,
           orientador:orientador_id ( nome_completo, email )
         `)
+        .eq("edicao_id", edicaoId)
         .order("codigo_facitec", { ascending: true });
 
       if (!error) setProjetos(data || []);
       setLoading(false);
     }
     fetchProjetos();
-  }, []);
+  }, [edicaoId]);
 
   const filtrados = projetos.filter(p => {
     const matchBusca = busca === "" ||
@@ -154,7 +163,7 @@ function ListaProjetos({ onSelect }) {
       <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
         <div>
           <div style={{ fontSize:16, fontWeight:500, color:C.navy }}>
-            Projetos — PIBIC Jr 2026
+            Projetos — {programaNome} 2026
           </div>
           <div style={{ fontSize:11, color:C.gray, marginTop:2 }}>
             {projetos.length} projetos cadastrados · {filtrados.length} exibidos
@@ -498,29 +507,32 @@ function DetalheProjeto({ projeto, onVoltar }) {
 }
 
 // ── TELA: AVALIADORES ────────────────────────────────────────────────
-function ListaAvaliadores({ onVoltar }) {
+function ListaAvaliadores({ onVoltar, edicaoId }) {
+  const programaNome = useProgramaAtual();
   const [avaliadores, setAvaliadores] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!edicaoId) return;
     async function fetchAvaliadores() {
       setLoading(true);
       const { data: avs } = await supabase
         .from("avaliador")
-        .select(`*, avaliacoes:avaliacao ( id, status, nota_total, projeto_id )`);
+        .select(`*, avaliacoes:avaliacao ( id, status, nota_total, projeto_id )`)
+        .eq("edicao_id", edicaoId);
 
       setAvaliadores(avs || []);
       setLoading(false);
     }
     fetchAvaliadores();
-  }, []);
+  }, [edicaoId]);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <BackBtn onClick={onVoltar} label="Voltar ao painel" />
 
       <div style={{ fontSize:16, fontWeight:500, color:C.navy }}>
-        Avaliadores — PIBIC Jr 2026
+        Avaliadores — {programaNome} 2026
       </div>
 
       {loading ? (
@@ -589,11 +601,13 @@ function ListaAvaliadores({ onVoltar }) {
 }
 
 // ── TELA: RECURSOS ───────────────────────────────────────────────────
-function FluxoRecursos({ onVoltar }) {
+function FluxoRecursos({ onVoltar, edicaoId }) {
+  const programaNome = useProgramaAtual();
   const [projetos, setProjetos] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!edicaoId) return;
     async function fetchRecursos() {
       setLoading(true);
       const { data } = await supabase
@@ -603,19 +617,20 @@ function FluxoRecursos({ onVoltar }) {
           orientador:orientador_id ( nome_completo, email )
         `)
         .eq("status", "recurso")
+        .eq("edicao_id", edicaoId)
         .order("codigo_facitec");
       setProjetos(data || []);
       setLoading(false);
     }
     fetchRecursos();
-  }, []);
+  }, [edicaoId]);
 
   return (
     <div style={{ display:"flex", flexDirection:"column", gap:16 }}>
       <BackBtn onClick={onVoltar} label="Voltar ao painel" />
 
       <div style={{ fontSize:16, fontWeight:500, color:C.navy }}>
-        Fluxo de Recursos — PIBIC Jr 2026
+        Fluxo de Recursos — {programaNome} 2026
       </div>
 
       <Card style={{ background:C.purpleBg, border:`0.5px solid ${C.purple}` }}>
@@ -754,11 +769,12 @@ function MiniStat({ label, value, color }) {
 
 function ResumoPrograma({ ano, edicaoId }) {
   const { resumo, loading } = useResumoPrograma(edicaoId);
+  const programaNome = useProgramaAtual();
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>PIBIC Jr · Edição {ano}</div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.dark }}>{programaNome} · Edição {ano}</div>
         <div style={{ fontSize: 13, color: C.gray, marginTop: 2 }}>Acompanhamento da edição em andamento.</div>
       </div>
 
@@ -801,24 +817,27 @@ function ResumoPrograma({ ano, edicaoId }) {
 
 // ── PAINEL PRINCIPAL DO MÓDULO 1 ─────────────────────────────────────
 export default function PainelModulo1() {
-  const { ano = "2026" } = useParams();
+  const { ano = "2026", programa: programaSlug } = useParams();
+  const programaNome = getPrograma(programaSlug)?.nome ?? "Programa";
   const { edicaoSelecionada } = useAdmin();
+  const edicaoId = edicaoSelecionada?.id;
   const [tela, setTela] = useState("menu"); // menu | projetos | detalhe | avaliadores | recursos
   const [projetoSelecionado, setProjetoSelecionado] = useState(null);
   const [stats, setStats] = useState({ projetos:0, avaliacoes:0, avaliadores:0, recursos:0, loading:true });
 
   useEffect(() => {
+    if (!edicaoId) return;
     async function fetchStats() {
       const [{ count: projetos }, { count: avaliacoes }, { count: avaliadores }, { count: recursos }] = await Promise.all([
-        supabase.from("projeto").select("*", { count:"exact", head:true }),
-        supabase.from("avaliacao").select("*", { count:"exact", head:true }),
-        supabase.from("avaliador").select("*", { count:"exact", head:true }),
-        supabase.from("projeto").select("*", { count:"exact", head:true }).eq("status","recurso"),
+        supabase.from("projeto").select("*", { count:"exact", head:true }).eq("edicao_id", edicaoId),
+        supabase.from("avaliacao").select("*, projeto:projeto_id!inner(edicao_id)", { count:"exact", head:true }).eq("projeto.edicao_id", edicaoId),
+        supabase.from("avaliador").select("*", { count:"exact", head:true }).eq("edicao_id", edicaoId),
+        supabase.from("projeto").select("*", { count:"exact", head:true }).eq("status","recurso").eq("edicao_id", edicaoId),
       ]);
       setStats({ projetos:projetos||0, avaliacoes:avaliacoes||0, avaliadores:avaliadores||0, recursos:recursos||0, loading:false });
     }
     fetchStats();
-  }, []);
+  }, [edicaoId]);
 
   function handleSelectProjeto(p) {
     setProjetoSelecionado(p);
@@ -826,12 +845,12 @@ export default function PainelModulo1() {
   }
 
   // Renderiza sub-telas
-  if (tela === "projetos") return <ListaProjetos onSelect={handleSelectProjeto} />;
+  if (tela === "projetos") return <ListaProjetos onSelect={handleSelectProjeto} edicaoId={edicaoId} />;
   if (tela === "detalhe" && projetoSelecionado) return (
     <DetalheProjeto projeto={projetoSelecionado} onVoltar={() => setTela("projetos")} />
   );
-  if (tela === "avaliadores") return <ListaAvaliadores onVoltar={() => setTela("menu")} />;
-  if (tela === "recursos")    return <FluxoRecursos    onVoltar={() => setTela("menu")} />;
+  if (tela === "avaliadores") return <ListaAvaliadores onVoltar={() => setTela("menu")} edicaoId={edicaoId} />;
+  if (tela === "recursos")    return <FluxoRecursos    onVoltar={() => setTela("menu")} edicaoId={edicaoId} />;
 
   // Menu principal
   return (
@@ -844,7 +863,7 @@ export default function PainelModulo1() {
       <div style={{ background:C.navy, borderRadius:12, padding:"20px 24px" }}>
         <div style={{ fontSize:11, fontWeight:600, letterSpacing:"0.1em",
                       textTransform:"uppercase", color:C.accentL, marginBottom:8 }}>
-          PIBIC Jr · Edição 2026
+          {programaNome} · Edição 2026
         </div>
         <div style={{ fontSize:20, fontWeight:500, color:"#fff", marginBottom:4 }}>
           M1 · Seleção de Projetos

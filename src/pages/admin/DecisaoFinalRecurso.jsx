@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase'
+import { getProgramaByProgramaId } from '@/lib/programas'
 import logoFacitec from '@/assets/facitec_logo_cropped.png'
 import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
 
@@ -58,7 +59,7 @@ function buildCriterios(rcList, ccAll, notaMap) {
 }
 
 export function DecisaoFinalRecurso() {
-  const { recursoId } = useParams()
+  const { recursoId, programa, ano } = useParams()
   const navigate      = useNavigate()
 
   const [recurso,        setRecurso]        = useState(null)
@@ -125,7 +126,7 @@ export function DecisaoFinalRecurso() {
         .from('recurso')
         .select(`
           id, codigo_recurso, status, projeto_id, enviado_em,
-          projeto:projeto_id(id, titulo, edicao_id, edicao:edicao_id(numero_edital, numero_processo, item_criterios_avaliacao, prazo_recurso_fim)),
+          projeto:projeto_id(id, titulo, edicao_id, edicao:edicao_id(numero_edital, numero_processo, item_criterios_avaliacao, prazo_recurso_fim, programa_id)),
           orientador:orientador_id(id, nome_completo)
         `)
         .eq('id', recursoId)
@@ -260,6 +261,11 @@ export function DecisaoFinalRecurso() {
     const numEdital     = edicao?.numero_edital ?? '—'
     const numProcesso   = edicao?.numero_processo ?? '—'
     const itemCrit      = edicao?.item_criterios_avaliacao ?? '—'
+    const programa      = getProgramaByProgramaId(edicao?.programa_id)
+    const nomeProgramaCompleto = programa
+      ? `${programa.nomeCompleto} – ${programa.programaId}`
+      : 'Programa Institucional de Bolsas de Iniciação Científica Júnior – PIBICJR'
+    const siglaPrograma = programa?.programaId ?? 'PIBICJR'
     const nomesCrit     = criterios.map(c => c.criterio?.nome ?? '—').join(', ')
 
     const avIds = new Set()
@@ -347,12 +353,12 @@ export function DecisaoFinalRecurso() {
     <h1>COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA – CDTIV</h1>
     <h1>CONSELHO MUNICIPAL DE CIÊNCIA E TECNOLOGIA – CMCT</h1>
     <h1>PROCESSO ADMINISTRATIVO N.º ${esc(numProcesso)}</h1>
-    <h1>EDITAL FACITEC N.º ${esc(numEdital)} – PIBICJR</h1>
+    <h1>EDITAL FACITEC N.º ${esc(numEdital)} – ${esc(siglaPrograma)}</h1>
     <h1>RECURSO ADMINISTRATIVO – PROPOSTA ${esc(tituloProjeto)}</h1>
   </div>
 
   <h2>SEÇÃO I – RELATÓRIO</h2>
-  <p>Trata-se de recurso administrativo interposto por ${esc(nomeOrient)}, registrado sob o código ${esc(codigoRecurso)}, em face do resultado preliminar de avaliação da proposta intitulada ${esc(tituloProjeto)}, submetida no âmbito do Edital FACITEC n. ${esc(numEdital)} – Programa Institucional de Bolsas de Iniciação Científica Júnior – PIBICJR.</p>
+  <p>Trata-se de recurso administrativo interposto por ${esc(nomeOrient)}, registrado sob o código ${esc(codigoRecurso)}, em face do resultado preliminar de avaliação da proposta intitulada ${esc(tituloProjeto)}, submetida no âmbito do Edital FACITEC n. ${esc(numEdital)} – ${esc(nomeProgramaCompleto)}.</p>
   <p>A recorrente insurge-se contra as notas atribuídas aos critérios de avaliação previstos no edital, pleiteando a revisão das pontuações atribuídas aos critérios ${esc(nomesCrit)}.</p>
   ${tempestivo
     ? `<p>O recurso foi apresentado dentro do prazo estabelecido no cronograma do edital ${esc(numEdital)}, por parte legítima e em peça escrita, razão pela qual foi formalmente conhecido e encaminhado à Banca Avaliadora composta por ${numAv} avaliador${numAv !== 1 ? 'es' : ''}, para análise técnica e emissão de parecer fundamentado quanto às razões recursais.</p><p>É o relatório. Decido.</p>`
@@ -433,7 +439,7 @@ export function DecisaoFinalRecurso() {
             <FileText className="w-4 h-4" />
             Gerar Parecer Oficial
           </Button>
-          <Button onClick={() => navigate('/recursos')}>
+          <Button onClick={() => navigate(`/admin/${programa}/${ano}/recursos`)}>
             Voltar à lista de recursos
           </Button>
         </div>
@@ -533,7 +539,7 @@ export function DecisaoFinalRecurso() {
       <div className="flex items-start gap-3">
         <Button
           variant="ghost" size="sm"
-          onClick={() => navigate(`/recursos/${recursoId}/painel`)}
+          onClick={() => navigate(`/admin/${programa}/${ano}/recursos/${recursoId}/painel`)}
           className="gap-1 -ml-1 mt-0.5 shrink-0"
         >
           <ArrowLeft className="w-4 h-4" />

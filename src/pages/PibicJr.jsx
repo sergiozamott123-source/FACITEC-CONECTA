@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { Link, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
+import { getPrograma } from "@/lib/programas"
 import { ClipboardList, Users, BarChart2, Archive, FlaskConical } from "lucide-react"
 
 const C = {
@@ -11,32 +12,34 @@ const C = {
   amber: "#854F0B",  amberBg:  "#FAEEDA",
 }
 
-const MODULOS = [
-  {
-    id: "m1", codigo: "M1", nome: "Seleção",
-    desc: "Inscrições, avaliação de projetos e resultado final",
-    cor: C.purple, corBg: C.purpleBg, ativo: true,
-    rota: "/pibic-jr/selecao", Icon: ClipboardList,
-  },
-  {
-    id: "m2", codigo: "M2", nome: "Organização",
-    desc: "Contratos, termos de adesão e equipes",
-    cor: C.teal, corBg: C.tealBg, ativo: true,
-    rota: "/admin/pibic-jr/2026/m2", Icon: Users,
-  },
-  {
-    id: "m3", codigo: "M3", nome: "Gestão",
-    desc: "Acompanhamento, relatórios e bolsas",
-    cor: C.coral, corBg: C.coralBg, ativo: false,
-    rota: null, Icon: BarChart2,
-  },
-  {
-    id: "m4", codigo: "M4", nome: "Legado",
-    desc: "Edições passadas e incorporação ao acervo",
-    cor: C.amber, corBg: C.amberBg, ativo: false,
-    rota: null, Icon: Archive,
-  },
-]
+function buildModulos(slug) {
+  return [
+    {
+      id: "m1", codigo: "M1", nome: "Seleção",
+      desc: "Inscrições, avaliação de projetos e resultado final",
+      cor: C.purple, corBg: C.purpleBg, ativo: true,
+      rota: `/${slug}/selecao`, Icon: ClipboardList,
+    },
+    {
+      id: "m2", codigo: "M2", nome: "Organização",
+      desc: "Contratos, termos de adesão e equipes",
+      cor: C.teal, corBg: C.tealBg, ativo: true,
+      rota: `/admin/${slug}/2026/m2`, Icon: Users,
+    },
+    {
+      id: "m3", codigo: "M3", nome: "Gestão",
+      desc: "Acompanhamento, relatórios e bolsas",
+      cor: C.coral, corBg: C.coralBg, ativo: false,
+      rota: null, Icon: BarChart2,
+    },
+    {
+      id: "m4", codigo: "M4", nome: "Legado",
+      desc: "Edições passadas e incorporação ao acervo",
+      cor: C.amber, corBg: C.amberBg, ativo: false,
+      rota: null, Icon: Archive,
+    },
+  ]
+}
 
 function ModuloCard({ modulo }) {
   const navigate = useNavigate()
@@ -105,7 +108,9 @@ function ModuloCard({ modulo }) {
   )
 }
 
-export default function PibicJr() {
+export default function PibicJr({ slug = "pibic-jr" }) {
+  const programaSlug = slug
+  const programa = getPrograma(programaSlug)
   const [stats, setStats] = useState({ projetos: null, avaliacoes: null })
 
   useEffect(() => {
@@ -116,6 +121,19 @@ export default function PibicJr() {
       setStats({ projetos: projetos ?? 0, avaliacoes: avaliacoes ?? 0 })
     })
   }, [])
+
+  if (!programa) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
+        <div style={{ textAlign: "center" }}>
+          <p style={{ fontSize: 16, fontWeight: 600, color: "#0F172A" }}>Programa não encontrado</p>
+          <Link to="/hub" style={{ fontSize: 13, color: "#534AB7" }}>← Voltar para Programas</Link>
+        </div>
+      </div>
+    )
+  }
+
+  const MODULOS = buildModulos(programaSlug)
 
   return (
     <div style={{
@@ -148,10 +166,10 @@ export default function PibicJr() {
             </div>
             <div>
               <h1 style={{ fontSize: 26, fontWeight: 700, color: "#fff", margin: 0, lineHeight: 1.2 }}>
-                PIBIC Jr
+                {programa.nome}
               </h1>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 4 }}>
-                Programa de Iniciação Científica Júnior · Edição 2026
+                {programa.nomeCompleto} · Edição 2026
               </div>
             </div>
           </div>
