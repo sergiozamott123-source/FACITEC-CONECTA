@@ -123,10 +123,11 @@ function calcIdade(dataNasc) {
   return age
 }
 
-function calcStatus({ orientador, bolsistas, contrato }, maxBolsistas) {
+function calcStatus({ orientador, bolsistas, contrato }, maxBolsistas, exigirRegularidade) {
   if (contrato?.status === "assinado") return "assinado"
   if (contrato?.status === "emitido")  return "emitido"
   const docsOk = orientador?.cpf && orientador?.doc_identidade && orientador?.doc_diploma
+    && (!exigirRegularidade || orientador?.doc_regularidade_url)
   if (!docsOk) return "aguardando_dados"
   if ((bolsistas?.length ?? 0) < maxBolsistas) return "aguardando_equipe"
   return "pronto"
@@ -340,6 +341,7 @@ const CONTRATO_INICIAL = {
   numero_contrato: "", numero_processo: "",
   nome_diretor_presidente: "", nome_diretora_adm: "",
   data_assinatura: "", data_inicio_vigencia: "", data_fim_vigencia: "",
+  data_inicio_bolsa: "",
   valor_bolsa_orientador: 1000, valor_bolsa_estudante: 300,
   numero_edital: "01/2026", ano_exercicio: 2026,
   conteudo_editavel: "",
@@ -391,7 +393,7 @@ export default function ContratoDetalhe() {
     try {
       const { data: proj, error: e1 } = await supabase
         .from("projeto")
-        .select("id, titulo, codigo, orientador_id, status")
+        .select("id, titulo, codigo, orientador_id, status, video_mes3_url, nome_arquivo_video_mes3, video_mes5_url, nome_arquivo_video_mes5")
         .eq("id", projetoId)
         .single()
       if (e1) throw e1
@@ -400,7 +402,7 @@ export default function ContratoDetalhe() {
       if (proj.orientador_id) {
         const { data: ori } = await supabase
           .from("orientador")
-          .select("id, nome_completo, codigo_orientador, cpf, rg, orgao_emissor, email, telefone, cep, logradouro, numero, complemento, bairro, municipio, uf, doc_identidade, doc_diploma")
+          .select("id, nome_completo, codigo_orientador, cpf, rg, orgao_emissor, email, telefone, cep, logradouro, numero, complemento, bairro, municipio, uf, doc_identidade, doc_diploma, doc_regularidade_url")
           .eq("id", proj.orientador_id)
           .single()
         if (ori) setOrientador(ori)
@@ -430,6 +432,7 @@ export default function ContratoDetalhe() {
           data_assinatura:         cont.data_assinatura         ?? "",
           data_inicio_vigencia:    cont.data_inicio_vigencia    ?? "",
           data_fim_vigencia:       cont.data_fim_vigencia       ?? "",
+          data_inicio_bolsa:       cont.data_inicio_bolsa       ?? "",
           valor_bolsa_orientador:  cont.valor_bolsa_orientador  ?? 1000,
           valor_bolsa_estudante:   cont.valor_bolsa_estudante   ?? 300,
           numero_edital:           cont.numero_edital            ?? "01/2026",
@@ -453,7 +456,7 @@ export default function ContratoDetalhe() {
       ...dados,
       projeto_id:    projetoId,
       orientador_id: projeto.orientador_id,
-      valor_global:  vOri * 6 + 8 * vEst * 6,
+      valor_global:  vOri * 6 + maxBolsistas * vEst * 6,
       status,
     }
   }
@@ -744,7 +747,8 @@ export default function ContratoDetalhe() {
   }
 
   // ── VALORES COMPUTADOS ────────────────────────────────────────────────────
-  const status = loading ? null : calcStatus({ orientador, bolsistas, contrato }, maxBolsistas)
+  const isProficJr = programa?.programaId === "PROFICJR"
+  const status = loading ? null : calcStatus({ orientador, bolsistas, contrato }, maxBolsistas, isProficJr)
   const dadosOk = calcDadosContratoOk(dados)
   const prontoParaPDF = dadosOk && !!dados.conteudo_editavel.trim()
   const valorGlobal = (Number(dados.valor_bolsa_orientador || 0) * 6) + (maxBolsistas * Number(dados.valor_bolsa_estudante || 0) * 6)
@@ -826,8 +830,20 @@ export default function ContratoDetalhe() {
             </div>
             <DocBadge url={orientador?.doc_identidade} label="Documento de identidade com foto e CPF — item 13.5-a" />
             <DocBadge url={orientador?.doc_diploma}    label="Diploma de graduação de curso superior — item 13.5-b" />
+            {isProficJr && (
+              <DocBadge url={orientador?.doc_regularidade_url} label="Declaração de Regularidade junto ao FACITEC — item 13.5-k" />
+            )}
           </div>
         </Card>
+
+        {isProficJr && (
+          <Card title="Vídeos de acompanhamento">
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <DocBadge url={projeto?.video_mes3_url} label="Vídeo de acompanhamento — fim do 3º mês" />
+              <DocBadge url={projeto?.video_mes5_url} label="Vídeo de acompanhamento — fim do 5º mês" />
+            </div>
+          </Card>
+        )}
 
         {/* 2 — Equipe de bolsistas */}
         <Card title={`Equipe de bolsistas — ${bolsistas.length} / ${maxBolsistas}`}>
@@ -939,6 +955,19 @@ export default function ContratoDetalhe() {
                     onChange={e => handleDadosChange("data_fim_vigencia", e.target.value)} />
                 </div>
               </div>
+
+              {isProficJr && (
+                <div>
+                  <label style={labelCss}>Início do pagamento da bolsa</label>
+                  <input type="date" style={inputCss}
+                    value={dados.data_inicio_bolsa}
+                    onChange={e => handleDadosChange("data_inicio_bolsa", e.target.value)} />
+                  <p style={{ fontSize: 11, color: C.grayL, marginTop: 4 }}>
+                    Data real do 1º pagamento (abertura do calendário letivo de 2027) — distinta
+                    da vigência do contrato acima, que começa na assinatura em 2026.
+                  </p>
+                </div>
+              )}
 
               <div>
                 <label style={labelCss}>Número do edital</label>

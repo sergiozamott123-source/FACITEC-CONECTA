@@ -39,12 +39,21 @@ export const PROGRAMAS = [
     descricao: "Estímulo à curiosidade científica nos primeiros anos escolares.",
     cor: "#0F6E56",
     corBg: "#E1F5EE",
-    // Estruturado nas rotas, mas mantido oculto do Hub público até o
-    // conteúdo (edições, critérios, contratos) estar pronto para produção.
-    // Acessível diretamente via /profic-jr enquanto isso.
-    ativo: false,
+    // Ativado em 11/07 — módulo tecnicamente pronto (regras do edital, rubrica
+    // de avaliação, documentos, vídeos, data de início da bolsa). Usuário optou
+    // por ativar agora mesmo sem ter liberado a plataforma publicamente ainda.
+    ativo: true,
     codigoPrefixo: "PROFIC",
     maxBolsistas: 5,
+    // Rubrica do edital: cada critério usa uma escala qualitativa fixa de 5 níveis
+    // (não notas livres em 0,5) — ver PROMPT_PROFICJR.md, seção 2.
+    escalaAvaliacao: [
+      { valor: 2.5, label: "Totalmente" },
+      { valor: 2.0, label: "Satisfatoriamente" },
+      { valor: 1.5, label: "Parcialmente" },
+      { valor: 1.0, label: 'De forma um pouco "rasa"' },
+      { valor: 0,   label: "Insuficiente" },
+    ],
     image: proficJrImg,
   },
   {
@@ -90,6 +99,12 @@ export function getProgramaByProgramaId(programaId) {
 // (padrão histórico do PIBIC Jr) quando o programa ainda não tem o valor confirmado.
 export function getMaxBolsistas(programaId) {
   return getProgramaByProgramaId(programaId)?.maxBolsistas ?? 8
+}
+
+// Escala qualitativa fixa de avaliação de um programa (5 níveis, ex: PROFIC Jr),
+// ou null quando o programa usa notas livres em incrementos de 0,5 (ex: PIBIC Jr).
+export function getEscalaAvaliacao(programaId) {
+  return getProgramaByProgramaId(programaId)?.escalaAvaliacao ?? null
 }
 
 // Gera o prefixo de código usado em bolsistas/contratos (ex: PIBIC26, PROFIC26) a

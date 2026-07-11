@@ -39,10 +39,11 @@ const FILTROS = [
   { key: "assinado",         label: "Assinados"       },
 ]
 
-function calcStatus(p, maxBolsistas) {
+function calcStatus(p, maxBolsistas, exigirRegularidade) {
   if (p.contrato?.status === "assinado") return "assinado"
   if (p.contrato?.status === "emitido")  return "emitido"
   const docsOk = p.orientador?.cpf && p.orientador?.doc_identidade && p.orientador?.doc_diploma
+    && (!exigirRegularidade || p.orientador?.doc_regularidade_url)
   if (!docsOk) return "aguardando_dados"
   if (p.numBolsistas < maxBolsistas) return "aguardando_equipe"
   return "pronto"
@@ -104,6 +105,7 @@ export default function ContratosPainel() {
   const edicaoId = edicaoSelecionada?.id
   const programa = getPrograma(slug)
   const maxBolsistas = getMaxBolsistas(programa?.programaId)
+  const isProficJr = programa?.programaId === "PROFICJR"
 
   const [projetos, setProjetos] = useState([])
   const [loading, setLoading]   = useState(true)
@@ -135,7 +137,7 @@ export default function ContratosPainel() {
       // 2 — orientadores
       const { data: orientData, error: e2 } = await supabase
         .from("orientador")
-        .select("id, nome_completo, codigo_orientador, cpf, doc_identidade, doc_diploma")
+        .select("id, nome_completo, codigo_orientador, cpf, doc_identidade, doc_diploma, doc_regularidade_url")
         .in("id", orientadorIds)
       if (e2) throw e2
 
@@ -179,14 +181,14 @@ export default function ContratosPainel() {
 
   // métricas
   const porStatus = projetos.reduce((acc, p) => {
-    const s = calcStatus(p, maxBolsistas)
+    const s = calcStatus(p, maxBolsistas, isProficJr)
     acc[s] = (acc[s] ?? 0) + 1
     return acc
   }, {})
 
   const projetosFiltrados = filtro === "todos"
     ? projetos
-    : projetos.filter(p => calcStatus(p, maxBolsistas) === filtro)
+    : projetos.filter(p => calcStatus(p, maxBolsistas, isProficJr) === filtro)
 
   const baseRoute = `/admin/${slug}/${ano}/m2/contratos`
 
@@ -321,7 +323,7 @@ export default function ContratosPainel() {
 
             {/* linhas */}
             {projetosFiltrados.map((p, idx) => {
-              const status   = calcStatus(p, maxBolsistas)
+              const status   = calcStatus(p, maxBolsistas, isProficJr)
               const numDocs  = calcDocs(p.orientador)
               const pronto   = status === "pronto"
               const detailRoute = `${baseRoute}/${p.id}`

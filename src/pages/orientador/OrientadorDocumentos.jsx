@@ -6,16 +6,27 @@ import { supabase } from '@/lib/supabase'
 
 const ACEITOS = '.pdf,.jpg,.jpeg,.png,.webp'
 const BUCKET = 'inscricoes'
+// Bucket dedicado a vídeos: arquivos bem maiores que os documentos acima e com
+// mime types diferentes (o bucket `inscricoes` não aceita video/*).
+const BUCKET_VIDEOS = 'videos-acompanhamento'
 
 const DOCS_ORIENTADOR = [
-  { key: 'doc_identidade', label: 'Documento de identidade com foto e CPF', ref: 'Edital 01/2026, item 13.5-a' },
-  { key: 'doc_diploma',    label: 'Diploma de graduação de curso superior', ref: 'Edital 01/2026, item 13.5-b' },
+  { key: 'doc_identidade',      label: 'Documento de identidade com foto e CPF', ref: 'Edital 01/2026, item 13.5-a' },
+  { key: 'doc_diploma',         label: 'Diploma de graduação de curso superior', ref: 'Edital 01/2026, item 13.5-b' },
+  { key: 'doc_regularidade_url', label: 'Declaração de Regularidade junto ao FACITEC', ref: 'Comprova que o(a) orientador(a) está em situação regular junto ao FACITEC' },
 ]
 
-async function uploadArquivo(file, path) {
-  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true })
+const VIDEOS_ACOMPANHAMENTO = [
+  { key: 'video_mes3_url', nomeKey: 'nome_arquivo_video_mes3', label: 'Vídeo de acompanhamento — fim do 3º mês' },
+  { key: 'video_mes5_url', nomeKey: 'nome_arquivo_video_mes5', label: 'Vídeo de acompanhamento — fim do 5º mês' },
+]
+
+const ACEITOS_VIDEO = '.mp4,.mov,.webm'
+
+async function uploadArquivo(file, path, bucket = BUCKET) {
+  const { error } = await supabase.storage.from(bucket).upload(path, file, { upsert: true })
   if (error) throw error
-  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  const { data: { publicUrl } } = supabase.storage.from(bucket).getPublicUrl(path)
   return publicUrl
 }
 
@@ -57,7 +68,7 @@ function DocActions({ url }) {
   )
 }
 
-function UploadButton({ onUpload, uploading, label }) {
+function UploadButton({ onUpload, uploading, label, accept = ACEITOS }) {
   const ref = useRef()
   return (
     <>
@@ -73,7 +84,7 @@ function UploadButton({ onUpload, uploading, label }) {
       <input
         ref={ref}
         type="file"
-        accept={ACEITOS}
+        accept={accept}
         className="hidden"
         onChange={e => {
           const file = e.target.files?.[0]
@@ -92,7 +103,10 @@ export function OrientadorDocumentos() {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState({})
   const [meusDocUrls, setMeusDocUrls] = useState({})
+  const [videos, setVideos] = useState({})
   const [error, setError] = useState(null)
+
+  const exigeVideos = projeto?.edicao?.programa_id === 'PROFICJR'
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
@@ -120,6 +134,14 @@ export function OrientadorDocumentos() {
       if (orientador?.[doc.key]) urls[doc.key] = orientador[doc.key]
     }
     setMeusDocUrls(urls)
+
+    // Carregar URLs dos vídeos de acompanhamento do projeto
+    const vids = {}
+    for (const v of VIDEOS_ACOMPANHAMENTO) {
+      if (projeto?.[v.key]) vids[v.key] = { url: projeto[v.key], nome: projeto[v.nomeKey] }
+    }
+    setVideos(vids)
+
     setLoading(false)
   }
 
@@ -136,6 +158,22 @@ export function OrientadorDocumentos() {
       setError('Erro ao enviar arquivo.')
     } finally {
       setUploading(prev => ({ ...prev, [docKey]: false }))
+    }
+  }
+
+  async function handleUploadVideo(video, file) {
+    if (!projeto) return
+    const ext = file.name.split('.').pop()
+    const path = `projetos/${projeto.id}/${video.key}.${ext}`
+    setUploading(prev => ({ ...prev, [video.key]: true }))
+    try {
+      const url = await uploadArquivo(file, path, BUCKET_VIDEOS)
+      await supabase.from('projeto').update({ [video.key]: url, [video.nomeKey]: file.name }).eq('id', projeto.id)
+      setVideos(prev => ({ ...prev, [video.key]: { url, nome: file.name } }))
+    } catch {
+      setError('Erro ao enviar arquivo.')
+    } finally {
+      setUploading(prev => ({ ...prev, [video.key]: false }))
     }
   }
 
@@ -310,6 +348,57 @@ export function OrientadorDocumentos() {
             })}
           </div>
         </div>
+
+        {/* Seção 4 — Vídeos de acompanhamento (só PROFIC Jr) */}
+        {exigeVideos && (
+          <div className="bg-white rounded-xl border border-gray-200 p-5">
+            <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+              <FileText className="w-4 h-4 text-purple-600" />
+              Vídeos de acompanhamento
+            </h2>
+
+            <div className="space-y-3">
+              {VIDEOS_ACOMPANHAMENTO.map(video => {
+                const entry = videos[video.key]
+                return (
+                  <div key={video.key} className="py-3 border-b border-gray-100 last:border-0">
+                    <div className="flex items-start justify-between gap-4 flex-wrap">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-800">{video.label}</p>
+                        {entry?.nome && (
+                          <p className="text-xs text-gray-500 mt-1 flex items-center gap-1 truncate max-w-xs">
+                            <FileText className="w-3.5 h-3.5 shrink-0 text-gray-400" />
+                            {entry.nome}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {entry?.url ? (
+                          <>
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                              <CheckCircle2 className="w-3 h-3" /> Enviado
+                            </span>
+                            <DocActions url={entry.url} />
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-700 border border-amber-200">
+                            <Clock className="w-3 h-3" /> Pendente
+                          </span>
+                        )}
+                        <UploadButton
+                          accept={ACEITOS_VIDEO}
+                          onUpload={file => handleUploadVideo(video, file)}
+                          uploading={uploading[video.key]}
+                          label={entry?.url ? 'Substituir' : 'Enviar'}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   )

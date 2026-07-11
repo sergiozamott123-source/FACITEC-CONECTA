@@ -53,10 +53,11 @@ function calcStatusBolsista(b) {
   return 'incompleto'
 }
 
-function calcSteps(item) {
+function calcSteps(item, exigirRegularidade) {
   const { orientador, bolsistas, contrato } = item
   const step1 = true
-  const step2 = !!(orientador.cpf && orientador.doc_identidade && orientador.doc_diploma)
+  const step2 = !!(orientador.cpf && orientador.doc_identidade && orientador.doc_diploma
+    && (!exigirRegularidade || orientador.doc_regularidade_url))
   const step3 = bolsistas.length > 0 && bolsistas.every(b => calcStatusBolsista(b) === 'completo')
   const step4 = !!(contrato?.status === 'emitido' || contrato?.status === 'assinado')
   const step5 = bolsistas.length > 0 && bolsistas.every(b => !!b.nome_arquivo_termo)
@@ -140,8 +141,9 @@ function StatusBolsistaBadge({ status }) {
 function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
   const navigate = useNavigate()
   const { orientador, projeto, bolsistas, contrato } = item
-  const steps = calcSteps(item)
-  const maxBolsistas = getMaxBolsistas(getPrograma(slug)?.programaId)
+  const programaId = getPrograma(slug)?.programaId
+  const steps = calcSteps(item, programaId === 'PROFICJR')
+  const maxBolsistas = getMaxBolsistas(programaId)
   const completoCount = bolsistas.filter(b => calcStatusBolsista(b) === 'completo').length
   const contratoGerado = contrato?.status === 'emitido' || contrato?.status === 'assinado'
   const contratoLabel = contrato?.status ? (CONTRACT_LABELS[contrato.status] ?? contrato.status) : '—'
@@ -332,7 +334,7 @@ export default function SuperpainelM2() {
       // 2 — orientadores com código atribuído, restritos aos da edição atual
       const { data: orientData, error: e1 } = await supabase
         .from('orientador')
-        .select('id, nome_completo, codigo_orientador, email, cpf, doc_identidade, doc_diploma')
+        .select('id, nome_completo, codigo_orientador, email, cpf, doc_identidade, doc_diploma, doc_regularidade_url')
         .in('id', orientIds)
         .not('codigo_orientador', 'is', null)
         .order('codigo_orientador', { ascending: true })

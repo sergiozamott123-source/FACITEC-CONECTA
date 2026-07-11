@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeft, ClipboardCheck, LogOut, Save, Send } from 'lucide-react'
 import { useAvaliador } from '@/contexts/AvaliadorContext'
 import { supabase } from '@/lib/supabase'
+import { getEscalaAvaliacao } from '@/lib/programas'
 
 const RECOMENDACOES = [
   { value: 'Aprovado',               label: 'Aprovado'               },
@@ -50,7 +51,7 @@ export function FichaAvaliacao() {
         id, status, nota_total, parecer, recomendacao_final, avaliador_id,
         projeto:projeto_id (
           id, titulo, area_conhecimento, resumo,
-          edicao:edicao_id ( id )
+          edicao:edicao_id ( id, programa_id )
         )
       `)
       .eq('id', avaliacaoId)
@@ -110,6 +111,7 @@ export function FichaAvaliacao() {
   const notaTotal = criterios.reduce((s, c) => s + (notas[c.id] ?? 0), 0)
   const notaMaxTotal = criterios.reduce((s, c) => s + (c.nota_maxima ?? 0), 0)
   const pct = notaMaxTotal > 0 ? (notaTotal / notaMaxTotal) * 100 : 0
+  const escalaQualitativa = getEscalaAvaliacao(avaliacao?.projeto?.edicao?.programa_id)
 
   async function handleSave(draft) {
     setError(null)
@@ -300,31 +302,59 @@ export function FichaAvaliacao() {
                         <p className="text-xs text-gray-500 leading-relaxed mt-1">{c.descricao}</p>
                       )}
                       <p className="text-xs text-gray-400 mt-1">
-                        Nota máxima: <strong>{c.nota_maxima}</strong> · incremento de 0,5
+                        Nota máxima: <strong>{c.nota_maxima}</strong>
+                        {!escalaQualitativa && ' · incremento de 0,5'}
                       </p>
                     </div>
 
-                    <div className="flex flex-wrap gap-1.5">
-                      {possibilidades.map(v => {
-                        const ativo = notaSelecionada === v
-                        return (
-                          <button
-                            key={v}
-                            disabled={locked}
-                            onClick={() => !locked && setNotas(prev => ({ ...prev, [c.id]: v }))}
-                            className={`w-11 h-11 rounded-lg text-sm font-semibold transition-all border
-                              ${ativo
-                                ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
-                              }
-                              ${locked ? 'cursor-default opacity-70' : 'cursor-pointer'}
-                            `}
-                          >
-                            {Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',')}
-                          </button>
-                        )
-                      })}
-                    </div>
+                    {escalaQualitativa ? (
+                      <div className="flex flex-col gap-1.5">
+                        {escalaQualitativa.map(nivel => {
+                          const ativo = notaSelecionada === nivel.valor
+                          return (
+                            <button
+                              key={nivel.valor}
+                              disabled={locked}
+                              onClick={() => !locked && setNotas(prev => ({ ...prev, [c.id]: nivel.valor }))}
+                              className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border
+                                ${ativo
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
+                                }
+                                ${locked ? 'cursor-default opacity-70' : 'cursor-pointer'}
+                              `}
+                            >
+                              <span>{nivel.label}</span>
+                              <span className="font-semibold">
+                                {Number.isInteger(nivel.valor) ? nivel.valor : nivel.valor.toFixed(1).replace('.', ',')}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {possibilidades.map(v => {
+                          const ativo = notaSelecionada === v
+                          return (
+                            <button
+                              key={v}
+                              disabled={locked}
+                              onClick={() => !locked && setNotas(prev => ({ ...prev, [c.id]: v }))}
+                              className={`w-11 h-11 rounded-lg text-sm font-semibold transition-all border
+                                ${ativo
+                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
+                                }
+                                ${locked ? 'cursor-default opacity-70' : 'cursor-pointer'}
+                              `}
+                            >
+                              {Number.isInteger(v) ? v : v.toFixed(1).replace('.', ',')}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    )}
 
                     {selecionada && (
                       <p className="text-xs text-blue-600 font-semibold mt-2">

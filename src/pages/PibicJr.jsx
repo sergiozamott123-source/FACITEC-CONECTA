@@ -114,13 +114,41 @@ export default function PibicJr({ slug = "pibic-jr" }) {
   const [stats, setStats] = useState({ projetos: null, avaliacoes: null })
 
   useEffect(() => {
-    Promise.all([
-      supabase.from("projeto").select("*", { count: "exact", head: true }),
-      supabase.from("avaliacao").select("*", { count: "exact", head: true }),
-    ]).then(([{ count: projetos }, { count: avaliacoes }]) => {
-      setStats({ projetos: projetos ?? 0, avaliacoes: avaliacoes ?? 0 })
-    })
-  }, [])
+    if (!programa) return
+    let cancelado = false
+
+    async function carregarStats() {
+      const { data: edicoes } = await supabase
+        .from("edicao")
+        .select("id")
+        .eq("programa_id", programa.programaId)
+      const edicaoIds = (edicoes ?? []).map((e) => e.id)
+      if (edicaoIds.length === 0) {
+        if (!cancelado) setStats({ projetos: 0, avaliacoes: 0 })
+        return
+      }
+
+      const { data: projetosData, count: projetos } = await supabase
+        .from("projeto")
+        .select("id", { count: "exact" })
+        .in("edicao_id", edicaoIds)
+      const projetoIds = (projetosData ?? []).map((p) => p.id)
+
+      let avaliacoes = 0
+      if (projetoIds.length > 0) {
+        const { count } = await supabase
+          .from("avaliacao")
+          .select("*", { count: "exact", head: true })
+          .in("projeto_id", projetoIds)
+        avaliacoes = count ?? 0
+      }
+
+      if (!cancelado) setStats({ projetos: projetos ?? 0, avaliacoes })
+    }
+
+    carregarStats()
+    return () => { cancelado = true }
+  }, [programa])
 
   if (!programa) {
     return (

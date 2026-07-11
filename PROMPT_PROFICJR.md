@@ -50,10 +50,22 @@ Cada critério usa uma escala qualitativa fixa (não numérica livre):
 
 Desempate, nesta ordem: critério I → II → III → IV → decisão do Presidente do CMCT.
 
-Ação técnica: cadastrar esses 4 registros em `criterio_avaliacao` vinculados à edição do
+~~Ação técnica: cadastrar esses 4 registros em `criterio_avaliacao` vinculados à edição do
 PROFICJR (a tabela já suporta `nota_maxima` e `ordem` por critério — confirmar se também
 comporta a escala qualitativa de 5 níveis por extenso, ou se isso fica só como texto de apoio
-ao avaliador na UI, sem mudar o schema).
+ao avaliador na UI, sem mudar o schema).~~ **[RESOLVIDO]**
+
+- Criada edição rascunho `PROFICJR-2026` (status `planejado`, sem número de edital/datas —
+  ver seção 5/6) só para servir de âncora dos critérios: id
+  `70543c7a-987a-41cf-a530-c942f16a3291`.
+- Cadastrados os 4 registros em `criterio_avaliacao` (C1–C4, `nota_maxima=2,5` cada) sem
+  mudar o schema — `descricao` guarda uma explicação curta do critério, não a escala.
+- A escala qualitativa de 5 níveis foi resolvida no código, não no banco: novo campo
+  `escalaAvaliacao` em `src/lib/programas.js` (só preenchido para `profic-jr`) + helper
+  `getEscalaAvaliacao(programaId)`. Em `FichaAvaliacao.jsx`, quando a edição pertence a um
+  programa com `escalaAvaliacao`, a tela troca a grade genérica de botões em passos de 0,5
+  (usada pelo PIBIC Jr) por 5 botões rotulados com os nomes oficiais da rubrica — sem afetar
+  o fluxo do PIBIC Jr, que continua com nota livre.
 
 ## 3. Documentos exigidos — o que já existe vs. o que falta
 
@@ -62,31 +74,62 @@ Já existem como campos de upload (`DOCS_BASE`/`DOCS_MENOR` em `SuperpainelM2.js
 direção, autorização de imagem, autorização do responsável, identidade do responsável,
 diploma do orientador.
 
-Confirmar se já existem ou precisam ser criados:
+~~Confirmar se já existem ou precisam ser criados:
 - "Declaração de Regularidade junto ao FACITEC" (item 13.5.k do edital) — não encontrei
   campo equivalente no código revisado.
-- Upload dos 2 vídeos de acompanhamento (mês 3 e mês 5) — não existe hoje.
-- Como `isMenor(data_nascimento)` decide DOCS_MENOR: para o PROFIC Jr isso deveria ser
-  sempre verdadeiro (Fundamental I = sempre menor), então provavelmente não precisa mudar
-  nada aqui, mas vale um teste manual pra confirmar que a idade de um aluno do 1º-5º ano
-  sempre cai no critério de "menor" usado pela função.
+- Upload dos 2 vídeos de acompanhamento (mês 3 e mês 5) — não existe hoje.~~ **[RESOLVIDO]**
+
+- "Declaração de Regularidade junto ao FACITEC": a coluna `orientador.doc_regularidade_url`
+  já existia no schema, só não estava ligada a nenhuma tela. Agora aparece em
+  `OrientadorDocumentos.jsx` (upload pelo próprio orientador, universal — não é exclusivo do
+  PROFIC Jr) e em `ContratoDetalhe.jsx` (badge de leitura para a Secretaria). Só entra no
+  cálculo de "docs completos"/contrato pronto (`SuperpainelM2.jsx`, `ContratosPainel.jsx`,
+  `ContratoDetalhe.jsx`) quando `programaId === 'PROFICJR'` — os 32 orientadores do PIBIC Jr
+  já em produção, que nunca preencheram esse campo, continuam com o status igual a antes.
+- Vídeos de acompanhamento (mês 3 e mês 5): novas colunas `projeto.video_mes3_url` /
+  `video_mes5_url` (+ nome do arquivo) — `supabase/proficjr_documentos_setup.sql` já rodado
+  pelo usuário em 11/07, colunas confirmadas via teste real (insert/update/select com
+  registros temporários, removidos depois). Upload pelo orientador em
+  `OrientadorDocumentos.jsx` (seção só visível para projetos do PROFIC Jr) e visualização
+  somente-leitura para a Secretaria em `ContratoDetalhe.jsx`.
+  - **Bug encontrado no teste real**: o upload usava o bucket `inscricoes` (mesmo dos
+    documentos), que só aceita mime types de documento — um upload de vídeo de verdade
+    falharia com "mime type video/mp4 is not supported". Criado bucket dedicado
+    `videos-acompanhamento` (mp4/mov/webm, limite 300MB) em
+    `supabase/proficjr_videos_bucket_setup.sql`, rodado pelo usuário em 11/07. Reteste real
+    depois disso (upload mp4 + mov + webm, leitura via GET público, update de
+    `projeto.video_mes3_url`/`video_mes5_url`) — tudo OK, registros de teste removidos.
+    Código em `OrientadorDocumentos.jsx` já aponta pro bucket novo.
+- `isMenor(data_nascimento)` para PROFIC Jr: não testado manualmente ainda (fica pendente).
 
 ## 4. Lacunas técnicas confirmadas (independem do conteúdo do edital)
 
 Verificadas por leitura direta do código nesta sessão, não pelo relatório da outra sessão:
 
-1. **`src/pages/admin/ConvocacaoRecurso.jsx` não filtra por edição/programa** — busca todos
-   os registros de `recurso` do banco. Mesmo com a rota generalizada para
-   `/admin/:programa/:ano/recursos`, essa tela vai misturar recursos do PIBIC Jr com os do
-   PROFIC Jr. Corrigir com o mesmo padrão de seletor de edição já usado em
-   `Classificacao.jsx`, antes do PROFIC Jr ter recursos de verdade.
-2. **Portal do Orientador ainda gera código com prefixo fixo `PIBIC26-`** em vez de usar
-   `codigoPrefixo` de `src/lib/programas.js` (que já tem `PROFIC` cadastrado para o
-   `profic-jr`). Localizar onde esse código é gerado (busca por `PIBIC26` no portal do
-   orientador) e trocar para usar o registro central.
-3. Confirmar se o tamanho de equipe (1 orientador + N bolsistas) está hardcoded em algum
-   lugar assumindo N=8 (herdado do PIBIC Jr) — se estiver, parametrizar por programa/edição
-   em vez de fixo, já que o PROFIC Jr usa N=5.
+1. ~~**`src/pages/admin/ConvocacaoRecurso.jsx` não filtra por edição/programa**~~ **[RESOLVIDO]**
+   Confirmado direto no código em 11/07: usa `useAdmin()` para pegar `edicaoSelecionada.id` e
+   filtra tanto documentos quanto recursos por `edicao_id` via join `!inner`
+   (`recurso.projeto.edicao_id` / `projeto.edicao_id`).
+2. ~~**Portal do Orientador ainda gera código com prefixo fixo `PIBIC26-`**~~ **[RESOLVIDO]**
+   Confirmado direto no código em 11/07: `OrientadorBolsistas.jsx` e `OrientadorEquipe.jsx`
+   agora importam `gerarPrefixoCodigo` de `src/lib/programas.js` e geram o código a partir do
+   `programaId` da edição do projeto, não mais de um prefixo fixo.
+3. ~~Confirmar se o tamanho de equipe está hardcoded assumindo N=8~~ **[RESOLVIDO]**
+   Confirmado direto no código em 11/07: `getMaxBolsistas(programaId)` é usado em
+   `ContratoDetalhe.jsx`, `ContratosPainel.jsx`, `SuperpainelM2.jsx`, `OrientadorDashboard.jsx`,
+   `OrientadorBolsistas.jsx` e `OrientadorEquipe.jsx` — nenhum arquivo restante com `8` fixo
+   para tamanho de equipe.
+4. ~~**`src/pages/PibicJr.jsx` (visão geral do programa, usada tanto em `/pibic-jr` quanto em
+   `/profic-jr`) conta `projeto` e `avaliacao` da tabela inteira, sem filtrar por edição ou
+   programa** — confirmado visualmente em 11/07: a tela do PROFIC Jr mostrava os mesmos "32
+   projetos inscritos" e "155 avaliações realizadas" do PIBIC Jr, quando deveria mostrar 0
+   (ainda não existe edição real do PROFICJR). Corrigir contando só os projetos/avaliações
+   ligados a edições do `programaId` correspondente (mesmo padrão usado em `HubProgramas.jsx`
+   para o total por programa). O restante da página (breadcrumb, nome, ícone, links de M1/M2)
+   já está correto e generalizado.~~ **[RESOLVIDO]** Agora busca as edições do `programaId` da
+   rota, conta `projeto` filtrando por `edicao_id` nessas edições e `avaliacao` filtrando por
+   `projeto_id` nos projetos encontrados — sem edição real, mostra 0/0 em vez dos números do
+   PIBIC Jr.
 
 ## 5. Checklist de ativação (fazer por último, depois do conteúdo acima)
 
@@ -94,13 +137,22 @@ Verificadas por leitura direta do código nesta sessão, não pelo relatório da
    valores e datas do edital publicado (as datas de cronograma, número do edital e tema
    central ainda estão em branco na minuta — pegar com o usuário quando o edital for
    publicado oficialmente).
-2. Decidir e implementar como representar a divisão "seleção em 2026 / pagamento a partir
+2. ~~Decidir e implementar como representar a divisão "seleção em 2026 / pagamento a partir
    de 2027" — provavelmente duas datas diferentes (uma para o processo seletivo, outra para
    início da vigência financeira do contrato). Confirmar com o usuário antes de assumir um
-   modelo de dados para isso.
-3. Cadastrar os 4 critérios de avaliação (seção 2).
-4. Marcar `ativo: true` no registro do `profic-jr` em `src/lib/programas.js` só quando o
-   conteúdo acima estiver pronto e testado — isso é o que faz o card aparecer no Hub público.
+   modelo de dados para isso.~~ **[RESOLVIDO]** Novo campo `contrato.data_inicio_bolsa`
+   (`supabase/proficjr_documentos_setup.sql` já rodado e testado ponta a ponta em 11/07),
+   editável em `ContratoDetalhe.jsx` só para o PROFIC Jr, com texto de apoio explicando a
+   diferença para a vigência do contrato. `edicao.data_inicio`/`data_termino` continuam
+   representando só o período do processo seletivo em 2026, sem mudança. Não mexi no texto
+   do contrato gerado (`TEMPLATE_CONTRATO`) — isso fica para quando o texto legal do PROFIC Jr
+   for revisado com o edital real.
+3. ~~Cadastrar os 4 critérios de avaliação (seção 2).~~ **[RESOLVIDO]** Feito em 11/07 (ver seção 2).
+4. ~~Marcar `ativo: true` no registro do `profic-jr` em `src/lib/programas.js` só quando o
+   conteúdo acima estiver pronto e testado — isso é o que faz o card aparecer no Hub público.~~
+   **[RESOLVIDO]** Ativado em 11/07 a pedido do usuário, mesmo sem o edital oficial publicado
+   ainda — decisão dele, ciente de que a plataforma não foi liberada publicamente ao pessoal
+   até ele configurar a página de entrada do facitec para direcionar pra cá.
 5. Testar o fluxo ponta a ponta com uma edição de teste antes de tornar público (inscrição →
    avaliação com a rubrica nova → classificação → recurso → contrato com equipe de 1+5 →
    relatório mensal → vídeos de acompanhamento) antes de ativar de verdade.
