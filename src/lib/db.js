@@ -148,7 +148,7 @@ export const termoAdesaoService = {
 
 export const pagamentoService = {
   list: (edicaoId) => db.list('pagamento', {
-    select: '*, bolsista:bolsista_id(id, nome_completo, tipo), edicao:edicao_id(id, data_inicio)',
+    select: '*, bolsista:bolsista_id(id, nome_completo, tipo, orientador_id), edicao:edicao_id(id, data_inicio)',
     filters: edicaoId ? [['edicao_id', 'eq', edicaoId]] : undefined,
   }),
   get: (id) => db.get('pagamento', id),

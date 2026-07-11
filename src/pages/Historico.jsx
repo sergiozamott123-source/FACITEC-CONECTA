@@ -1,212 +1,661 @@
-import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, History, FileText, ExternalLink, Upload } from 'lucide-react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { useState, useEffect, useMemo, useCallback } from 'react'
+import { Link } from 'react-router-dom'
+import {
+  ChevronDown, DollarSign, FileCheck2, FileSignature, ClipboardCheck, Settings2,
+  CheckCircle2, Clock, AlertTriangle, Download, Loader2, ExternalLink,
+} from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Modal } from '@/components/common/Modal'
-import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
-import { useTable, useCrud } from '@/hooks/useTable'
-import { relatorioMensalService, importacaoLogService, projetoService, orientadorService } from '@/lib/db'
+import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/contexts/AdminContext'
+import { pagamentoService } from '@/lib/db'
+import { buscarDadosRelatorioFinanceiro, exportarPDFFinanceiro, exportarExcelFinanceiro } from '@/lib/relatorioFinanceiro'
+import { listarCiclos, statusRelatorioNoCiclo } from '@/lib/relatorioMensal'
+import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
+import { computarRanking, CONSENSO_VARIANT } from '@/lib/classificacaoRanking'
+import {
+  CATEGORIAS_COLUNAS, buscarDadosRelatorioPersonalizado,
+  exportarPDFPersonalizado, exportarExcelPersonalizado, exportarWordPersonalizado,
+} from '@/lib/relatorioPersonalizado'
 
-const R_STATUS = ['pendente', 'enviado', 'aprovado', 'reprovado']
-const STATUS_VARIANT = { aprovado: 'success', pendente: 'warning', enviado: 'default', reprovado: 'destructive' }
+const STATUS_INFO = {
+  enviado: { label: 'Enviado', variant: 'success' },
+  enviado_atrasado: { label: 'Enviado (atraso)', variant: 'warning' },
+  atrasado: { label: 'Atrasado', variant: 'destructive' },
+  pendente: { label: 'Pendente', variant: 'secondary' },
+}
 
-const EMPTY_R = { mes_referencia: '', status: 'pendente', arquivo_url: '', projeto_id: '', orientador_id: '' }
+function fmtMoeda(val) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+}
 
-function RelatorioForm({ value, onChange, projetos, orientadores }) {
-  const set = k => e => onChange({ ...value, [k]: e.target.value })
+function LoadingInline() {
+  return <p className="text-sm text-muted-foreground py-4 text-center">Carregando...</p>
+}
+
+function ErroInline({ msg }) {
+  if (!msg) return null
+  return <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">{msg}</div>
+}
+
+function MiniStat({ icon: Icon, label, value, tone = 'slate' }) {
+  const toneIcon = {
+    slate: 'text-foreground',
+    green: 'text-green-600',
+    amber: 'text-amber-600',
+    red: 'text-red-600',
+  }[tone]
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Mês de Referência" required>
-          <Input type="month" value={value.mes_referencia ?? ''} onChange={set('mes_referencia')} />
-        </FormField>
-        <FormField label="Status">
-          <Select value={value.status} onChange={set('status')}>
-            {R_STATUS.map(s => <option key={s} value={s}>{s}</option>)}
-          </Select>
-        </FormField>
+    <div className="rounded-lg border border-border p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        {Icon && <Icon className={`w-3.5 h-3.5 ${toneIcon}`} />}
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">{label}</p>
       </div>
-      <FormField label="Projeto">
-        <Select value={value.projeto_id ?? ''} onChange={set('projeto_id')}>
-          <option value="">Selecione</option>
-          {projetos.map(p => <option key={p.id} value={p.id}>{p.titulo ?? `#${p.id}`}</option>)}
-        </Select>
-      </FormField>
-      <FormField label="Orientador">
-        <Select value={value.orientador_id ?? ''} onChange={set('orientador_id')}>
-          <option value="">Selecione</option>
-          {orientadores.map(o => <option key={o.id} value={o.id}>{o.nome_completo ?? o.email}</option>)}
-        </Select>
-      </FormField>
-      <FormField label="URL do Arquivo">
-        <Input type="url" placeholder="https://..." value={value.arquivo_url ?? ''} onChange={set('arquivo_url')} />
-      </FormField>
+      <p className="text-lg font-bold text-foreground">{value}</p>
     </div>
   )
 }
 
+function VerTelaCompleta({ to, children }) {
+  return (
+    <Link to={to} className="text-xs text-primary hover:underline inline-flex items-center gap-1">
+      {children} <ExternalLink className="w-3 h-3" />
+    </Link>
+  )
+}
+
+// ── Card expansível genérico (mesmo padrão visual dos grupos de Bolsistas) ──
+function RelatorioCard({ icon: Icon, iconBg, iconColor, title, headerRight, expanded, onToggle, children }) {
+  return (
+    <Card className="overflow-hidden">
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left hover:bg-muted/40 transition-colors"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <div className={`flex items-center justify-center w-9 h-9 rounded-full ${iconBg} shrink-0`}>
+            <Icon className={`w-5 h-5 ${iconColor}`} />
+          </div>
+          <p className="font-medium text-sm text-foreground truncate">{title}</p>
+        </div>
+        <div className="flex items-center gap-3 shrink-0">
+          {headerRight}
+          <ChevronDown className={`w-4 h-4 text-muted-foreground transition-transform ${expanded ? 'rotate-180' : ''}`} />
+        </div>
+      </button>
+      {children != null && (
+        <div className={expanded ? 'border-t border-border px-4 py-4 space-y-4' : 'hidden'}>
+          {children}
+        </div>
+      )}
+    </Card>
+  )
+}
+
+// ── Card 1 — Financeiro ──────────────────────────────────────────────────────
+function FinanceiroBody({ ano }) {
+  const [orientadores, setOrientadores] = useState([])
+  const [pagamentos, setPagamentos] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [orientadorId, setOrientadorId] = useState('')
+  const [periodo, setPeriodo] = useState('')
+  const [exportando, setExportando] = useState(null)
+
+  useEffect(() => {
+    Promise.all([
+      supabase.from('orientador').select('id, nome_completo').not('codigo_orientador', 'is', null).order('nome_completo'),
+      pagamentoService.list(),
+    ]).then(([oRes, pRes]) => {
+      setOrientadores(oRes.data ?? [])
+      setPagamentos(pRes.data ?? [])
+    }).catch(() => setErro('Não foi possível carregar os dados financeiros.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const periodos = useMemo(
+    () => [...new Set(pagamentos.map(p => p.mes_referencia).filter(Boolean))].sort(),
+    [pagamentos],
+  )
+
+  const pagamentosFiltrados = useMemo(() => pagamentos.filter(p => {
+    if (orientadorId && String(p.bolsista?.orientador_id ?? '') !== orientadorId) return false
+    if (periodo && p.mes_referencia !== periodo) return false
+    return true
+  }), [pagamentos, orientadorId, periodo])
+
+  const totalPago = pagamentosFiltrados.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const totalPendente = pagamentosFiltrados.filter(p => ['pendente', 'agendado'].includes(p.status)).reduce((s, p) => s + Number(p.valor ?? 0), 0)
+
+  async function handleExportar(formato) {
+    setExportando(formato)
+    setErro(null)
+    try {
+      const orientadorIds = orientadorId ? [Number(orientadorId)] : null
+      const linhas = await buscarDadosRelatorioFinanceiro(ano, orientadorIds)
+      if (!linhas.length) { setErro('Nenhum bolsista ativo encontrado para gerar o relatório.'); return }
+      if (formato === 'excel') exportarExcelFinanceiro(linhas, ano)
+      else exportarPDFFinanceiro(linhas, ano)
+    } catch {
+      setErro('Não foi possível gerar o relatório financeiro.')
+    } finally {
+      setExportando(null)
+    }
+  }
+
+  if (loading) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={orientadorId}
+          onChange={e => setOrientadorId(e.target.value)}
+          className="border border-border rounded-md px-3 py-1.5 text-sm bg-background"
+        >
+          <option value="">Todos os orientadores</option>
+          {orientadores.map(o => <option key={o.id} value={o.id}>{o.nome_completo}</option>)}
+        </select>
+        <select
+          value={periodo}
+          onChange={e => setPeriodo(e.target.value)}
+          className="border border-border rounded-md px-3 py-1.5 text-sm bg-background"
+        >
+          <option value="">Todos os períodos</option>
+          {periodos.map(p => <option key={p} value={p}>{p}</option>)}
+        </select>
+        <div className="ml-auto flex gap-2">
+          <Button variant="outline" size="sm" disabled={!!exportando} onClick={() => handleExportar('pdf')}>
+            {exportando === 'pdf' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+            Exportar PDF
+          </Button>
+          <Button variant="outline" size="sm" disabled={!!exportando} onClick={() => handleExportar('excel')}>
+            {exportando === 'excel' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+            Exportar Excel
+          </Button>
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <MiniStat label="Total pago" value={fmtMoeda(totalPago)} />
+        <MiniStat label="A pagar / pendente" value={fmtMoeda(totalPendente)} />
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Totais calculados sobre os pagamentos cadastrados na tela Financeiro. A exportação em PDF/Excel traz os dados cadastrais completos dos bolsistas para a Gerência Financeira.
+      </p>
+      <VerTelaCompleta to={`/admin/pibic-jr/${ano}/m2`}>Abrir relatório completo (Superpainel M2)</VerTelaCompleta>
+    </>
+  )
+}
+
+// ── Card 2 — Relatório Mensal (Obrigações do Orientador) ────────────────────
+function RelatorioMensalBody({ edicaoId, ciclosIniciais }) {
+  const [ciclos, setCiclos] = useState(ciclosIniciais ?? null)
+  const [cicloId, setCicloId] = useState(null)
+  const [orientadores, setOrientadores] = useState([])
+  const [relatorios, setRelatorios] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [exportandoLote, setExportandoLote] = useState(false)
+
+  useEffect(() => {
+    if (!edicaoId) return
+    async function boot() {
+      let lista = ciclos
+      if (!lista) {
+        lista = await listarCiclos(edicaoId)
+        setCiclos(lista)
+      }
+      const hoje = new Date().toISOString().slice(0, 10)
+      const vigente = lista.find(c => hoje >= c.data_abertura && hoje <= c.data_fechamento)
+        ?? [...lista].reverse().find(c => hoje >= c.data_abertura)
+        ?? lista[0]
+      setCicloId(vigente?.id ?? null)
+    }
+    boot().catch(() => setErro('Erro ao carregar os ciclos do relatório mensal.'))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edicaoId])
+
+  async function carregarStatus() {
+    setLoading(true)
+    try {
+      const [pRes, rRes] = await Promise.all([
+        supabase
+          .from('projeto')
+          .select('id, titulo, orientador:orientador_id(id, nome_completo, codigo_orientador)')
+          .eq('edicao_id', edicaoId)
+          .eq('status', 'selecionado'),
+        supabase.from('relatorio_mensal').select('*').eq('ciclo_id', cicloId),
+      ])
+      setOrientadores((pRes.data ?? []).filter(p => p.orientador).map(p => ({ ...p.orientador, projeto: p.titulo })))
+      setRelatorios(rRes.data ?? [])
+    } catch {
+      setErro('Erro ao carregar o status dos relatórios.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!cicloId || !edicaoId) return
+    carregarStatus()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cicloId, edicaoId])
+
+  const cicloSelecionado = (ciclos ?? []).find(c => c.id === cicloId) ?? null
+
+  const linhas = useMemo(() => {
+    if (!cicloSelecionado) return []
+    return orientadores.map(o => {
+      const relatorio = relatorios.find(r => r.orientador_id === o.id) ?? null
+      return { orientador: o, relatorio, status: statusRelatorioNoCiclo(cicloSelecionado, relatorio) }
+    })
+  }, [orientadores, relatorios, cicloSelecionado])
+
+  const resumo = useMemo(() => ({
+    enviados: linhas.filter(l => l.status === 'enviado' || l.status === 'enviado_atrasado').length,
+    pendentes: linhas.filter(l => l.status === 'pendente').length,
+    atrasados: linhas.filter(l => l.status === 'atrasado').length,
+  }), [linhas])
+
+  async function handleExportarTodos() {
+    const enviados = linhas.filter(l => l.relatorio?.status === 'enviado')
+    if (!enviados.length || !cicloSelecionado) return
+    setExportandoLote(true)
+    try {
+      const idsBolsistas = [...new Set(enviados.flatMap(l => (l.relatorio.frequencia_bolsistas ?? []).map(f => f.bolsista_id)))]
+      let nomes = {}
+      if (idsBolsistas.length) {
+        const { data } = await supabase.from('bolsista').select('id, nome_completo').in('id', idsBolsistas)
+        nomes = Object.fromEntries((data ?? []).map(b => [b.id, b.nome_completo]))
+      }
+      for (const l of enviados) {
+        await gerarPDFRelatorioMensal({
+          relatorio: l.relatorio,
+          ciclo: cicloSelecionado,
+          orientador: l.orientador,
+          projetoTitulo: l.orientador?.projeto,
+          nomesBolsistas: nomes,
+        })
+        await new Promise(resolve => setTimeout(resolve, 350))
+      }
+    } catch {
+      setErro('Não foi possível exportar os relatórios em lote.')
+    } finally {
+      setExportandoLote(false)
+    }
+  }
+
+  if (!edicaoId || !ciclos) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="flex flex-wrap items-center gap-3">
+        <select
+          value={cicloId ?? ''}
+          onChange={e => setCicloId(Number(e.target.value))}
+          className="border border-border rounded-md px-3 py-1.5 text-sm bg-background"
+        >
+          {ciclos.map(c => <option key={c.id} value={c.id}>Ciclo {c.numero_ciclo} — {c.mes_referencia}</option>)}
+        </select>
+        <Button
+          variant="outline"
+          size="sm"
+          className="ml-auto"
+          disabled={exportandoLote || resumo.enviados === 0}
+          onClick={handleExportarTodos}
+        >
+          {exportandoLote ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          {exportandoLote ? 'Exportando...' : `Exportar todos enviados (${resumo.enviados})`}
+        </Button>
+      </div>
+      {loading ? <LoadingInline /> : (
+        <>
+          <div className="grid grid-cols-3 gap-3">
+            <MiniStat icon={CheckCircle2} label="Enviados" value={resumo.enviados} tone="green" />
+            <MiniStat icon={Clock} label="Pendentes" value={resumo.pendentes} tone="amber" />
+            <MiniStat icon={AlertTriangle} label="Atrasados" value={resumo.atrasados} tone="red" />
+          </div>
+          <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+            {linhas.length === 0 && <p className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhum orientador com projeto selecionado nesta edição.</p>}
+            {linhas.map(({ orientador, status }) => (
+              <div key={orientador.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+                <span className="truncate">{orientador.nome_completo}</span>
+                <Badge variant={STATUS_INFO[status].variant} className="text-xs shrink-0">{STATUS_INFO[status].label}</Badge>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      <VerTelaCompleta to="/admin/relatorios-mensais">Abrir tela completa</VerTelaCompleta>
+    </>
+  )
+}
+
+// ── Card 3 — Contratos ───────────────────────────────────────────────────────
+function ContratosBody({ orientadores, ano }) {
+  if (!orientadores) return <LoadingInline />
+  return (
+    <>
+      <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+        {orientadores.length === 0 && <p className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhum orientador ativo nesta edição.</p>}
+        {orientadores.map(o => (
+          <div key={o.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+            <span className="truncate">{o.nome_completo}</span>
+            {o.contrato_url ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-green-700 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Emitido
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground shrink-0">Pendente</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <VerTelaCompleta to={`/admin/pibic-jr/${ano}/m2/contratos`}>Abrir painel de contratos</VerTelaCompleta>
+    </>
+  )
+}
+
+// ── Card 4 — Avaliação ───────────────────────────────────────────────────────
+function AvaliacaoBody({ edicaoId, statusTallyInicial }) {
+  const [statusTally, setStatusTally] = useState(statusTallyInicial ?? null)
+  const [ranking, setRanking] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+
+  useEffect(() => {
+    if (!edicaoId) return
+    async function carregar() {
+      setLoading(true)
+      setErro(null)
+      try {
+        const { data: projetos, error: ep } = await supabase
+          .from('projeto').select('id, titulo, area_conhecimento').eq('edicao_id', edicaoId)
+        if (ep) throw ep
+        const projetoIds = (projetos ?? []).map(p => p.id)
+
+        if (!statusTally) {
+          const { data: avals, error: ea } = await supabase.from('avaliacao').select('status').in('projeto_id', projetoIds.length ? projetoIds : [-1])
+          if (ea) throw ea
+          const tally = { pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }
+          ;(avals ?? []).forEach(a => { if (tally[a.status] !== undefined) tally[a.status]++ })
+          setStatusTally(tally)
+        }
+
+        if (!projetoIds.length) { setRanking([]); return }
+
+        const { data: criterios, error: ec } = await supabase
+          .from('criterio_avaliacao').select('id, codigo, nome, nota_maxima, ordem').eq('edicao_id', edicaoId).order('ordem', { ascending: true })
+        if (ec) throw ec
+
+        const { data: avaliacoesConcluidas, error: eac } = await supabase
+          .from('avaliacao')
+          .select(`id, recomendacao_final, projeto_id, notas_criterio:avaliacao_criterio ( nota, criterio:criterio_id ( id, codigo ) )`)
+          .eq('status', 'concluida')
+          .in('projeto_id', projetoIds)
+        if (eac) throw eac
+
+        setRanking(avaliacoesConcluidas?.length ? computarRanking(projetos, avaliacoesConcluidas, criterios ?? []) : [])
+      } catch {
+        setErro('Erro ao carregar o resumo de avaliação.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edicaoId])
+
+  if (!edicaoId || loading || !statusTally || ranking === null) return <LoadingInline />
+
+  const porConsenso = ranking.reduce((acc, r) => { acc[r.consenso] = (acc[r.consenso] ?? 0) + 1; return acc }, {})
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="grid grid-cols-4 gap-3">
+        <MiniStat label="Pendentes" value={statusTally.pendente} />
+        <MiniStat label="Em andamento" value={statusTally.em_andamento} />
+        <MiniStat icon={CheckCircle2} label="Concluídas" value={statusTally.concluida} tone="green" />
+        <MiniStat icon={AlertTriangle} label="Em recurso" value={statusTally.recurso} tone="red" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+          Classificação — {ranking.length} projeto(s) avaliado(s)
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(porConsenso).map(([consenso, n]) => (
+            <Badge key={consenso} variant={CONSENSO_VARIANT[consenso] ?? 'secondary'} className="text-xs">{n} {consenso}</Badge>
+          ))}
+          {ranking.length === 0 && <span className="text-xs text-muted-foreground">Nenhuma avaliação concluída ainda.</span>}
+        </div>
+      </div>
+      <div className="flex gap-4">
+        <VerTelaCompleta to="/avaliacoes">Abrir Avaliações</VerTelaCompleta>
+        <VerTelaCompleta to="/classificacao">Abrir Classificação</VerTelaCompleta>
+      </div>
+    </>
+  )
+}
+
+// ── Card 5 — Relatório Personalizado ─────────────────────────────────────────
+function RelatorioPersonalizadoBody({ ano }) {
+  const [linhas, setLinhas] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [exportando, setExportando] = useState(null)
+  const [selecionadas, setSelecionadas] = useState(() => {
+    const s = new Set()
+    CATEGORIAS_COLUNAS.forEach(cat => cat.campos.forEach(c => { if (c.default) s.add(c.key) }))
+    return s
+  })
+
+  useEffect(() => {
+    buscarDadosRelatorioPersonalizado()
+      .then(setLinhas)
+      .catch(() => setErro('Não foi possível carregar os dados do relatório.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  function toggleCampo(key) {
+    setSelecionadas(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const colunasSelecionadas = useMemo(
+    () => CATEGORIAS_COLUNAS.flatMap(cat => cat.campos).filter(c => selecionadas.has(c.key)),
+    [selecionadas],
+  )
+
+  async function handleExportar(formato) {
+    if (!linhas || !colunasSelecionadas.length) return
+    setExportando(formato)
+    setErro(null)
+    try {
+      if (formato === 'pdf') exportarPDFPersonalizado(linhas, colunasSelecionadas, ano)
+      else if (formato === 'excel') exportarExcelPersonalizado(linhas, colunasSelecionadas, ano)
+      else await exportarWordPersonalizado(linhas, colunasSelecionadas, ano)
+    } catch {
+      setErro('Não foi possível gerar o relatório personalizado.')
+    } finally {
+      setExportando(null)
+    }
+  }
+
+  if (loading) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="space-y-3">
+        {CATEGORIAS_COLUNAS.map(cat => (
+          <div key={cat.categoria}>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{cat.categoria}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {cat.campos.map(c => (
+                <label key={c.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selecionadas.has(c.key)}
+                    onChange={() => toggleCampo(c.key)}
+                    className="rounded border-border"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Prévia: {colunasSelecionadas.length} coluna{colunasSelecionadas.length === 1 ? '' : 's'} selecionada{colunasSelecionadas.length === 1 ? '' : 's'} · {linhas?.length ?? 0} orientadores
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('pdf')}>
+          {exportando === 'pdf' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar PDF
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('excel')}>
+          {exportando === 'excel' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Excel
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('word')}>
+          {exportando === 'word' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Word
+        </Button>
+      </div>
+    </>
+  )
+}
+
+// ── Hub — Central de relatórios ──────────────────────────────────────────────
+// Mantém o nome "Historico" porque é o componente já roteado em /historico
+// (App.jsx) — trocar o nome exigiria tocar o roteamento sem necessidade.
 export function Historico() {
   const { edicaoSelecionada } = useAdmin()
-  const edicaoId = edicaoSelecionada?.id
-  const [tab, setTab] = useState('relatorios')
+  const edicaoId = edicaoSelecionada?.id ?? null
+  const ano = edicaoSelecionada?.data_inicio ? new Date(edicaoSelecionada.data_inicio).getFullYear() : '2026'
 
-  const fetchR = useCallback(() => relatorioMensalService.list(edicaoId), [edicaoId])
-  const fetchI = useCallback(() => importacaoLogService.list(), [])
-  const fetchP = useCallback(() => projetoService.list(edicaoId), [edicaoId])
-  const fetchO = useCallback(() => orientadorService.listAll(), [])
+  const [expanded, setExpanded] = useState(() => new Set())
+  const [loaded, setLoaded] = useState(() => new Set())
 
-  const { data: relatorios, loading: rLoading, error: rError, reload: rReload } = useTable(fetchR)
-  const { data: logs, loading: iLoading, error: iError, reload: iReload } = useTable(fetchI)
-  const { data: projetos } = useTable(fetchP)
-  const { data: orientadores } = useTable(fetchO)
-
-  const { saving: rSaving, crudError: rCrudErr, create: rCreate, update: rUpdate, remove: rRemove } = useCrud(relatorioMensalService)
-  const { saving: iSaving, remove: iRemove } = useCrud(importacaoLogService)
-
-  const [modal, setModal] = useState(null)
-  const [form, setForm] = useState(EMPTY_R)
-  const [confirm, setConfirm] = useState(null)
-
-  function openCreate() { setForm(EMPTY_R); setModal({ mode: 'create' }) }
-  function openEdit(item) {
-    setForm({
-      mes_referencia: item.mes_referencia ?? '',
-      status: item.status ?? 'pendente',
-      arquivo_url: item.arquivo_url ?? '',
-      projeto_id: item.projeto_id ?? '',
-      orientador_id: item.orientador_id ?? '',
+  const toggle = useCallback((key) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
     })
-    setModal({ mode: 'edit', item })
-  }
-  function closeModal() { setModal(null) }
+    setLoaded(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
+  }, [])
 
-  async function handleSubmit(e) {
-    e.preventDefault()
-    const payload = {
-      mes_referencia: form.mes_referencia || null,
-      status: form.status,
-      arquivo_url: form.arquivo_url || null,
-      projeto_id: form.projeto_id || null,
-      orientador_id: form.orientador_id || null,
-    }
-    try {
-      if (modal.mode === 'create') await rCreate(payload)
-      else await rUpdate(modal.item.id, payload)
-      closeModal(); rReload()
-    } catch { /* */ }
-  }
+  // Resumos leves para os cabeçalhos dos cards (carregados no mount, não no expand).
+  const [ciclos, setCiclos] = useState(null)
+  const [contratos, setContratos] = useState(null)
+  const [statusTally, setStatusTally] = useState(null)
 
-  async function handleDelete() {
-    try {
-      if (confirm.type === 'relatorio') { await rRemove(confirm.id); rReload() }
-      else { await iRemove(confirm.id); iReload() }
-      setConfirm(null)
-    } catch { /* */ }
-  }
+  useEffect(() => {
+    if (!edicaoId) return
+    listarCiclos(edicaoId).then(setCiclos).catch(() => setCiclos([]))
+  }, [edicaoId])
+
+  useEffect(() => {
+    supabase
+      .from('orientador')
+      .select('id, nome_completo, contrato_url')
+      .not('codigo_orientador', 'is', null)
+      .order('nome_completo')
+      .then(({ data }) => setContratos(data ?? []))
+  }, [])
+
+  useEffect(() => {
+    if (!edicaoId) return
+    supabase.from('projeto').select('id').eq('edicao_id', edicaoId).then(({ data: projetos }) => {
+      const ids = (projetos ?? []).map(p => p.id)
+      if (!ids.length) { setStatusTally({ pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }); return }
+      supabase.from('avaliacao').select('status').in('projeto_id', ids).then(({ data }) => {
+        const tally = { pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }
+        ;(data ?? []).forEach(a => { if (tally[a.status] !== undefined) tally[a.status]++ })
+        setStatusTally(tally)
+      })
+    })
+  }, [edicaoId])
+
+  const emitidos = contratos?.filter(o => o.contrato_url).length ?? 0
+  const totalOrientadores = contratos?.length ?? 0
+
+  const totalAval = statusTally ? Object.values(statusTally).reduce((s, n) => s + n, 0) : 0
+  const statusAvaliacaoLabel = !statusTally
+    ? '...'
+    : totalAval === 0
+      ? 'Sem avaliações'
+      : statusTally.concluida === totalAval
+        ? 'Concluída'
+        : 'Em andamento'
+  const statusAvaliacaoVariant = statusAvaliacaoLabel === 'Concluída' ? 'success' : statusAvaliacaoLabel === 'Em andamento' ? 'default' : 'secondary'
 
   return (
     <div className="space-y-6">
-      <div className="flex gap-1 border-b border-border">
-        {[['relatorios', 'Relatórios Mensais', FileText], ['logs', 'Log de Importação', Upload]].map(([key, label, Icon]) => (
-          <button key={key} onClick={() => setTab(key)}
-            className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-b-2 transition-colors ${tab === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>
-            <Icon className="w-4 h-4" />{label}
-          </button>
-        ))}
-        {tab === 'relatorios' && (
-          <div className="ml-auto flex items-center pb-1">
-            <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4" />Novo Relatório</Button>
-          </div>
-        )}
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Central de relatórios</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Financeiro, obrigações dos orientadores, contratos e avaliação em um só lugar.
+        </p>
       </div>
 
-      {tab === 'relatorios' && (
-        <>
-          <ErrorAlert message={rError} />
-          <div className="flex gap-2 mb-2">
-            {R_STATUS.map(s => (
-              <Badge key={s} variant={STATUS_VARIANT[s]}>
-                {relatorios.filter(r => r.status === s).length} {s}
-              </Badge>
-            ))}
-          </div>
-          {rLoading ? <LoadingState /> : relatorios.length === 0 ? <EmptyState message="Nenhum relatório cadastrado." /> : (
-            <div className="space-y-3">
-              {relatorios.map(r => (
-                <Card key={r.id} className="hover:shadow-sm transition-shadow">
-                  <CardContent className="pt-4 pb-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="space-y-1 flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <Badge variant={STATUS_VARIANT[r.status] ?? 'secondary'}>{r.status}</Badge>
-                          {r.mes_referencia && <span className="text-sm font-medium text-foreground">{r.mes_referencia}</span>}
-                        </div>
-                        {r.projeto?.titulo && <p className="text-xs text-muted-foreground">{r.projeto.titulo}</p>}
-                        {r.orientador?.nome_completo && (
-                          <p className="text-xs text-muted-foreground">{r.orientador.nome_completo}</p>
-                        )}
-                        <p className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                      <div className="flex gap-1 shrink-0">
-                        {r.arquivo_url && (
-                          <a href={r.arquivo_url} target="_blank" rel="noreferrer">
-                            <Button variant="ghost" size="icon" className="h-8 w-8"><ExternalLink className="w-4 h-4" /></Button>
-                          </a>
-                        )}
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(r)}><Pencil className="w-4 h-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirm({ type: 'relatorio', id: r.id })}><Trash2 className="w-4 h-4" /></Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          )}
-        </>
-      )}
+      <div className="space-y-3">
+        <RelatorioCard
+          icon={DollarSign} iconBg="bg-emerald-100" iconColor="text-emerald-600"
+          title="Financeiro"
+          headerRight={<Badge variant="secondary" className="text-xs">Por orientador</Badge>}
+          expanded={expanded.has('financeiro')} onToggle={() => toggle('financeiro')}
+        >
+          {loaded.has('financeiro') ? <FinanceiroBody ano={ano} /> : null}
+        </RelatorioCard>
 
-      {tab === 'logs' && (
-        <>
-          <ErrorAlert message={iError} />
-          {iLoading ? <LoadingState /> : logs.length === 0 ? <EmptyState message="Nenhum log de importação." /> : (
-            <Card>
-              <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2"><History className="w-4 h-4" />Registros de Importação</CardTitle></CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {logs.map(l => (
-                    <div key={l.id} className="flex items-center justify-between gap-4 py-2.5 px-3 rounded-md hover:bg-muted/50 transition-colors">
-                      <div className="space-y-0.5 flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground">{l.arquivo_nome ?? `Log #${l.id}`}</p>
-                        <p className="text-xs text-muted-foreground">{new Date(l.created_at).toLocaleDateString('pt-BR')}</p>
-                      </div>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0"
-                        onClick={() => setConfirm({ type: 'log', id: l.id })}>
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
+        <RelatorioCard
+          icon={FileCheck2} iconBg="bg-blue-100" iconColor="text-blue-600"
+          title="Relatório Mensal · Obrigações do Orientador"
+          headerRight={<Badge variant="secondary" className="text-xs">{ciclos ? `${ciclos.length} ciclos` : '...'}</Badge>}
+          expanded={expanded.has('mensal')} onToggle={() => toggle('mensal')}
+        >
+          {loaded.has('mensal') ? <RelatorioMensalBody edicaoId={edicaoId} ciclosIniciais={ciclos} /> : null}
+        </RelatorioCard>
 
-      <Modal open={!!modal} onClose={closeModal} title={modal?.mode === 'create' ? 'Novo Relatório Mensal' : 'Editar Relatório'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <RelatorioForm value={form} onChange={setForm} projetos={projetos} orientadores={orientadores} />
-          <ErrorAlert message={rCrudErr} />
-          <div className="flex gap-2 justify-end pt-2 border-t border-border">
-            <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={rSaving}>{rSaving ? 'Salvando…' : 'Salvar'}</Button>
-          </div>
-        </form>
-      </Modal>
+        <RelatorioCard
+          icon={FileSignature} iconBg="bg-violet-100" iconColor="text-violet-600"
+          title="Contratos"
+          headerRight={<Badge variant="secondary" className="text-xs">{contratos ? `${emitidos}/${totalOrientadores} emitidos` : '...'}</Badge>}
+          expanded={expanded.has('contratos')} onToggle={() => toggle('contratos')}
+        >
+          {loaded.has('contratos') ? <ContratosBody orientadores={contratos} ano={ano} /> : null}
+        </RelatorioCard>
 
-      <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)} onConfirm={handleDelete} loading={rSaving || iSaving} />
+        <RelatorioCard
+          icon={ClipboardCheck} iconBg="bg-amber-100" iconColor="text-amber-600"
+          title="Avaliação"
+          headerRight={<Badge variant={statusAvaliacaoVariant} className="text-xs">{statusAvaliacaoLabel}</Badge>}
+          expanded={expanded.has('avaliacao')} onToggle={() => toggle('avaliacao')}
+        >
+          {loaded.has('avaliacao') ? <AvaliacaoBody edicaoId={edicaoId} statusTallyInicial={statusTally} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={Settings2} iconBg="bg-slate-100" iconColor="text-slate-600"
+          title="Relatório Personalizado"
+          headerRight={<Badge variant="secondary" className="text-xs">Monte sua própria planilha</Badge>}
+          expanded={expanded.has('personalizado')} onToggle={() => toggle('personalizado')}
+        >
+          {loaded.has('personalizado') ? <RelatorioPersonalizadoBody ano={ano} /> : null}
+        </RelatorioCard>
+      </div>
     </div>
   )
 }

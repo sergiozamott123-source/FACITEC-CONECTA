@@ -1031,7 +1031,7 @@ export function FichaInscricao() {
 
       const { error: projErr } = await supabase
         .from('projeto')
-        .update({ status: 'inscrito', codigo_inscricao: codigo })
+        .update({ status: 'inscrito', codigo_inscricao: codigo, enviado_em: new Date().toISOString() })
         .eq('id', projetoId)
       if (projErr) throw new Error(projErr.message)
 
