@@ -90,8 +90,11 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        {/* Ficha pública de inscrição PibicJr (nova) */}
-        <Route path="/inscricao" element={<FichaInscricao />} />
+        {/* Ficha pública de inscrição, por programa */}
+        <Route path="/pibic-jr/inscricao" element={<FichaInscricao slug="pibic-jr" />} />
+        <Route path="/profic-jr/inscricao" element={<FichaInscricao slug="profic-jr" />} />
+        {/* redirect de URL antiga — apontava direto para a inscrição do PIBIC Jr */}
+        <Route path="/inscricao" element={<Navigate to="/pibic-jr/inscricao" replace />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
         {/* Fluxo legado de inscrição */}
         <Route path="/inscricao/login" element={<LoginInscricao />} />

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Check, ChevronLeft, ChevronRight, Upload, FileText, Loader2 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { getProgramaByProgramaId } from '@/lib/programas'
+import { getPrograma, getProgramaByProgramaId, PROGRAMA_ID_PADRAO } from '@/lib/programas'
 
 // ── Componentes auxiliares internos ──────────────────────────────────────
 
@@ -696,7 +696,9 @@ function Confirmacao({ codigo, edicao }) {
 
 // ── Componente principal ──────────────────────────────────────────────────
 
-export function FichaInscricao() {
+export function FichaInscricao({ slug = 'pibic-jr' }) {
+  const programaId = getPrograma(slug)?.programaId ?? PROGRAMA_ID_PADRAO
+
   const [step, setStep]             = useState(1)
   const [submitted, setSubmitted]   = useState(false)
   const [codigoGerado, setCodigo]   = useState(null)
@@ -748,23 +750,24 @@ export function FichaInscricao() {
 
   useEffect(() => {
     initPage()
-  }, [])
+  }, [programaId])
 
   async function initPage() {
     setGlobalLoading(true)
     try {
       const { data: { session: sess } } = await supabase.auth.getSession()
 
-      // TODO(Fase 3): trocar 'PIBICJR' fixo pelo programa resolvido via rota (:programaSlug)
-      // quando esta ficha for parametrizada por programa. Sem esse filtro, uma edição
-      // PROFICJR ativa poderia "vazar" para a inscrição do PIBIC Jr (e vice-versa).
-      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir
-      // (mesmo critério usado em HomeAdmin.jsx para o PIBIC Jr).
+      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir —
+      // só faz sentido pro programa padrão (PIBIC Jr), que é quem tinha edições assim.
+      const filtroPrograma = programaId === PROGRAMA_ID_PADRAO
+        ? `programa_id.eq.${programaId},programa_id.is.null`
+        : `programa_id.eq.${programaId}`
+
       const { data: ed, error: edErr } = await supabase
         .from('edicao')
         .select('*')
         .eq('status', 'ativo')
-        .or('programa_id.eq.PIBICJR,programa_id.is.null')
+        .or(filtroPrograma)
         .order('ano_referencia', { ascending: false })
         .limit(1)
         .maybeSingle()

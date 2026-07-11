@@ -7,6 +7,8 @@ import { Modal } from '@/components/common/Modal'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { FormField, Input, Textarea, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+import { useAdmin } from '@/contexts/AdminContext'
+import { PROGRAMA_ID_PADRAO } from '@/lib/programas'
 
 const TIPO_OPTS = [
   { value: 'texto_curto', label: 'Texto curto' },
@@ -36,28 +38,34 @@ const EMPTY_CAMPO = {
 const EMPTY_EIXO = { nome: '', descricao: '', ordem: 1 }
 
 export function ConfiguracaoInscricao() {
+  const { programaSelecionado } = useAdmin()
   const [activeTab, setActiveTab] = useState('perguntas')
   const [edicao, setEdicao] = useState(null)
   const [loadingEdicao, setLoadingEdicao] = useState(true)
 
   useEffect(() => {
     async function fetchEdicao() {
-      // TODO(Fase 3): trocar 'PIBICJR' fixo pelo programa resolvido via rota (:programaSlug).
-      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir.
+      setLoadingEdicao(true)
+      // `programa_id.is.null` cobre edições antigas criadas antes da coluna existir —
+      // só faz sentido pro programa padrão (PIBIC Jr), que é quem tinha edições assim.
+      const filtroPrograma = programaSelecionado === PROGRAMA_ID_PADRAO
+        ? `programa_id.eq.${programaSelecionado},programa_id.is.null`
+        : `programa_id.eq.${programaSelecionado}`
+
       const { data: edicaoData, error } = await supabase
         .from('edicao')
         .select('*')
         .eq('status', 'ativo')
-        .or('programa_id.eq.PIBICJR,programa_id.is.null')
+        .or(filtroPrograma)
         .order('ano_referencia', { ascending: false })
         .limit(1)
-        .single()
-      console.log('edicaoId carregado:', edicaoData?.id, '| erro:', error?.message ?? null)
+        .maybeSingle()
+      if (error) console.error('Erro ao carregar edição ativa:', error.message)
       setEdicao(edicaoData ?? null)
       setLoadingEdicao(false)
     }
     fetchEdicao()
-  }, [])
+  }, [programaSelecionado])
 
   const TABS = [
     { id: 'perguntas', label: 'Perguntas dissertativas' },
