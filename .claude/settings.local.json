@@ -60,7 +60,11 @@
       "Bash(node _tmp_test_jspdf_node.cjs)",
       "Bash(ls -la _tmp_output.pdf)",
       "Bash(node _tmp_test_inscricao_pdf.mjs)",
-      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\(typeof p, Object.keys\\(p\\)\\)\")"
+      "Bash(node -e \"const p = require\\('pdf-parse'\\); console.log\\(typeof p, Object.keys\\(p\\)\\)\")",
+      "Read(//tmp/**)",
+      "Bash(echo \"exit:$?\")",
+      "Bash(pkill -f \"vite --port 5183\")",
+      "Bash(pkill -f \"vite --port 5184\")"
     ]
   }
 }
