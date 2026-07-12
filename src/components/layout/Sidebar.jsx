@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
+  Archive,
   BarChart2,
   BookOpen,
   Building2,
@@ -40,10 +41,10 @@ const PROGRAMAS = PROGRAMAS_REGISTRO.map((p) => ({ id: p.programaId, slug: p.slu
 const ICONS_OUTROS_PROGRAMAS = { PROFICJR: FlaskConical, PROFICJOVEM: BookOpen, POSGRADUACAO: GraduationCap }
 
 // ── Rotas do nível Sistema (fora de qualquer programa) ──────────────────────
-const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
+const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes', '/admin/acervo']
 
 function isSistemaPath(pathname) {
-  return SISTEMA_PATHS.includes(pathname)
+  return SISTEMA_PATHS.includes(pathname) || pathname.startsWith('/admin/acervo/')
 }
 
 // ── Menu — nível Sistema ─────────────────────────────────────────────────────
@@ -66,6 +67,7 @@ function buildCategoriasSistema() {
     {
       titulo: 'Administração',
       itens: [
+        { label: 'Acervo', href: '/admin/acervo', icon: Archive },
         { label: 'Importação', href: '/importacao', icon: FileUp },
         { label: 'Configurações do sistema', href: '/admin/configuracao-inscricao', icon: Settings2 },
       ],

@@ -13,6 +13,8 @@ import { Contratos } from '@/pages/Contratos'
 import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
+import { Acervo } from '@/pages/admin/Acervo'
+import { AcervoEdicao } from '@/pages/admin/AcervoEdicao'
 import { Classificacao } from '@/pages/Classificacao'
 import { HomeAdmin } from '@/pages/admin/HomeAdmin'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
@@ -179,6 +181,8 @@ function App() {
                   <Routes>
                     <Route path="/admin/painel" element={<Dashboard />} />
                     <Route path="/edicoes" element={<Edicoes />} />
+                    <Route path="/admin/acervo" element={<Acervo />} />
+                    <Route path="/admin/acervo/:edicaoId" element={<AcervoEdicao />} />
                     <Route path="/inscritos" element={<Inscritos />} />
                     {/* Órfãs — não linkadas em nenhum menu hoje (verificado via grep),
                         mantidas na URL antiga em vez de migradas para não adivinhar intenção. */}

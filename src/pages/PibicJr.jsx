@@ -35,8 +35,8 @@ function buildModulos(slug) {
     {
       id: "m4", codigo: "M4", nome: "Legado",
       desc: "Edições passadas e incorporação ao acervo",
-      cor: C.amber, corBg: C.amberBg, ativo: false,
-      rota: null, Icon: Archive,
+      cor: C.amber, corBg: C.amberBg, ativo: true,
+      rota: `/admin/acervo`, Icon: Archive,
     },
   ]
 }

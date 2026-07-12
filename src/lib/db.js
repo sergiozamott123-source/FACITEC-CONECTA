@@ -218,6 +218,29 @@ export const relatorioMensalService = {
   remove: (id) => db.remove('relatorio_mensal', id),
 }
 
+export const documentoAcervoService = {
+  // Documentos de uma edição inteira (entidade_tipo='edicao') ou de uma
+  // entidade específica dentro dela (projeto/orientador/bolsista).
+  listPorEdicao: (edicaoId) => db.list('documento_acervo', {
+    filters: [['edicao_id', 'eq', edicaoId]],
+    order: 'criado_em', asc: false,
+  }),
+  listPorEntidade: (entidadeTipo, entidadeId) => db.list('documento_acervo', {
+    filters: [['entidade_tipo', 'eq', entidadeTipo], ['entidade_id', 'eq', entidadeId]],
+    order: 'criado_em', asc: false,
+  }),
+  create: (p) => db.insert('documento_acervo', p),
+  remove: (id) => db.remove('documento_acervo', id),
+}
+
+export const acervoService = {
+  // Edições encerradas (legado) de todos os programas, mais recentes primeiro.
+  listEdicoesEncerradas: () => db.list('edicao', {
+    filters: [['status', 'eq', 'encerrado']],
+    order: 'ano_referencia', asc: false,
+  }),
+}
+
 export const importacaoLogService = {
   list: () => db.list('importacao_log'),
   get: (id) => db.get('importacao_log', id),
