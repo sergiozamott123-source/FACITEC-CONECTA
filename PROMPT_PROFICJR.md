@@ -146,7 +146,11 @@ Verificadas por leitura direta do código nesta sessão, não pelo relatório da
    diferença para a vigência do contrato. `edicao.data_inicio`/`data_termino` continuam
    representando só o período do processo seletivo em 2026, sem mudança. Não mexi no texto
    do contrato gerado (`TEMPLATE_CONTRATO`) — isso fica para quando o texto legal do PROFIC Jr
-   for revisado com o edital real.
+   for revisado com o edital real. **Confirmado no teste ponta a ponta de 12/07** (contrato
+   nº 0121/2026 gerado de verdade): a Cláusula Terceira ainda diz só "vigência de 6 meses
+   contados da assinatura", sem nenhuma menção à regra específica do PROFIC Jr (bolsas só
+   pagas a partir da abertura do calendário letivo de 2027) — precisa de uma cláusula extra
+   nesse template quando o texto legal for revisado.
 3. ~~Cadastrar os 4 critérios de avaliação (seção 2).~~ **[RESOLVIDO]** Feito em 11/07 (ver seção 2).
 4. ~~Marcar `ativo: true` no registro do `profic-jr` em `src/lib/programas.js` só quando o
    conteúdo acima estiver pronto e testado — isso é o que faz o card aparecer no Hub público.~~
