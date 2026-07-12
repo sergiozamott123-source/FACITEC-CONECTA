@@ -306,6 +306,23 @@ CREATE POLICY "convocacao_criterio_delete" ON convocacao_criterio
     auth.uid() IS NULL
   );
 
+-- -----------------------------------------------------------------------------
+-- solicitacao
+-- Estava sem RLS habilitada (tabela criada depois deste script) — mesmo padrão
+-- permissivo das demais, aplicado retroativamente em 12/07.
+-- -----------------------------------------------------------------------------
+ALTER TABLE solicitacao ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "solicitacao_select" ON solicitacao;
+DROP POLICY IF EXISTS "solicitacao_insert" ON solicitacao;
+DROP POLICY IF EXISTS "solicitacao_update" ON solicitacao;
+DROP POLICY IF EXISTS "solicitacao_delete" ON solicitacao;
+
+CREATE POLICY "solicitacao_select" ON solicitacao FOR SELECT USING (true);
+CREATE POLICY "solicitacao_insert" ON solicitacao FOR INSERT WITH CHECK (true);
+CREATE POLICY "solicitacao_update" ON solicitacao FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "solicitacao_delete" ON solicitacao FOR DELETE USING (true);
+
 -- =============================================================================
 -- Verificação — lista as políticas criadas
 -- =============================================================================
@@ -323,6 +340,6 @@ WHERE schemaname = 'public'
     'termo_adesao', 'pagamento', 'avaliacao', 'avaliador',
     'recurso', 'recurso_criterio', 'criterio_avaliacao',
     'relatorio_mensal', 'importacao_log',
-    'convocacao', 'convocacao_criterio'
+    'convocacao', 'convocacao_criterio', 'solicitacao'
   )
 ORDER BY tablename, cmd;
