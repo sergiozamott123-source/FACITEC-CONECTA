@@ -32,6 +32,7 @@ const EMPTY = {
   numero_processo: '',
   prazo_recurso_fim: '',
   item_criterios_avaliacao: '',
+  numero_vagas: '',
 }
 
 function codigoFromAno(ano) {
@@ -112,6 +113,17 @@ function EdicaoForm({ value, onChange }) {
           />
         </FormField>
       </div>
+
+      {/* Row 3b: Número de vagas */}
+      <FormField label="Número de vagas do edital">
+        <Input
+          type="number"
+          min="1"
+          placeholder="ex: 10"
+          value={value.numero_vagas ?? ''}
+          onChange={set('numero_vagas')}
+        />
+      </FormField>
 
       {/* Row 4: Status */}
       <FormField label="Status" required>
@@ -199,6 +211,7 @@ export function Edicoes() {
       numero_processo: item.numero_processo ?? '',
       prazo_recurso_fim: item.prazo_recurso_fim ?? '',
       item_criterios_avaliacao: item.item_criterios_avaliacao ?? '',
+      numero_vagas: item.numero_vagas ?? '',
     })
     setModal({ mode: 'edit', item })
   }
@@ -220,6 +233,7 @@ export function Edicoes() {
       numero_processo: form.numero_processo || null,
       prazo_recurso_fim: form.prazo_recurso_fim || null,
       item_criterios_avaliacao: form.item_criterios_avaliacao || null,
+      numero_vagas: form.numero_vagas ? Number(form.numero_vagas) : null,
     }
     try {
       if (modal.mode === 'create') await create(payload)
@@ -280,6 +294,11 @@ export function Edicoes() {
                     {ed.ano_referencia && (
                       <p className="text-muted-foreground">
                         Ano: <span className="text-foreground font-medium">{ed.ano_referencia}</span>
+                      </p>
+                    )}
+                    {ed.numero_vagas != null && (
+                      <p className="text-muted-foreground">
+                        Vagas: <span className="text-foreground font-medium">{ed.numero_vagas}</span>
                       </p>
                     )}
                   </div>
