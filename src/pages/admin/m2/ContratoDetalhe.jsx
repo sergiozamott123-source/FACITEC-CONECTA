@@ -49,11 +49,11 @@ CLÁUSULA SEGUNDA: DA NATUREZA DOS RECURSOS, FORMA DE PAGAMENTO E VALORES.
 
 Os valores das bolsas são de R$ {{valor_bolsa_orientador_fmt}} ({{valor_bolsa_orientador_extenso}}), mensais, para o(a) Orientador(a), e R$ {{valor_bolsa_estudante_fmt}} ({{valor_bolsa_estudante_extenso}}), mensais, para cada estudante bolsista que aderir ao presente instrumento, conforme tabela de bolsas do CMCT vigente.
 
-O crédito será colocado à disposição dos Creditados em 06 (seis) parcelas mensais e sucessivas, até o décimo dia útil do mês subsequente ao mês de referência, desde que cumpridas as obrigações dispostas na CLÁUSULA QUINTA, através de depósitos em conta de "pagamento de benefício" junto ao Banco credenciado pelo FACITEC, sendo o valor global deste Instrumento de R$ {{valor_global_fmt}} ({{valor_global_extenso}}). O crédito ora concedido compõe o Fundo de Apoio à Ciência e Tecnologia do Município de Vitória - FACITEC, criado pela Lei nº 3.763/91, dotação orçamentária: FACITEC - 03.02.19.573.0030.1.0144 - Natureza da despesa: 3.3.90.18.04 - Fonte de Recursos: 1.500.0000.0000 - Especificação: Apoio à Pesquisa Científica - Exercício: {{ano_exercicio}}.
+O crédito será colocado à disposição dos Creditados em 06 (seis) parcelas mensais e sucessivas, até o décimo dia útil do mês subsequente ao mês de referência, desde que cumpridas as obrigações dispostas na CLÁUSULA QUINTA, através de depósitos em conta de "pagamento de benefício" junto ao Banco credenciado pelo FACITEC, sendo o valor global deste Instrumento de R$ {{valor_global_fmt}} ({{valor_global_extenso}}). O crédito ora concedido compõe o Fundo de Apoio à Ciência e Tecnologia do Município de Vitória - FACITEC, criado pela Lei nº 3.763/91, dotação orçamentária: FACITEC - 03.02.19.573.0030.1.0144 - Natureza da despesa: 3.3.90.18.04 - Fonte de Recursos: 1.500.0000.0000 - Especificação: Apoio à Pesquisa Científica - Exercício: {{ano_exercicio}}.{{clausula_pagamento_condicao}}
 
 CLÁUSULA TERCEIRA: DA VIGÊNCIA.
 
-3.1. A vigência deste contrato será de 06 (seis) meses contados a partir da data de sua assinatura, podendo ser prorrogado, sem acréscimos de bolsas, mediante solicitação do(a) Orientador(a) e autorização da Diretoria da CDTIV.
+{{texto_vigencia}}
 
 CLÁUSULA QUARTA: DA EQUIPE DO PROJETO, DESLIGAMENTOS E SUBSTITUIÇÕES.
 
@@ -188,10 +188,29 @@ function qtdBolsistasExtenso(n) {
   return `${String(n).padStart(2, "0")} (${EXTENSO_BOLSISTAS[n] ?? n})`
 }
 
-function gerarTextoContrato(projeto, orientador, dados, nomePrograma = "PIBIC Jr", maxBolsistas = 8) {
+function gerarTextoContrato(projeto, orientador, dados, nomePrograma = "PIBIC Jr", maxBolsistas = 8, programaId = "PIBICJR") {
   const vOri    = Number(dados.valor_bolsa_orientador || 1000)
   const vEst    = Number(dados.valor_bolsa_estudante  || 300)
   const vGlobal = vOri * 6 + maxBolsistas * vEst * 6
+
+  const isProficJr = programaId === "PROFICJR"
+
+  // PROFIC Jr: seleção ocorre em 2026, mas execução/pagamento das bolsas só
+  // começam com a abertura do ano letivo de 2027 (Edital 02/2026, cláusula 2.3/3.1).
+  // Se a Secretaria já preencheu data_inicio_bolsa, usa a data real; senão, texto genérico.
+  let dataInicioBolsaFmt = "a abertura do calendário letivo da rede pública municipal de Vitória, exercício 2027"
+  if (dados.data_inicio_bolsa) {
+    const d = new Date(dados.data_inicio_bolsa + "T12:00:00")
+    dataInicioBolsaFmt = `${String(d.getDate()).padStart(2, "0")} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`
+  }
+
+  const clausulaPagamentoCondicao = isProficJr
+    ? ` Os pagamentos das bolsas somente serão iniciados a partir do momento em que os projetos começarem a ser efetivamente desenvolvidos/executados, ou seja, a partir de ${dataInicioBolsaFmt}, e desde que as equipes estejam compostas.`
+    : ""
+
+  const textoVigencia = isProficJr
+    ? `3.1. O prazo de vigência deste contrato é de 12 (doze) meses contados de sua assinatura, sendo que: a) o prazo de execução do projeto será de 06 (seis) meses contados do início do ano letivo de 2027; b) o prazo de desembolso/pagamento das bolsas será de 06 (seis) meses, enquanto o projeto estiver efetivamente sendo desenvolvido/executado. Os prazos poderão ser reduzidos mediante fato superveniente e autorização do Presidente do CMCT/CDTIV, ou por ofício quando houver interesse da CDTIV, mediante justificativa.`
+    : `3.1. A vigência deste contrato será de 06 (seis) meses contados a partir da data de sua assinatura, podendo ser prorrogado, sem acréscimos de bolsas, mediante solicitação do(a) Orientador(a) e autorização da Diretoria da CDTIV.`
 
   const endParts = orientador
     ? [orientador.logradouro, orientador.numero, orientador.complemento,
@@ -233,6 +252,8 @@ function gerarTextoContrato(projeto, orientador, dados, nomePrograma = "PIBIC Jr
     "{{ano_assinatura}}":                dataObj.ano,
     "{{nome_programa}}":                 nomePrograma,
     "{{qtd_bolsistas_extenso}}":         qtdBolsistasExtenso(maxBolsistas),
+    "{{clausula_pagamento_condicao}}":   clausulaPagamentoCondicao,
+    "{{texto_vigencia}}":                textoVigencia,
   }
 
   let texto = TEMPLATE_CONTRATO
@@ -520,7 +541,7 @@ export default function ContratoDetalhe() {
   }
 
   function handleRegenerarTexto() {
-    const texto = gerarTextoContrato(projeto, orientador, dados, programa?.nome, maxBolsistas)
+    const texto = gerarTextoContrato(projeto, orientador, dados, programa?.nome, maxBolsistas, programa?.programaId)
     handleDadosChange("conteudo_editavel", texto)
   }
 
