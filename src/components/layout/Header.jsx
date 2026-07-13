@@ -1,7 +1,9 @@
+import { useEffect, useState } from 'react'
 import { Bell, ChevronRight, Search, User } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import { useAdmin } from '@/contexts/AdminContext'
+import { edicaoService } from '@/lib/db'
 import { PROGRAMAS } from '@/lib/programas'
 
 const PAGE_NAMES = [
@@ -13,6 +15,11 @@ const PAGE_NAMES = [
   { pattern: /^\/admin\/configuracao-inscricao/, label: 'Configurações do sistema' },
   { pattern: /^\/admin\/gerenciar-usuarios-orientadores/, label: 'Orientadores' },
   { pattern: /^\/admin\/relatorios-mensais/, label: 'Obrigações do orientador' },
+  { pattern: /^\/admin\/acervo\/[^/]+\/projetos/, label: 'Projetos' },
+  { pattern: /^\/admin\/acervo\/[^/]+\/orientadores/, label: 'Orientadores' },
+  { pattern: /^\/admin\/acervo\/[^/]+\/bolsistas/, label: 'Bolsistas Jr' },
+  { pattern: /^\/admin\/acervo\/[^/]+\/inscritos/, label: 'Inscritos' },
+  { pattern: /^\/admin\/acervo$/, label: 'Acervo' },
   { pattern: /^\/avaliacoes/, label: 'Avaliação' },
   { pattern: /^\/classificacao/, label: 'Classificação' },
   { pattern: /^\/recursos/, label: 'Recursos' },
@@ -30,10 +37,25 @@ function getPageLabel(pathname) {
   return PAGE_NAMES.find(({ pattern }) => pattern.test(pathname))?.label ?? 'FACITEC Conecta'
 }
 
-const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes']
+const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes', '/admin/acervo']
+
+function edicaoIdDoAcervo(pathname) {
+  const match = pathname.match(/^\/admin\/acervo\/([^/]+)\//)
+  return match ? match[1] : null
+}
 
 export function Header({ pathname }) {
   const { programaSelecionado, edicaoSelecionada } = useAdmin()
+  const [edicaoAcervo, setEdicaoAcervo] = useState(null)
+
+  const edicaoIdAcervo = edicaoIdDoAcervo(pathname)
+
+  useEffect(() => {
+    if (!edicaoIdAcervo) { setEdicaoAcervo(null); return }
+    let cancelado = false
+    edicaoService.get(edicaoIdAcervo).then((e) => { if (!cancelado) setEdicaoAcervo(e) }).catch(() => {})
+    return () => { cancelado = true }
+  }, [edicaoIdAcervo])
 
   const programaLabel = PROGRAMAS.find((p) => p.programaId === programaSelecionado)?.nome ?? programaSelecionado
   const edicaoLabel = edicaoSelecionada
@@ -46,7 +68,19 @@ export function Header({ pathname }) {
   return (
     <header className="flex items-center justify-between px-6 py-4 bg-background border-b border-border h-[72px] shrink-0">
       <nav className="flex items-center gap-1.5 text-sm">
-        {isSistema ? (
+        {edicaoIdAcervo ? (
+          <>
+            <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">Sistema</Link>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+            <Link to="/admin/acervo" className="text-muted-foreground hover:text-foreground transition-colors">Acervo</Link>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+            <span className="text-muted-foreground">
+              {edicaoAcervo ? `Edição ${edicaoAcervo.ano_referencia}` : 'Edição'}
+            </span>
+            <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />
+            <span className="font-semibold text-foreground">{pageLabel}</span>
+          </>
+        ) : isSistema ? (
           <>
             <Link to="/admin" className="text-muted-foreground hover:text-foreground transition-colors">Sistema</Link>
             <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/50 shrink-0" />

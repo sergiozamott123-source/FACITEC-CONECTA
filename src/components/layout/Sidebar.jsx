@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Archive,
+  ArrowLeft,
   BarChart2,
   BookOpen,
   Building2,
@@ -30,7 +31,8 @@ import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
-import { PROGRAMAS as PROGRAMAS_REGISTRO } from '@/lib/programas'
+import { edicaoService } from '@/lib/db'
+import { PROGRAMAS as PROGRAMAS_REGISTRO, getProgramaByProgramaId } from '@/lib/programas'
 
 // URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
 const URL_PORTAL_PUBLICO = import.meta.env.VITE_URL_PORTAL_PUBLICO || 'https://facitecnews.com.br'
@@ -44,7 +46,14 @@ const ICONS_OUTROS_PROGRAMAS = { PROFICJR: FlaskConical, PROFICJOVEM: BookOpen, 
 const SISTEMA_PATHS = ['/admin', '/admin/painel', '/importacao', '/admin/configuracao-inscricao', '/edicoes', '/admin/acervo']
 
 function isSistemaPath(pathname) {
-  return SISTEMA_PATHS.includes(pathname) || pathname.startsWith('/admin/acervo/')
+  return SISTEMA_PATHS.includes(pathname)
+}
+
+// Dentro de uma edição legada do Acervo (/admin/acervo/:edicaoId/projetos etc.)
+// a sidebar troca para o menu "Registros" — não é nem Sistema nem Programa.
+function edicaoIdDoAcervo(pathname) {
+  const match = pathname.match(/^\/admin\/acervo\/([^/]+)\//)
+  return match ? match[1] : null
 }
 
 // ── Menu — nível Sistema ─────────────────────────────────────────────────────
@@ -70,6 +79,21 @@ function buildCategoriasSistema() {
         { label: 'Acervo', href: '/admin/acervo', icon: Archive },
         { label: 'Importação', href: '/importacao', icon: FileUp },
         { label: 'Configurações do sistema', href: '/admin/configuracao-inscricao', icon: Settings2 },
+      ],
+    },
+  ]
+}
+
+// ── Menu — nível Acervo/Edição legada ────────────────────────────────────────
+function buildCategoriasAcervoEdicao(edicaoId) {
+  return [
+    {
+      titulo: 'Registros',
+      itens: [
+        { label: 'Projetos', href: `/admin/acervo/${edicaoId}/projetos`, icon: FlaskConical },
+        { label: 'Orientadores', href: `/admin/acervo/${edicaoId}/orientadores`, icon: Users },
+        { label: 'Bolsistas Jr', href: `/admin/acervo/${edicaoId}/bolsistas`, icon: GraduationCap },
+        { label: 'Inscritos', href: `/admin/acervo/${edicaoId}/inscritos`, icon: ClipboardList },
       ],
     },
   ]
@@ -299,12 +323,25 @@ export function Sidebar() {
   const { edicoes, edicaoSelecionada, setEdicaoSelecionada, programaSelecionado } = useAdmin()
   const { logout } = useSecretaria()
 
+  const [edicaoAcervo, setEdicaoAcervo] = useState(null)
+  const edicaoIdAcervo = edicaoIdDoAcervo(location.pathname)
+
+  useEffect(() => {
+    if (!edicaoIdAcervo) { setEdicaoAcervo(null); return }
+    let cancelado = false
+    edicaoService.get(edicaoIdAcervo).then((e) => { if (!cancelado) setEdicaoAcervo(e) }).catch(() => {})
+    return () => { cancelado = true }
+  }, [edicaoIdAcervo])
+
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
   const isSistema = isSistemaPath(location.pathname)
   const programaAtual = PROGRAMAS.find((p) => p.id === programaSelecionado)
-  const categorias = isSistema
-    ? buildCategoriasSistema()
-    : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa')
+  const programaAcervo = edicaoAcervo ? getProgramaByProgramaId(edicaoAcervo.programa_id) : null
+  const categorias = edicaoIdAcervo
+    ? buildCategoriasAcervoEdicao(edicaoIdAcervo)
+    : isSistema
+      ? buildCategoriasSistema()
+      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa')
 
   return (
     <aside
@@ -328,8 +365,26 @@ export function Sidebar() {
 
       <Separator className="bg-sidebar-border" />
 
+      {/* ── Voltar ao Acervo (dentro de uma edição legada) ── */}
+      {!collapsed && edicaoIdAcervo && (
+        <div className="px-3 pt-3 pb-1">
+          <button
+            onClick={() => navigate('/admin/acervo')}
+            className="flex items-center gap-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors mb-2"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao Acervo
+          </button>
+          <p className="text-sm font-semibold text-white truncate">
+            {programaAcervo?.nome ?? 'Acervo'}
+          </p>
+          <p className="text-xs text-sidebar-foreground/50">
+            {edicaoAcervo ? `Edição ${edicaoAcervo.ano_referencia}` : 'Carregando…'}
+          </p>
+        </div>
+      )}
+
       {/* ── Selectors ── */}
-      {!collapsed && !isSistema && (
+      {!collapsed && !isSistema && !edicaoIdAcervo && (
         <div className="px-2 pt-3 pb-1 space-y-1">
           {/* Programa */}
           <Dropdown label={programaAtual?.label ?? 'Programa'} icon={FlaskConical} collapsed={collapsed}>

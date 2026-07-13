@@ -14,7 +14,10 @@ import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
 import { Historico } from '@/pages/Historico'
 import { Acervo } from '@/pages/admin/Acervo'
-import { AcervoEdicao } from '@/pages/admin/AcervoEdicao'
+import { AcervoProjetos } from '@/pages/admin/acervo/AcervoProjetos'
+import { AcervoOrientadores } from '@/pages/admin/acervo/AcervoOrientadores'
+import { AcervoBolsistas } from '@/pages/admin/acervo/AcervoBolsistas'
+import { AcervoInscritos } from '@/pages/admin/acervo/AcervoInscritos'
 import { Classificacao } from '@/pages/Classificacao'
 import { HomeAdmin } from '@/pages/admin/HomeAdmin'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
@@ -182,7 +185,11 @@ function App() {
                     <Route path="/admin/painel" element={<Dashboard />} />
                     <Route path="/edicoes" element={<Edicoes />} />
                     <Route path="/admin/acervo" element={<Acervo />} />
-                    <Route path="/admin/acervo/:edicaoId" element={<AcervoEdicao />} />
+                    <Route path="/admin/acervo/:edicaoId" element={<Navigate to="projetos" replace />} />
+                    <Route path="/admin/acervo/:edicaoId/projetos" element={<AcervoProjetos />} />
+                    <Route path="/admin/acervo/:edicaoId/orientadores" element={<AcervoOrientadores />} />
+                    <Route path="/admin/acervo/:edicaoId/bolsistas" element={<AcervoBolsistas />} />
+                    <Route path="/admin/acervo/:edicaoId/inscritos" element={<AcervoInscritos />} />
                     {/* Órfãs — não linkadas em nenhum menu hoje (verificado via grep),
                         mantidas na URL antiga em vez de migradas para não adivinhar intenção. */}
                     <Route path="/equipes" element={<Equipes />} />

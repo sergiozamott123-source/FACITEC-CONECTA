@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Microscope, School, Lightbulb, Award, ChevronRight, Hash } from 'lucide-react'
+import { Microscope, School, Lightbulb, Award, Archive, ChevronRight, Hash } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { db, edicaoService } from '@/lib/db'
 import { PROGRAMAS, PROGRAMA_ID_PADRAO } from '@/lib/programas'
@@ -75,6 +75,30 @@ function ProgramaCard({ config, qtdEdicoes, selecionado, onClick }) {
           {qtdEdicoes === 1 ? '1 edição' : `${qtdEdicoes} edições`}
         </p>
       )}
+    </button>
+  )
+}
+
+// Card de ferramenta (ex: Acervo) — mesmo visual do ProgramaCard, mas sem
+// badge "ativo/em breve" e sem contagem de edições, já que não é um programa
+// com edicao.programa_id, e sim uma ferramenta que atravessa todos eles.
+function FerramentaCard({ icon: Icon, nome, descricao, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className="w-full text-left rounded-xl border-2 p-5 transition-all duration-200 cursor-pointer hover:shadow-md hover:-translate-y-0.5 hover:border-opacity-80"
+      style={{ backgroundColor: '#F1F5F9', borderColor: '#E2E8F0' }}
+    >
+      <div
+        className="flex items-center justify-center w-10 h-10 rounded-lg shrink-0"
+        style={{ backgroundColor: '#47556922' }}
+      >
+        <Icon className="w-5 h-5" style={{ color: '#475569' }} />
+      </div>
+      <div className="mt-3">
+        <p className="font-bold text-base leading-tight" style={{ color: '#475569' }}>{nome}</p>
+        <p className="text-xs text-gray-500 mt-0.5 leading-snug line-clamp-2">{descricao}</p>
+      </div>
     </button>
   )
 }
@@ -213,6 +237,19 @@ export function HomeAdmin() {
             />
           )
         })}
+      </div>
+
+      {/* Ferramentas — atravessam todos os programas, não têm edição ativa própria */}
+      <div className="space-y-3">
+        <h2 className="text-xs font-bold uppercase tracking-wider text-gray-400">Ferramentas</h2>
+        <div className="grid grid-cols-2 gap-4">
+          <FerramentaCard
+            icon={Archive}
+            nome="Acervo"
+            descricao="Edições encerradas de todos os programas — projetos, orientadores, bolsistas e material histórico."
+            onClick={() => navigate('/admin/acervo')}
+          />
+        </div>
       </div>
 
       {/* Painel de edições — visível só quando um programa com mais de uma edição está selecionado */}
