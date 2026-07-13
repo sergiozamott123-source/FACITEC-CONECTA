@@ -3,13 +3,22 @@ import { useParams } from 'react-router-dom'
 import { Plus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
-import { FormField, Input, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { bolsistaService, projetoService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
 
-const EMPTY_FORM = { nome_completo: '', tipo: '', projeto_id: '' }
+// Mesmos valores aceitos pela constraint bolsista_tipo_check no banco,
+// usados também no cadastro de bolsista dentro do modal de projeto
+// (AcervoProjetos.jsx) — 'titular' é o mais comum na base real.
+const TIPOS_BOLSISTA = [
+  { value: 'titular', label: 'Titular' },
+  { value: 'bolsista', label: 'Bolsista' },
+  { value: 'voluntario', label: 'Voluntário' },
+]
+
+const EMPTY_FORM = { nome_completo: '', tipo: 'titular', projeto_id: '' }
 
 function CadastroBolsistaLegadoModal({ open, onClose, onCreated, projetos }) {
   const [form, setForm] = useState(EMPTY_FORM)
@@ -51,7 +60,11 @@ function CadastroBolsistaLegadoModal({ open, onClose, onCreated, projetos }) {
           <Input value={form.nome_completo} onChange={set('nome_completo')} />
         </FormField>
         <FormField label="Tipo">
-          <Input value={form.tipo} onChange={set('tipo')} placeholder="ex: IC, voluntário" />
+          <Select value={form.tipo} onChange={set('tipo')}>
+            {TIPOS_BOLSISTA.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </Select>
         </FormField>
         <FormField label="Projeto" required>
           <select
