@@ -4,6 +4,7 @@ import { orientadorService } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useAdmin } from '@/contexts/AdminContext'
 
 const BUCKET_CONTRATOS = 'contratos-orientadores'
 
@@ -12,6 +13,7 @@ function sanitizarNomeArquivo(nome) {
 }
 
 export function GerenciarUsuariosOrientadores() {
+  const { edicaoSelecionada } = useAdmin()
   const [orientadores, setOrientadores] = useState([])
   const [loading, setLoading] = useState(true)
   const [busyId, setBusyId] = useState(null)
@@ -28,7 +30,7 @@ export function GerenciarUsuariosOrientadores() {
   async function carregar() {
     setLoading(true)
     try {
-      const { data } = await orientadorService.list()
+      const { data } = await orientadorService.list(edicaoSelecionada?.id)
       setOrientadores(data ?? [])
     } catch (err) {
       setErro(err.message)
@@ -37,7 +39,7 @@ export function GerenciarUsuariosOrientadores() {
     }
   }
 
-  useEffect(() => { carregar() }, [])
+  useEffect(() => { carregar() }, [edicaoSelecionada?.id])
 
   async function chamarFuncao(action, orientador) {
     setErro(null)
