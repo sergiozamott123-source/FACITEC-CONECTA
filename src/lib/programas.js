@@ -82,6 +82,25 @@ export const PROGRAMAS = [
     codigoPrefixo: "POSGRAD",
     image: posGraduacaoImg,
   },
+  {
+    slug: "projeto-pesquisa",
+    programaId: "PROJETOPESQUISA",
+    nome: "Projeto de Pesquisa",
+    nomeCompleto: "Apoio a Projetos de Pesquisa",
+    publico: "Pesquisadores e orientadores",
+    descricao: "Apoio direto a projetos de pesquisa, com ou sem estudante bolsista vinculado.",
+    cor: "#993556",
+    corBg: "#FBEAF0",
+    // Categoria só para uso histórico no Acervo (não tem fluxo de edital/
+    // inscrição próprio) — por isso ativo:false, mesmo padrão de
+    // PROFICJOVEM/POSGRADUACAO antes de irem ao ar.
+    ativo: false,
+    codigoPrefixo: "PROJPESQ",
+    // TODO: trocar por uma imagem própria quando houver — reaproveitando a
+    // de Pós-Graduação como placeholder por ora (categoria inativa, não
+    // aparece no Hub público, só no seletor de edição legada do Acervo).
+    image: posGraduacaoImg,
+  },
 ]
 
 export function getPrograma(slug) {
