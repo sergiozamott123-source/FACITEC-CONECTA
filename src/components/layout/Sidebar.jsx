@@ -102,10 +102,10 @@ function buildCategoriasPrograma(ano, slug, programaNome) {
     {
       titulo: 'Orientadores e bolsistas',
       itens: [
-        { label: 'Orientadores', href: '/admin/gerenciar-usuarios-orientadores', icon: Users },
+        { label: 'Orientadores', href: `/admin/${slug}/${ano}/orientadores`, icon: Users },
         { label: 'Bolsistas', href: `/admin/${slug}/${ano}/bolsistas`, icon: GraduationCap },
         { label: 'Contratos', href: `/admin/${slug}/${ano}/m2/contratos`, icon: FileSignature },
-        { label: 'Obrigações do orientador', href: '/admin/relatorios-mensais', icon: FileCheck2 },
+        { label: 'Obrigações do orientador', href: `/admin/${slug}/${ano}/relatorios-mensais`, icon: FileCheck2 },
       ],
     },
     {

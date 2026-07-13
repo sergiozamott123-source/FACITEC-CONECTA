@@ -191,8 +191,6 @@ function App() {
                     <Route path="/admin" element={<HomeAdmin />} />
                     <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
                     <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
-                    <Route path="/admin/gerenciar-usuarios-orientadores" element={<GerenciarUsuariosOrientadores />} />
-                    <Route path="/admin/relatorios-mensais" element={<RelatoriosMensais />} />
                     {/* Redirects de compatibilidade — URLs antigas linkadas em favoritos/e-mails
                         continuam funcionando, apontando para o programa/edição padrão. */}
                     <Route path="/inscritos" element={<Navigate to="/admin/pibic-jr/2026/inscritos" replace />} />
@@ -202,6 +200,8 @@ function App() {
                     <Route path="/bolsistas" element={<Navigate to="/admin/pibic-jr/2026/bolsistas" replace />} />
                     <Route path="/financeiro" element={<Navigate to="/admin/pibic-jr/2026/financeiro" replace />} />
                     <Route path="/historico" element={<Navigate to="/admin/pibic-jr/2026/historico" replace />} />
+                    <Route path="/admin/gerenciar-usuarios-orientadores" element={<Navigate to="/admin/pibic-jr/2026/orientadores" replace />} />
+                    <Route path="/admin/relatorios-mensais" element={<Navigate to="/admin/pibic-jr/2026/relatorios-mensais" replace />} />
                     {/* Generalizado por :programa — 4+ segmentos, não colide com
                         as rotas admin de 1-2 segmentos acima. URLs antigas
                         /admin/pibic-jr/:ano/... continuam funcionando (programa="pibic-jr"). */}
@@ -209,6 +209,8 @@ function App() {
                     <Route path="/admin/:programa/:ano/configuracao" element={<ConfiguracaoInscricao />} />
                     <Route path="/admin/:programa/:ano/inscritos" element={<Inscritos />} />
                     <Route path="/admin/:programa/:ano/avaliacoes" element={<Avaliacoes />} />
+                    <Route path="/admin/:programa/:ano/orientadores" element={<GerenciarUsuariosOrientadores />} />
+                    <Route path="/admin/:programa/:ano/relatorios-mensais" element={<RelatoriosMensais />} />
                     <Route path="/admin/:programa/:ano/classificacao" element={<Classificacao />} />
                     <Route path="/admin/:programa/:ano/recursos" element={<ConvocacaoRecurso />} />
                     <Route path="/admin/:programa/:ano/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
