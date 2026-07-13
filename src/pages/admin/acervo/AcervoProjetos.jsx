@@ -3,13 +3,22 @@ import { useParams } from 'react-router-dom'
 import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
-import { FormField, Input, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { projetoService, bolsistaService, orientadorService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
 
-const EMPTY_BOLSISTA = () => ({ key: crypto.randomUUID(), nome_completo: '', tipo: '' })
+// Valores aceitos pela constraint bolsista_tipo_check no banco — 'titular' é
+// disparado o mais comum na base real (72 de 83 registros), por isso é o
+// padrão ao adicionar um novo bolsista.
+const TIPOS_BOLSISTA = [
+  { value: 'titular', label: 'Titular' },
+  { value: 'bolsista', label: 'Bolsista' },
+  { value: 'voluntario', label: 'Voluntário' },
+]
+
+const EMPTY_BOLSISTA = () => ({ key: crypto.randomUUID(), nome_completo: '', tipo: 'titular' })
 
 const EMPTY_FORM = {
   modoOrientador: 'novo',
@@ -180,12 +189,15 @@ export function CadastroProjetoLegadoModal({
                   onChange={(e) => setBolsista(b.key, 'nome_completo', e.target.value)}
                   className="flex-1"
                 />
-                <Input
-                  placeholder="Tipo (ex: IC, voluntário)"
+                <Select
                   value={b.tipo}
                   onChange={(e) => setBolsista(b.key, 'tipo', e.target.value)}
                   className="w-48"
-                />
+                >
+                  {TIPOS_BOLSISTA.map((t) => (
+                    <option key={t.value} value={t.value}>{t.label}</option>
+                  ))}
+                </Select>
                 <button
                   type="button"
                   onClick={() => removeBolsista(b.key)}
