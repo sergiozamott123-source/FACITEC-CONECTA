@@ -23,10 +23,15 @@ const EMPTY_FORM = {
 
 // Reaproveitado também por AcervoInscritos.jsx (statusValor="inscrito") —
 // mesmo cadastro leve de projeto/orientador/bolsistas, só muda o status
-// gravado no projeto.
+// gravado no projeto. IMPORTANTE: status é restrito pela constraint
+// projeto_status_check no banco (valores aceitos: rascunho, inscrito,
+// em_avaliacao, avaliado, selecionado, reserva, nao_selecionado, cancelado)
+// — 'legado' não existe nessa lista, por isso usamos 'selecionado' (um
+// projeto legado é, por definição, um projeto que foi selecionado/executado
+// na sua edição histórica).
 export function CadastroProjetoLegadoModal({
   open, onClose, onCreated, orientadoresExistentes, edicaoId,
-  statusValor = 'legado', titulo = 'Cadastrar projeto legado',
+  statusValor = 'selecionado', titulo = 'Cadastrar projeto legado',
 }) {
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
