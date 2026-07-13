@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { projetoService, bolsistaService, orientadorService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
@@ -45,6 +46,19 @@ export function CadastroProjetoLegadoModal({
   const [form, setForm] = useState(EMPTY_FORM)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState(null)
+  // Progresso do salvamento em etapas (orientador -> projeto -> bolsistas).
+  // Guarda o que já foi gravado com sucesso, para que um retry após erro
+  // (ex: constraint de tipo de bolsista) NÃO recrie orientador/projeto
+  // duplicados — só retoma do ponto que faltou.
+  const [progresso, setProgresso] = useState({ orientadorId: null, projetoId: null, bolsistasCriados: [] })
+
+  useEffect(() => {
+    if (open) {
+      setForm(EMPTY_FORM)
+      setError(null)
+      setProgresso({ orientadorId: null, projetoId: null, bolsistasCriados: [] })
+    }
+  }, [open])
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -72,38 +86,49 @@ export function CadastroProjetoLegadoModal({
     setSaving(true)
     setError(null)
     try {
-      let orientadorId
-      if (form.modoOrientador === 'existente') {
-        orientadorId = form.orientador_id_existente
-      } else {
-        const orientador = await orientadorService.create({
-          nome_completo: form.orientador_nome.trim(),
-          email: form.orientador_email.trim() || null,
-          edicao_id: edicaoId,
-        })
-        orientadorId = orientador.id
+      let orientadorId = progresso.orientadorId
+      if (!orientadorId) {
+        if (form.modoOrientador === 'existente') {
+          orientadorId = form.orientador_id_existente
+        } else {
+          const orientador = await orientadorService.create({
+            nome_completo: form.orientador_nome.trim(),
+            email: form.orientador_email.trim() || null,
+            edicao_id: edicaoId,
+          })
+          orientadorId = orientador.id
+        }
+        setProgresso((p) => ({ ...p, orientadorId }))
       }
 
-      const projeto = await projetoService.create({
-        titulo: form.titulo.trim(),
-        area_conhecimento: form.area_conhecimento.trim() || null,
-        edicao_id: edicaoId,
-        orientador_id: orientadorId,
-        status: statusValor,
-      })
+      let projetoId = progresso.projetoId
+      if (!projetoId) {
+        const projeto = await projetoService.create({
+          titulo: form.titulo.trim(),
+          area_conhecimento: form.area_conhecimento.trim() || null,
+          edicao_id: edicaoId,
+          orientador_id: orientadorId,
+          status: statusValor,
+        })
+        projetoId = projeto.id
+        setProgresso((p) => ({ ...p, projetoId }))
+      }
 
       for (const b of form.bolsistas) {
         if (!b.nome_completo.trim()) continue
+        if (progresso.bolsistasCriados.includes(b.key)) continue
         await bolsistaService.create({
           nome_completo: b.nome_completo.trim(),
           tipo: b.tipo.trim() || null,
-          projeto_id: projeto.id,
+          projeto_id: projetoId,
           orientador_id: orientadorId,
           status: 'ativo',
         })
+        setProgresso((p) => ({ ...p, bolsistasCriados: [...p.bolsistasCriados, b.key] }))
       }
 
       setForm(EMPTY_FORM)
+      setProgresso({ orientadorId: null, projetoId: null, bolsistasCriados: [] })
       onCreated()
     } catch (err) {
       setError(err.message ?? 'Erro ao cadastrar projeto.')
@@ -230,6 +255,29 @@ export function AcervoProjetos() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [projetoParaExcluir, setProjetoParaExcluir] = useState(null)
+  const [excluindo, setExcluindo] = useState(false)
+
+  async function handleExcluir() {
+    if (!projetoParaExcluir) return
+    setExcluindo(true)
+    try {
+      // bolsista.projeto_id não tem ON DELETE CASCADE — apaga os bolsistas
+      // vinculados primeiro, senão o delete do projeto falha por referência.
+      const { data: bolsistasDoProjeto } = await bolsistaService.list(edicaoId)
+      const vinculados = (bolsistasDoProjeto ?? []).filter((b) => b.projeto_id === projetoParaExcluir.id)
+      for (const b of vinculados) {
+        await bolsistaService.remove(b.id)
+      }
+      await projetoService.remove(projetoParaExcluir.id)
+      setProjetoParaExcluir(null)
+      carregar()
+    } catch (err) {
+      setError(err.message ?? 'Erro ao excluir projeto.')
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -290,6 +338,7 @@ export function AcervoProjetos() {
                 <th className="text-left font-medium px-4 py-2.5">Título</th>
                 <th className="text-left font-medium px-4 py-2.5">Orientador</th>
                 <th className="text-left font-medium px-4 py-2.5">Documentos</th>
+                <th className="text-left font-medium px-4 py-2.5 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -307,6 +356,16 @@ export function AcervoProjetos() {
                       onChange={recarregarDocs}
                     />
                   </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setProjetoParaExcluir(p)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors"
+                      aria-label="Excluir projeto"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -320,6 +379,14 @@ export function AcervoProjetos() {
         onCreated={() => { setModalAberto(false); carregar() }}
         orientadoresExistentes={orientadores}
         edicaoId={edicaoId}
+      />
+
+      <ConfirmDialog
+        open={!!projetoParaExcluir}
+        onClose={() => setProjetoParaExcluir(null)}
+        onConfirm={handleExcluir}
+        loading={excluindo}
+        message={`Excluir o projeto "${projetoParaExcluir?.titulo ?? ''}"? Os bolsistas vinculados a ele também serão removidos. Esta ação não pode ser desfeita.`}
       />
     </div>
   )
