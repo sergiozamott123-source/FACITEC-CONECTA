@@ -183,7 +183,6 @@ function App() {
                     <Route path="/edicoes" element={<Edicoes />} />
                     <Route path="/admin/acervo" element={<Acervo />} />
                     <Route path="/admin/acervo/:edicaoId" element={<AcervoEdicao />} />
-                    <Route path="/inscritos" element={<Inscritos />} />
                     {/* Órfãs — não linkadas em nenhum menu hoje (verificado via grep),
                         mantidas na URL antiga em vez de migradas para não adivinhar intenção. */}
                     <Route path="/equipes" element={<Equipes />} />
@@ -196,6 +195,7 @@ function App() {
                     <Route path="/admin/relatorios-mensais" element={<RelatoriosMensais />} />
                     {/* Redirects de compatibilidade — URLs antigas linkadas em favoritos/e-mails
                         continuam funcionando, apontando para o programa/edição padrão. */}
+                    <Route path="/inscritos" element={<Navigate to="/admin/pibic-jr/2026/inscritos" replace />} />
                     <Route path="/avaliacoes" element={<Navigate to="/admin/pibic-jr/2026/avaliacoes" replace />} />
                     <Route path="/classificacao" element={<Navigate to="/admin/pibic-jr/2026/classificacao" replace />} />
                     <Route path="/recursos" element={<Navigate to="/admin/pibic-jr/2026/recursos" replace />} />
@@ -207,6 +207,7 @@ function App() {
                         /admin/pibic-jr/:ano/... continuam funcionando (programa="pibic-jr"). */}
                     <Route path="/admin/:programa/:ano/painel" element={<PainelModulo1 />} />
                     <Route path="/admin/:programa/:ano/configuracao" element={<ConfiguracaoInscricao />} />
+                    <Route path="/admin/:programa/:ano/inscritos" element={<Inscritos />} />
                     <Route path="/admin/:programa/:ano/avaliacoes" element={<Avaliacoes />} />
                     <Route path="/admin/:programa/:ano/classificacao" element={<Classificacao />} />
                     <Route path="/admin/:programa/:ano/recursos" element={<ConvocacaoRecurso />} />
