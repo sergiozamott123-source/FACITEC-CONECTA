@@ -83,7 +83,7 @@ ${texto}`
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-6',
-        max_tokens: 8000,
+        max_tokens: 16000,
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -96,6 +96,10 @@ ${texto}`
     const anthropicData = await anthropicResp.json()
     const textoGerado: string = anthropicData.content?.[0]?.text ?? ''
 
+    if (anthropicData.stop_reason === 'max_tokens') {
+      throw new Error('A planilha tem muitos registros para processar de uma vez (a resposta da IA foi cortada). Tente importar em partes menores (ex: metade da planilha por vez).')
+    }
+
     // A IA foi instruída a responder só com JSON, mas por segurança extraímos
     // o primeiro bloco que parece um array JSON, caso venha algum texto extra.
     let linhas: any[]
@@ -103,8 +107,16 @@ ${texto}`
       linhas = JSON.parse(textoGerado)
     } catch {
       const match = textoGerado.match(/\[[\s\S]*\]/)
-      if (!match) throw new Error('A IA não devolveu um JSON válido. Tente novamente ou revise o arquivo.')
-      linhas = JSON.parse(match[0])
+      if (!match) {
+        const preview = textoGerado.slice(0, 300)
+        throw new Error(`A IA não devolveu um JSON válido. Início da resposta: "${preview}"`)
+      }
+      try {
+        linhas = JSON.parse(match[0])
+      } catch {
+        const preview = match[0].slice(-300)
+        throw new Error(`A IA devolveu um JSON incompleto ou malformado (provavelmente a planilha é grande demais para uma única chamada). Final da resposta: "${preview}"`)
+      }
     }
 
     if (!Array.isArray(linhas)) {

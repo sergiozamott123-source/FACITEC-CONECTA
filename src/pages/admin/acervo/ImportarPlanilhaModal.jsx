@@ -45,7 +45,21 @@ export function ImportarPlanilhaModal({ open, onClose, entidade, tituloEntidade,
       const { data, error } = await supabase.functions.invoke('acervo-importar-planilha', {
         body: { entidade, texto: JSON.stringify(rows) },
       })
-      if (error) throw error
+      if (error) {
+        // Por padrão, error.message do supabase-js é genérico ("Edge Function
+        // returned a non-2xx status code") — a mensagem de verdade que a
+        // função devolve fica no corpo da resposta, acessível via
+        // error.context (um Response). Tenta ler; se não conseguir, cai no
+        // genérico mesmo.
+        let mensagem = error.message
+        try {
+          if (error.context && typeof error.context.json === 'function') {
+            const corpo = await error.context.json()
+            if (corpo?.error) mensagem = corpo.error
+          }
+        } catch { /* mantém a mensagem genérica */ }
+        throw new Error(mensagem)
+      }
       if (data?.error) throw new Error(data.error)
 
       const linhasComId = (data.linhas ?? []).map((l) => ({
