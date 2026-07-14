@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { bolsistaService, projetoService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
@@ -98,6 +99,22 @@ export function AcervoBolsistas() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [bolsistaParaExcluir, setBolsistaParaExcluir] = useState(null)
+  const [excluindo, setExcluindo] = useState(false)
+
+  async function handleExcluir() {
+    if (!bolsistaParaExcluir) return
+    setExcluindo(true)
+    try {
+      await bolsistaService.remove(bolsistaParaExcluir.id)
+      setBolsistaParaExcluir(null)
+      await carregar()
+    } catch (err) {
+      setError(err.message ?? 'Erro ao excluir bolsista.')
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -155,6 +172,7 @@ export function AcervoBolsistas() {
                 <th className="text-left font-medium px-4 py-2.5">Tipo</th>
                 <th className="text-left font-medium px-4 py-2.5">Projeto</th>
                 <th className="text-left font-medium px-4 py-2.5">Documentos</th>
+                <th className="text-left font-medium px-4 py-2.5 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -173,6 +191,16 @@ export function AcervoBolsistas() {
                       onChange={recarregarDocs}
                     />
                   </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setBolsistaParaExcluir(b)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors"
+                      aria-label="Excluir bolsista"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -185,6 +213,14 @@ export function AcervoBolsistas() {
         onClose={() => setModalAberto(false)}
         onCreated={() => { setModalAberto(false); carregar() }}
         projetos={projetos}
+      />
+
+      <ConfirmDialog
+        open={!!bolsistaParaExcluir}
+        onClose={() => setBolsistaParaExcluir(null)}
+        onConfirm={handleExcluir}
+        loading={excluindo}
+        message={`Excluir o bolsista "${bolsistaParaExcluir?.nome_completo ?? ''}"? Esta ação não pode ser desfeita.`}
       />
     </div>
   )

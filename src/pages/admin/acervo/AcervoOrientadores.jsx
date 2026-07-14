@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Upload } from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
+import { ConfirmDialog } from '@/components/common/ConfirmDialog'
 import { useCrud } from '@/hooks/useTable'
 import { orientadorService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
@@ -69,6 +70,22 @@ export function AcervoOrientadores() {
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
   const [modalImportarAberto, setModalImportarAberto] = useState(false)
+  const [orientadorParaExcluir, setOrientadorParaExcluir] = useState(null)
+  const [excluindo, setExcluindo] = useState(false)
+
+  async function handleExcluir() {
+    if (!orientadorParaExcluir) return
+    setExcluindo(true)
+    try {
+      await orientadorService.remove(orientadorParaExcluir.id)
+      setOrientadorParaExcluir(null)
+      await carregar()
+    } catch (err) {
+      setError(err.message ?? 'Erro ao excluir orientador.')
+    } finally {
+      setExcluindo(false)
+    }
+  }
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -126,6 +143,7 @@ export function AcervoOrientadores() {
                 <th className="text-left font-medium px-4 py-2.5">Nome</th>
                 <th className="text-left font-medium px-4 py-2.5">E-mail</th>
                 <th className="text-left font-medium px-4 py-2.5">Documentos</th>
+                <th className="text-left font-medium px-4 py-2.5 w-10"></th>
               </tr>
             </thead>
             <tbody>
@@ -143,6 +161,16 @@ export function AcervoOrientadores() {
                       onChange={recarregarDocs}
                     />
                   </td>
+                  <td className="px-4 py-2.5">
+                    <button
+                      type="button"
+                      onClick={() => setOrientadorParaExcluir(o)}
+                      className="p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors"
+                      aria-label="Excluir orientador"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -155,6 +183,14 @@ export function AcervoOrientadores() {
         onClose={() => setModalAberto(false)}
         onCreated={() => { setModalAberto(false); carregar() }}
         edicaoId={edicaoId}
+      />
+
+      <ConfirmDialog
+        open={!!orientadorParaExcluir}
+        onClose={() => setOrientadorParaExcluir(null)}
+        onConfirm={handleExcluir}
+        loading={excluindo}
+        message={`Excluir o orientador "${orientadorParaExcluir?.nome_completo ?? ''}"? Esta ação não pode ser desfeita.`}
       />
 
       <ImportarPlanilhaModal
