@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
@@ -9,6 +9,31 @@ import { bolsistaService, projetoService, documentoAcervoService } from '@/lib/d
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
+import { ImportarPlanilhaModal } from './ImportarPlanilhaModal'
+
+const CAMPOS_IMPORTACAO_BOLSISTA = [
+  { key: 'nome_completo', label: 'Nome completo' },
+  { key: 'tipo', label: 'Tipo' },
+  { key: 'projeto_titulo', label: 'Projeto' },
+]
+
+function normalizarTitulo(s) {
+  return (s ?? '').trim().toLowerCase().replace(/\s+/g, ' ')
+}
+
+// bolsista.projeto_id é obrigatório no banco — diferente do fluxo de
+// Projetos (onde criamos o orientador na hora se não existir), aqui NÃO dá
+// pra inventar um projeto. Por isso o match é só contra projetos já
+// cadastrados nesta edição; o que não achar fica de fora, com aviso.
+function encontrarProjetoPorTitulo(tituloBusca, projetos) {
+  const alvo = normalizarTitulo(tituloBusca)
+  if (!alvo) return null
+  const exato = projetos.find((p) => normalizarTitulo(p.titulo) === alvo)
+  if (exato) return exato
+  return projetos.find(
+    (p) => normalizarTitulo(p.titulo).includes(alvo) || alvo.includes(normalizarTitulo(p.titulo))
+  ) ?? null
+}
 
 // Mesmos valores aceitos pela constraint bolsista_tipo_check no banco,
 // usados também no cadastro de bolsista dentro do modal de projeto
@@ -99,6 +124,7 @@ export function AcervoBolsistas() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [modalImportarAberto, setModalImportarAberto] = useState(false)
   const [bolsistaParaExcluir, setBolsistaParaExcluir] = useState(null)
   const [excluindo, setExcluindo] = useState(false)
 
@@ -159,6 +185,9 @@ export function AcervoBolsistas() {
         acaoLabel="Novo bolsista legado"
         acaoIcon={Plus}
         onAcao={() => setModalAberto(true)}
+        acaoSecundariaLabel="Importar planilha"
+        acaoSecundariaIcon={Upload}
+        onAcaoSecundaria={() => setModalImportarAberto(true)}
       />
 
       {bolsistas.length === 0 ? (
@@ -221,6 +250,39 @@ export function AcervoBolsistas() {
         onConfirm={handleExcluir}
         loading={excluindo}
         message={`Excluir o bolsista "${bolsistaParaExcluir?.nome_completo ?? ''}"? Esta ação não pode ser desfeita.`}
+      />
+
+      <ImportarPlanilhaModal
+        open={modalImportarAberto}
+        onClose={() => setModalImportarAberto(false)}
+        entidade="bolsista"
+        tituloEntidade="Bolsistas"
+        campos={CAMPOS_IMPORTACAO_BOLSISTA}
+        onConfirmar={async (linhasAprovadas) => {
+          const semProjeto = []
+          for (const l of linhasAprovadas) {
+            if (!l.nome_completo?.trim()) continue
+            const projeto = encontrarProjetoPorTitulo(l.projeto_titulo, projetos)
+            if (!projeto) {
+              semProjeto.push(`${l.nome_completo.trim()} (projeto "${l.projeto_titulo || '—'}" não encontrado)`)
+              continue
+            }
+            const tipoValido = TIPOS_BOLSISTA.some((t) => t.value === l.tipo) ? l.tipo : 'titular'
+            await bolsistaService.create({
+              nome_completo: l.nome_completo.trim(),
+              tipo: tipoValido,
+              projeto_id: projeto.id,
+              orientador_id: projeto.orientador?.id ?? null,
+              status: 'ativo',
+            })
+          }
+          await carregar()
+          if (semProjeto.length > 0) {
+            window.alert(
+              `${semProjeto.length} bolsista(s) NÃO foram salvos porque não encontramos o projeto correspondente já cadastrado nesta edição:\n\n${semProjeto.join('\n')}\n\nCadastre esses projetos primeiro (aba Projetos) e importe esses bolsistas de novo.`
+            )
+          }
+        }}
       />
     </div>
   )
