@@ -6,8 +6,8 @@ import { getProgramaByProgramaId } from '@/lib/programas'
 
 // Cabeçalho reaproveitado nas 4 páginas de entidade do Acervo (Projetos,
 // Orientadores, Bolsistas Jr, Inscritos) — mesmo título/badge que existia no
-// accordion único de AcervoEdicao.jsx, mais o botão de ação da página atual.
-export function AcervoEdicaoHeader({ edicao, acaoLabel, acaoIcon: AcaoIcon, onAcao }) {
+// accordion único de AcervoEdicao.jsx, mais o(s) botão(ões) de ação da página atual.
+export function AcervoEdicaoHeader({ edicao, acaoLabel, acaoIcon: AcaoIcon, onAcao, acaoSecundariaLabel, acaoSecundariaIcon: AcaoSecundariaIcon, onAcaoSecundaria }) {
   const programa = getProgramaByProgramaId(edicao.programa_id)
 
   return (
@@ -30,11 +30,18 @@ export function AcervoEdicaoHeader({ edicao, acaoLabel, acaoIcon: AcaoIcon, onAc
             <p className="text-sm text-muted-foreground mt-0.5">Edital {edicao.numero_edital}</p>
           )}
         </div>
-        {acaoLabel && (
-          <Button size="sm" onClick={onAcao}>
-            {AcaoIcon && <AcaoIcon className="w-4 h-4" />} {acaoLabel}
-          </Button>
-        )}
+        <div className="flex items-center gap-2">
+          {acaoSecundariaLabel && (
+            <Button size="sm" variant="outline" onClick={onAcaoSecundaria}>
+              {AcaoSecundariaIcon && <AcaoSecundariaIcon className="w-4 h-4" />} {acaoSecundariaLabel}
+            </Button>
+          )}
+          {acaoLabel && (
+            <Button size="sm" onClick={onAcao}>
+              {AcaoIcon && <AcaoIcon className="w-4 h-4" />} {acaoLabel}
+            </Button>
+          )}
+        </div>
       </div>
     </div>
   )

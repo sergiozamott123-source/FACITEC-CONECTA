@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus } from 'lucide-react'
+import { Plus, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
@@ -9,6 +9,12 @@ import { orientadorService, documentoAcervoService } from '@/lib/db'
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
+import { ImportarPlanilhaModal } from './ImportarPlanilhaModal'
+
+const CAMPOS_IMPORTACAO = [
+  { key: 'nome_completo', label: 'Nome completo' },
+  { key: 'email', label: 'E-mail' },
+]
 
 const EMPTY_FORM = { nome_completo: '', email: '' }
 
@@ -62,6 +68,7 @@ export function AcervoOrientadores() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [modalImportarAberto, setModalImportarAberto] = useState(false)
 
   const carregar = useCallback(async () => {
     setLoading(true)
@@ -104,6 +111,9 @@ export function AcervoOrientadores() {
         acaoLabel="Novo orientador legado"
         acaoIcon={Plus}
         onAcao={() => setModalAberto(true)}
+        acaoSecundariaLabel="Importar planilha"
+        acaoSecundariaIcon={Upload}
+        onAcaoSecundaria={() => setModalImportarAberto(true)}
       />
 
       {orientadores.length === 0 ? (
@@ -145,6 +155,25 @@ export function AcervoOrientadores() {
         onClose={() => setModalAberto(false)}
         onCreated={() => { setModalAberto(false); carregar() }}
         edicaoId={edicaoId}
+      />
+
+      <ImportarPlanilhaModal
+        open={modalImportarAberto}
+        onClose={() => setModalImportarAberto(false)}
+        entidade="orientador"
+        tituloEntidade="Orientadores"
+        campos={CAMPOS_IMPORTACAO}
+        onConfirmar={async (linhasAprovadas) => {
+          for (const l of linhasAprovadas) {
+            if (!l.nome_completo?.trim()) continue
+            await orientadorService.create({
+              nome_completo: l.nome_completo.trim(),
+              email: l.email?.trim() || null,
+              edicao_id: edicaoId,
+            })
+          }
+          await carregar()
+        }}
       />
     </div>
   )
