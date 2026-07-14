@@ -59,9 +59,22 @@ async function projetoIdsDaEdicao(edicaoId) {
 }
 
 async function orientadorIdsDaEdicao(edicaoId) {
-  const { data, error } = await supabase.from('projeto').select('orientador_id').eq('edicao_id', edicaoId)
-  if (error) throw error
-  return [...new Set((data ?? []).map((r) => r.orientador_id).filter(Boolean))]
+  // Um orientador pertence a uma edição de duas formas possíveis: (a) tem um
+  // projeto nessa edição (fluxo normal), ou (b) foi cadastrado diretamente
+  // com esse edicao_id, sem projeto ainda (cadastro avulso ou importação em
+  // lote). Antes esta função só considerava (a) — orientadores avulsos
+  // ficavam invisíveis na lista mesmo estando salvos corretamente no banco.
+  const [porProjeto, porEdicaoDireta] = await Promise.all([
+    supabase.from('projeto').select('orientador_id').eq('edicao_id', edicaoId),
+    supabase.from('orientador').select('id').eq('edicao_id', edicaoId),
+  ])
+  if (porProjeto.error) throw porProjeto.error
+  if (porEdicaoDireta.error) throw porEdicaoDireta.error
+  const ids = [
+    ...(porProjeto.data ?? []).map((r) => r.orientador_id),
+    ...(porEdicaoDireta.data ?? []).map((r) => r.id),
+  ].filter(Boolean)
+  return [...new Set(ids)]
 }
 
 const EMPTY_LIST = { data: [], count: 0 }
