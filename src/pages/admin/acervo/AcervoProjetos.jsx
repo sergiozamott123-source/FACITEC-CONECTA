@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
@@ -9,6 +9,13 @@ import { projetoService, bolsistaService, orientadorService, documentoAcervoServ
 import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
+import { ImportarPlanilhaModal } from './ImportarPlanilhaModal'
+
+const CAMPOS_IMPORTACAO_PROJETO = [
+  { key: 'titulo', label: 'Título do projeto' },
+  { key: 'area_conhecimento', label: 'Área de conhecimento' },
+  { key: 'orientador_nome', label: 'Orientador(a)' },
+]
 
 // Valores aceitos pela constraint bolsista_tipo_check no banco — 'titular' é
 // disparado o mais comum na base real (72 de 83 registros), por isso é o
@@ -255,6 +262,7 @@ export function AcervoProjetos() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [modalAberto, setModalAberto] = useState(false)
+  const [modalImportarAberto, setModalImportarAberto] = useState(false)
   const [projetoParaExcluir, setProjetoParaExcluir] = useState(null)
   const [excluindo, setExcluindo] = useState(false)
 
@@ -326,6 +334,9 @@ export function AcervoProjetos() {
         acaoLabel="Novo projeto legado"
         acaoIcon={Plus}
         onAcao={() => setModalAberto(true)}
+        acaoSecundariaLabel="Importar planilha"
+        acaoSecundariaIcon={Upload}
+        onAcaoSecundaria={() => setModalImportarAberto(true)}
       />
 
       {projetosSelecionados.length === 0 ? (
@@ -387,6 +398,48 @@ export function AcervoProjetos() {
         onConfirm={handleExcluir}
         loading={excluindo}
         message={`Excluir o projeto "${projetoParaExcluir?.titulo ?? ''}"? Os bolsistas vinculados a ele também serão removidos. Esta ação não pode ser desfeita.`}
+      />
+
+      <ImportarPlanilhaModal
+        open={modalImportarAberto}
+        onClose={() => setModalImportarAberto(false)}
+        entidade="projeto"
+        tituloEntidade="Projetos"
+        campos={CAMPOS_IMPORTACAO_PROJETO}
+        onConfirmar={async (linhasAprovadas) => {
+          // Cache local (não o state) para o "já existe?" enxergar orientadores
+          // criados nas linhas anteriores DESTA MESMA importação — se só
+          // checássemos o state `orientadores`, duas linhas seguidas do mesmo
+          // orientador criariam ele duplicado (o state só atualiza depois do
+          // fim do loop).
+          const cache = [...orientadores]
+          for (const l of linhasAprovadas) {
+            if (!l.titulo?.trim()) continue
+            const nomeLimpo = (l.orientador_nome ?? '').trim()
+            let orientadorId = null
+            if (nomeLimpo) {
+              const existente = cache.find(
+                (o) => o.nome_completo.trim().toLowerCase() === nomeLimpo.toLowerCase()
+              )
+              if (existente) {
+                orientadorId = existente.id
+              } else {
+                const novo = await orientadorService.create({ nome_completo: nomeLimpo, edicao_id: edicaoId })
+                cache.push(novo)
+                orientadorId = novo.id
+              }
+            }
+            await projetoService.create({
+              titulo: l.titulo.trim(),
+              area_conhecimento: l.area_conhecimento?.trim() || null,
+              edicao_id: edicaoId,
+              orientador_id: orientadorId,
+              status: 'selecionado',
+            })
+          }
+          setOrientadores(cache)
+          await carregar()
+        }}
       />
     </div>
   )
