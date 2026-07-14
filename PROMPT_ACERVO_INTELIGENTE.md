@@ -135,33 +135,53 @@ Cada uma das quatro páginas segue o mesmo padrão:
 - Não mexer no `documento_acervo` nem no bucket `acervo` — schema já está
   pronto e correto para o que a Fase A precisa.
 
-## Fase B — importação inteligente (desenhar aqui, construir depois)
+## Fase B — importação inteligente
 
-Não implementar ainda nesta rodada — mas a Fase A deve deixar a estrutura de
-dados/rotas pronta para plugar isto sem retrabalho.
+### B.1 Importação de planilha — ✅ IMPLEMENTADO E TESTADO (13-14/07)
 
-### B.1 Importação de planilha (upload → pré-visualização → confirmar)
+Já está no ar e funcionando nas três telas (Orientadores, Projetos, Bolsistas):
 
-- Nova Edge Function `acervo-importar-planilha`: recebe o arquivo (csv/xlsx
-  convertido para texto/JSON no frontend antes do envio, ex. via `xlsx`/
-  SheetJS, já usado em `Central de relatórios`), o tipo de entidade alvo
-  (`orientador`/`bolsista`/`projeto`/`inscrito`) e o `edicao_id`. Chama a API
-  Anthropic com um prompt que descreve o schema esperado de cada campo e pede
-  retorno em JSON estrito (ver `<anthropic_api_in_artifacts>` /
-  `structured_outputs_in_xml` como referência de como forçar JSON puro).
-  Devolve um array de linhas, cada uma com os campos extraídos e um
-  `confianca: "ok" | "checar"` por campo ou por linha (linha inteira "checar"
-  quando algum dado essencial não foi identificado, ex. projeto sem
-  orientador correspondente).
-- Frontend: modal "Importar planilha" com 3 passos — (1) escolher arquivo,
-  (2) tabela de pré-visualização editável (inputs inline, como no mockup
-  aprovado — campos com problema em destaque visual `warning`), (3) botão
-  "Confirmar e salvar" que faz o insert em lote na tabela correspondente,
-  sempre com `edicao_id` da edição legada aberta.
-- Nunca gravar sem esse passo de revisão — mesmo se a IA tiver 100% de
-  confiança em tudo, a pré-visualização aparece sempre.
+- Edge Function `acervo-importar-planilha` (ativa no Supabase, projeto
+  `gastofrxtkkjpcgthrru`) — recebe `{ entidade, texto }`, chama a API
+  Anthropic (`claude-sonnet-4-6`), devolve `{ linhas, campos }`. Suporta os
+  3 tipos de entidade via um dicionário `SCHEMAS` no próprio arquivo —
+  adicionar uma nova entidade (ex.: "inscrito") é só acrescentar uma entrada
+  ali, sem mais nenhuma mudança de código na função.
+- Componente `ImportarPlanilhaModal.jsx` (reutilizável, usado pelas 3 telas):
+  upload → parse via `useXlsx` (hook já existente no projeto) → chama a
+  função → pré-visualização editável com badge "ok"/"checar" por linha →
+  "Confirmar e salvar" delega a gravação de fato pro `onConfirmar` de cada
+  página-mãe (cada entidade tem sua própria lógica de relacionamento).
+- **Orientadores**: grava direto, `edicao_id` no próprio registro.
+- **Projetos**: para cada linha, resolve `orientador_nome` — reaproveita um
+  orientador já cadastrado (match por nome) ou cria um novo na hora. Usa um
+  cache local dentro do próprio loop de confirmação (não o `state` do React)
+  para não duplicar o orientador quando duas linhas da mesma leva são do
+  mesmo orientador.
+- **Bolsistas**: `projeto_id` é `NOT NULL` no banco, então aqui NÃO dá pra
+  criar o projeto na hora — o `projeto_titulo` da IA é casado contra os
+  projetos **já cadastrados** nesta edição (match exato ou por substring);
+  o que não encontrar correspondência fica de fora, com um alerta explicando
+  quais nomes não foram salvos e por quê. Fluxo recomendado: importar
+  Projetos primeiro, Bolsistas depois.
+- Bugs encontrados e corrigidos durante o teste real:
+  - `orientadorService.list`/`orientadorIdsDaEdicao` só considerava
+    orientadores vinculados via `projeto.edicao_id` — um orientador cadastrado
+    sozinho (sem projeto ainda, como acontece na importação de Orientadores)
+    ficava invisível na lista mesmo salvo corretamente. Corrigido para também
+    checar `orientador.edicao_id` direto.
+  - O modal mostrava a mensagem genérica do supabase-js
+    ("Edge Function returned a non-2xx status code") em vez do erro real
+    devolvido pela função. Corrigido lendo `error.context.json()`.
+  - A função agora detecta explicitamente `stop_reason === 'max_tokens'`
+    (resposta cortada por planilha grande demais) e orienta a importar em
+    partes menores, em vez de estourar um erro de JSON malformado sem
+    explicação.
+- Lixeira (excluir com confirmação) adicionada em Orientadores, Bolsistas e
+  Projetos — útil para corrigir importações malfeitas sem precisar mexer
+  direto no banco.
 
-### B.2 Identificação automática de documento solto
+### B.2 Identificação automática de documento solto — ainda não implementado
 
 - Nova Edge Function `acervo-identificar-documento`: recebe o arquivo (PDF/
   imagem, base64) e a lista de candidatos daquela edição (orientadores/
