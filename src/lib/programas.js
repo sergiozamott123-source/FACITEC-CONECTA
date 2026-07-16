@@ -28,6 +28,12 @@ export const PROGRAMAS = [
     codigoPrefixo: "PIBIC",
     // Tamanho máximo da equipe (1 orientador + N bolsistas), conforme o edital do programa.
     maxBolsistas: 8,
+    // Número real da edição atual (histórico do programa, não a contagem de
+    // linhas na tabela `edicao` — o PIBIC Jr roda desde antes do FACITEC
+    // CONECTA existir; 2026 é a 7ª edição do programa, ainda que seja a
+    // primeira registrada no sistema). Atualizar manualmente a cada nova
+    // edição, até termos as edições históricas completas no Acervo.
+    numeroEdicaoAtual: 7,
     image: pibicJrImg,
   },
   {
@@ -45,6 +51,8 @@ export const PROGRAMAS = [
     ativo: true,
     codigoPrefixo: "PROFIC",
     maxBolsistas: 5,
+    // 2026 é de fato a 1ª edição do PROFIC Jr — programa novo.
+    numeroEdicaoAtual: 1,
     // Rubrica do edital: cada critério usa uma escala qualitativa fixa de 5 níveis
     // (não notas livres em 0,5) — ver PROMPT_PROFICJR.md, seção 2.
     escalaAvaliacao: [

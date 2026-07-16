@@ -72,7 +72,7 @@ function ProgramaCard({ config, qtdEdicoes, selecionado, onClick }) {
 
       {config.ativo && (
         <p className="mt-3 text-xs font-medium" style={{ color: config.cor }}>
-          {qtdEdicoes === 1 ? '1 edição' : `${qtdEdicoes} edições`}
+          {config.numeroEdicaoAtual ? `${config.numeroEdicaoAtual}ª edição` : (qtdEdicoes === 1 ? '1 edição' : `${qtdEdicoes} edições`)}
         </p>
       )}
     </button>
