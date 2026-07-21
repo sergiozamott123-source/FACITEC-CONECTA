@@ -10,12 +10,21 @@ import { useTable, useCrud } from '@/hooks/useTable'
 import { bolsistaService, orientadorService, projetoService } from '@/lib/db'
 import { useAdmin } from '@/contexts/AdminContext'
 
-const TIPO_OPTS = ['IC', 'mestrado', 'doutorado', 'pos_doutorado']
-const MODAL_OPTS = ['presencial', 'remoto', 'hibrido']
+const TIPO_OPTS = [
+  { value: 'bolsista', label: 'Bolsista' },
+  { value: 'voluntario', label: 'Voluntário' },
+  { value: 'titular', label: 'Titular' },
+]
+const MODAL_OPTS = [
+  { value: 'regular', label: 'Regular' },
+  { value: 'eja', label: 'EJA' },
+  { value: 'maior_idade', label: 'Maior de idade' },
+  { value: 'menor_idade', label: 'Menor de idade' },
+]
 const STATUS_OPTS = ['ativo', 'inativo', 'suspenso', 'encerrado']
 const STATUS_VARIANT = { ativo: 'success', inativo: 'secondary', suspenso: 'warning', encerrado: 'secondary' }
 
-const EMPTY_B = { nome_completo: '', email: '', cpf: '', telefone: '', rg: '', tipo: 'IC', modalidade: 'presencial', status: 'ativo', projeto_id: '', orientador_id: '' }
+const EMPTY_B = { nome_completo: '', email: '', cpf: '', telefone: '', rg: '', tipo: 'bolsista', modalidade: 'regular', status: 'ativo', projeto_id: '', orientador_id: '' }
 const EMPTY_O = { nome_completo: '', email: '', cpf: '', telefone: '', instituicao: '' }
 
 function BolsistaForm({ value, onChange, projetos, orientadores }) {
@@ -36,12 +45,12 @@ function BolsistaForm({ value, onChange, projetos, orientadores }) {
       <div className="grid grid-cols-3 gap-3">
         <FormField label="Tipo">
           <Select value={value.tipo} onChange={set('tipo')}>
-            {TIPO_OPTS.map(t => <option key={t} value={t}>{t.replace('_', ' ')}</option>)}
+            {TIPO_OPTS.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
           </Select>
         </FormField>
         <FormField label="Modalidade">
           <Select value={value.modalidade} onChange={set('modalidade')}>
-            {MODAL_OPTS.map(m => <option key={m} value={m}>{m}</option>)}
+            {MODAL_OPTS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
           </Select>
         </FormField>
         <FormField label="Status">
@@ -207,7 +216,7 @@ export function Bolsistas() {
   function openCreate(type) { setForm(type === 'bolsista' ? EMPTY_B : EMPTY_O); setModal({ mode: 'create', type }) }
   function openEdit(type, item) {
     setForm(type === 'bolsista'
-      ? { nome_completo: item.nome_completo ?? '', email: item.email ?? '', cpf: item.cpf ?? '', telefone: item.telefone ?? '', rg: item.rg ?? '', tipo: item.tipo ?? 'IC', modalidade: item.modalidade ?? 'presencial', status: item.status ?? 'ativo', projeto_id: item.projeto_id ?? '', orientador_id: item.orientador_id ?? '' }
+      ? { nome_completo: item.nome_completo ?? '', email: item.email ?? '', cpf: item.cpf ?? '', telefone: item.telefone ?? '', rg: item.rg ?? '', tipo: item.tipo ?? 'bolsista', modalidade: item.modalidade ?? 'regular', status: item.status ?? 'ativo', projeto_id: item.projeto_id ?? '', orientador_id: item.orientador_id ?? '' }
       : { nome_completo: item.nome_completo ?? '', email: item.email ?? '', cpf: item.cpf ?? '', telefone: item.telefone ?? '', instituicao: item.instituicao ?? '' }
     )
     setModal({ mode: 'edit', type, item })
