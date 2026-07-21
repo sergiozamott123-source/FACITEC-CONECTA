@@ -23,6 +23,7 @@ import {
   LayoutDashboard,
   LayoutGrid,
   LogOut,
+  Network,
   Settings2,
   Trophy,
   Users,
@@ -128,6 +129,7 @@ function buildCategoriasPrograma(ano, slug, programaNome) {
       itens: [
         { label: 'Orientadores', href: `/admin/${slug}/${ano}/orientadores`, icon: Users },
         { label: 'Bolsistas', href: `/admin/${slug}/${ano}/bolsistas`, icon: GraduationCap },
+        { label: 'Organização (M2)', href: `/admin/${slug}/${ano}/m2`, icon: Network },
         { label: 'Contratos', href: `/admin/${slug}/${ano}/m2/contratos`, icon: FileSignature },
         { label: 'Obrigações do orientador', href: `/admin/${slug}/${ano}/relatorios-mensais`, icon: FileCheck2 },
       ],

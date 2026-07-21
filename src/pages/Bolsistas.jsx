@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
 import { Plus, Pencil, Trash2, GraduationCap, User, Search, ChevronDown, FolderKanban } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -123,7 +124,7 @@ function groupBolsistasPorOrientador(bolsistas) {
   return grupos
 }
 
-function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete }) {
+function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete, onVerDetalhe }) {
   const qtd = grupo.bolsistas.length
   return (
     <Card className="overflow-hidden">
@@ -161,7 +162,12 @@ function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete }) {
                 </div>
                 <div className="space-y-1">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm text-foreground">{b.nome_completo ?? '—'}</span>
+                    <span
+                      className={`font-medium text-sm text-foreground ${b.codigo_bolsista ? 'cursor-pointer hover:underline hover:text-primary' : ''}`}
+                      onClick={b.codigo_bolsista ? () => onVerDetalhe(b) : undefined}
+                    >
+                      {b.nome_completo ?? '—'}
+                    </span>
                     <Badge variant="outline" className="text-xs">{b.tipo?.toUpperCase()}</Badge>
                     <Badge variant={STATUS_VARIANT[b.status] ?? 'secondary'} className="text-xs">{b.status}</Badge>
                   </div>
@@ -181,6 +187,8 @@ function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete }) {
 }
 
 export function Bolsistas() {
+  const { ano = '2026', programa: slug = 'pibic-jr' } = useParams()
+  const navigate = useNavigate()
   const { edicaoSelecionada } = useAdmin()
   const edicaoId = edicaoSelecionada?.id
   const [tab, setTab] = useState('bolsistas')
@@ -291,6 +299,7 @@ export function Bolsistas() {
                   onToggle={() => toggleGrupo(grupo.key)}
                   onEdit={(b) => openEdit('bolsista', b)}
                   onDelete={(id) => setConfirm({ type: 'bolsista', id })}
+                  onVerDetalhe={(b) => navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.codigo_bolsista}`)}
                 />
               ))}
             </div>
