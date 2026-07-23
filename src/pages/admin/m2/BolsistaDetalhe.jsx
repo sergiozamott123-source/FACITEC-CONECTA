@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
 import { getPrograma } from '@/lib/programas'
 import {
   ChevronRight, ChevronLeft, ExternalLink, Download, FileText,
-  CheckCircle, Clock, AlertTriangle, X,
+  CheckCircle, Clock, AlertTriangle, X, Upload,
 } from 'lucide-react'
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
@@ -140,6 +140,34 @@ function DocRow({ label, reference, url, filename }) {
   )
 }
 
+function UploadTermoButton({ onUpload, uploading, label }) {
+  const inputRef = useRef()
+  return (
+    <>
+      <button
+        type="button"
+        disabled={uploading}
+        onClick={() => inputRef.current?.click()}
+        className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-gray-700 bg-white border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 transition-colors"
+      >
+        <Upload className="w-3 h-3" />
+        {uploading ? 'Enviando…' : label}
+      </button>
+      <input
+        ref={inputRef}
+        type="file"
+        accept=".pdf,.jpg,.jpeg,.png"
+        className="hidden"
+        onChange={e => {
+          const file = e.target.files?.[0]
+          if (file) onUpload(file)
+          e.target.value = ''
+        }}
+      />
+    </>
+  )
+}
+
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function BolsistaDetalhe() {
   const { ano = '2026', programa: slug = 'pibic-jr', codigoBolsista } = useParams()
@@ -151,6 +179,7 @@ export default function BolsistaDetalhe() {
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
+  const [uploadingTermo, setUploadingTermo] = useState(false)
   const [toast,         setToast]         = useState(null)
 
   const [colegas, setColegas] = useState([])
@@ -439,6 +468,33 @@ export default function BolsistaDetalhe() {
       showToast(`Erro ao gerar PDF: ${err.message}`, 'err')
     } finally {
       setGeneratingPDF(false)
+    }
+  }
+
+  async function handleUploadTermoAssinado(file) {
+    if (!bolsista) return
+    setUploadingTermo(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `termos-adesao/${bolsista.id}.${ext}`
+      const { error: uploadError } = await supabase.storage
+        .from('inscricoes')
+        .upload(path, file, { upsert: true })
+      if (uploadError) { showToast('Erro ao enviar arquivo.', 'err'); return }
+      const { data: { publicUrl } } = supabase.storage.from('inscricoes').getPublicUrl(path)
+      const { error } = await supabase
+        .from('bolsista')
+        .update({
+          termo_adesao_url: publicUrl,
+          termo_adesao_nome_arquivo: file.name,
+          termo_adesao_enviado_em: new Date().toISOString(),
+        })
+        .eq('id', bolsista.id)
+      if (error) { showToast('Erro ao salvar.', 'err'); return }
+      setBolsista(b => ({ ...b, termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name, termo_adesao_enviado_em: new Date().toISOString() }))
+      showToast('Termo assinado enviado com sucesso.', 'ok')
+    } finally {
+      setUploadingTermo(false)
     }
   }
 
@@ -766,6 +822,56 @@ export default function BolsistaDetalhe() {
                 ? 'Gerando PDF…'
                 : `Gerar PDF — Termo_${bolsista.codigo_bolsista ?? bolsista.id}.pdf`}
             </button>
+
+            <div className="pt-4 border-t border-gray-100">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-400 mb-2">
+                Termo assinado
+              </p>
+              {bolsista.termo_adesao_url ? (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-green-200 bg-green-50 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="w-3.5 h-3.5 text-green-600 shrink-0" />
+                      <span className="text-[10px] font-semibold text-green-700">Enviado</span>
+                    </div>
+                    <p className="text-xs text-gray-700 mt-1 truncate">{bolsista.termo_adesao_nome_arquivo}</p>
+                    {bolsista.termo_adesao_enviado_em && (
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {new Date(bolsista.termo_adesao_enviado_em).toLocaleString('pt-BR')}
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <a
+                      href={bolsista.termo_adesao_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-blue-700 bg-white border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                    >
+                      <ExternalLink className="w-3 h-3" />
+                      Visualizar
+                    </a>
+                    <UploadTermoButton
+                      onUpload={handleUploadTermoAssinado}
+                      uploading={uploadingTermo}
+                      label="Substituir"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-lg border border-amber-200 bg-amber-50 flex-wrap">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                    <span className="text-[10px] font-semibold text-amber-700">Aguardando envio</span>
+                  </div>
+                  <UploadTermoButton
+                    onUpload={handleUploadTermoAssinado}
+                    uploading={uploadingTermo}
+                    label="Enviar termo assinado"
+                  />
+                </div>
+              )}
+            </div>
           </div>
         </Section>
 
