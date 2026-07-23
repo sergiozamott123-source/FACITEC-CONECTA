@@ -27,6 +27,10 @@ const FORM_VAZIO = {
   evidencias_urls: [],
 }
 
+function normalizarEvidencias(evidencias) {
+  return (evidencias ?? []).map(e => (typeof e === 'string' ? { url: e, legenda: '' } : e))
+}
+
 function relatorioParaForm(relatorio, bolsistas) {
   const frequenciaArr = relatorio?.frequencia_bolsistas ?? []
   const frequencia = {}
@@ -39,7 +43,7 @@ function relatorioParaForm(relatorio, bolsistas) {
     atividades_realizadas: relatorio?.atividades_realizadas ?? '',
     resultados_alcancados: relatorio?.resultados_alcancados ?? '',
     desafios_enfrentados: relatorio?.desafios_enfrentados ?? '',
-    evidencias_urls: relatorio?.evidencias_urls ?? [],
+    evidencias_urls: normalizarEvidencias(relatorio?.evidencias_urls),
   }
 }
 
@@ -151,12 +155,12 @@ export function RelatorioMensal() {
 
     setUploading(true)
     try {
-      const urls = []
+      const novos = []
       for (const file of selecionados) {
         const url = await uploadEvidencia(file, orientador.id, cicloInfo.ciclo.id)
-        urls.push(url)
+        novos.push({ url, legenda: '' })
       }
-      setForm(prev => ({ ...prev, evidencias_urls: [...prev.evidencias_urls, ...urls] }))
+      setForm(prev => ({ ...prev, evidencias_urls: [...prev.evidencias_urls, ...novos] }))
     } catch {
       setErro('Erro ao enviar uma ou mais fotos. Tente novamente.')
     } finally {
@@ -165,12 +169,20 @@ export function RelatorioMensal() {
   }
 
   async function handleRemoverEvidencia(url) {
-    setForm(prev => ({ ...prev, evidencias_urls: prev.evidencias_urls.filter(u => u !== url) }))
+    setForm(prev => ({ ...prev, evidencias_urls: prev.evidencias_urls.filter(e => e.url !== url) }))
     removerEvidencia(url).catch(() => {})
   }
 
+  function handleLegendaChange(url, texto) {
+    setForm(prev => ({
+      ...prev,
+      evidencias_urls: prev.evidencias_urls.map(e => (e.url === url ? { ...e, legenda: texto } : e)),
+    }))
+  }
+
   const camposObrigatoriosOk = form.atividades_realizadas.trim() && form.resultados_alcancados.trim() && form.desafios_enfrentados.trim()
-  const fotosOk = form.evidencias_urls.length >= MIN_EVIDENCIAS
+  const fotosOk = form.evidencias_urls.length >= MIN_EVIDENCIAS &&
+    form.evidencias_urls.every(e => (e.legenda || '').trim().length >= 10)
   const podeEnviar = camposObrigatoriosOk && fotosOk && !!relatorioAtual
 
   async function handleConfirmarEnvio() {
@@ -272,10 +284,13 @@ export function RelatorioMensal() {
                 <ReadOnlySecao titulo="Desafios enfrentados">{form.desafios_enfrentados}</ReadOnlySecao>
                 <ReadOnlySecao titulo="Evidências">
                   <div className="grid grid-cols-3 gap-2">
-                    {form.evidencias_urls.map(url => (
-                      <a key={url} href={url} target="_blank" rel="noreferrer">
-                        <img src={url} alt="Evidência" className="w-full h-24 object-cover rounded-md border border-gray-200" />
-                      </a>
+                    {form.evidencias_urls.map(({ url, legenda }) => (
+                      <div key={url}>
+                        <a href={url} target="_blank" rel="noreferrer">
+                          <img src={url} alt="Evidência" className="w-full h-24 object-cover rounded-md border border-gray-200" />
+                        </a>
+                        {legenda && <p className="text-[11px] text-gray-500 mt-1">{legenda}</p>}
+                      </div>
                     ))}
                   </div>
                 </ReadOnlySecao>
@@ -298,6 +313,13 @@ export function RelatorioMensal() {
                 <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-800">
                   Sem o envio, o pagamento da bolsa fica retido até o cumprimento desta exigência.
                 </div>
+
+                {relatorioAtual?.status === 'rascunho' && relatorioAtual?.motivo_reabertura && (
+                  <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-2.5 text-xs font-medium text-red-700 flex items-center gap-2">
+                    <AlertTriangle className="w-4 h-4 shrink-0" />
+                    A secretaria devolveu este relatório para revisão: {relatorioAtual.motivo_reabertura}
+                  </div>
+                )}
 
                 <div>
                   <p className="text-sm font-semibold text-gray-700 mb-2">Frequência dos bolsistas (cumpriu 75% de presença)</p>
@@ -342,18 +364,31 @@ export function RelatorioMensal() {
                     Evidências (fotos) — mínimo {MIN_EVIDENCIAS}, máximo {MAX_EVIDENCIAS}
                   </p>
                   <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
-                    {form.evidencias_urls.map(url => (
-                      <div key={url} className="relative group">
-                        <img src={url} alt="Evidência" className="w-full h-20 object-cover rounded-md border border-gray-200" />
-                        <button
-                          type="button"
-                          onClick={() => handleRemoverEvidencia(url)}
-                          className="absolute top-1 right-1 bg-white/90 rounded-full p-1 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-                        >
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
+                    {form.evidencias_urls.map(({ url, legenda }) => {
+                      const legendaOk = (legenda || '').trim().length >= 10
+                      return (
+                        <div key={url} className="relative group">
+                          <img src={url} alt="Evidência" className="w-full h-20 object-cover rounded-md border border-gray-200" />
+                          <button
+                            type="button"
+                            onClick={() => handleRemoverEvidencia(url)}
+                            className="absolute top-1 right-1 bg-white/90 rounded-full p-1 text-red-600 opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                          <input
+                            type="text"
+                            value={legenda || ''}
+                            onChange={e => handleLegendaChange(url, e.target.value)}
+                            placeholder="Descreva o que a foto mostra"
+                            className={`mt-1 w-full rounded-md border px-1.5 py-1 text-[10px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 ${legendaOk ? 'border-gray-300' : 'border-red-400'}`}
+                          />
+                          {!legendaOk && (
+                            <p className="text-[9px] text-red-600 mt-0.5">Legenda obrigatória (mín. 10 caracteres)</p>
+                          )}
+                        </div>
+                      )
+                    })}
                     {form.evidencias_urls.length < MAX_EVIDENCIAS && (
                       <UploadEvidenciaBotao onUpload={handleUploadEvidencias} uploading={uploading} />
                     )}

@@ -177,24 +177,40 @@ export async function gerarPDFRelatorioMensal({ relatorio, ciclo, orientador, pr
 
   // 5 — Evidências
   secaoTitulo('Evidências')
-  const urls = relatorio.evidencias_urls ?? []
+  const evidencias = (relatorio.evidencias_urls ?? []).map(e =>
+    typeof e === 'string' ? { url: e, legenda: '' } : e)
   const porLinha = 3
   const gap = 4
   const imgW = (usableW - gap * (porLinha - 1)) / porLinha
   const imgH = (imgW * 3) / 4
-  for (let i = 0; i < urls.length; i++) {
+  let linhasLegendaMax = 0
+  for (let i = 0; i < evidencias.length; i++) {
     const col = i % porLinha
-    if (col === 0) y = checkPage(y, imgH + 4)
+    if (col === 0) { y = checkPage(y, imgH + 4); linhasLegendaMax = 0 }
+    const { url, legenda } = evidencias[i]
+    const x = mL + col * (imgW + gap)
     try {
-      const { dataUrl, formato } = await urlParaDataURL(urls[i])
-      const x = mL + col * (imgW + gap)
+      const { dataUrl, formato } = await urlParaDataURL(url)
       doc.addImage(dataUrl, formato, x, y, imgW, imgH, undefined, 'FAST')
     } catch {
       // evidência que falhar ao carregar é apenas omitida do PDF
     }
-    if (col === porLinha - 1 || i === urls.length - 1) y += imgH + gap
+    if (legenda) {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(8)
+      doc.setTextColor(...CINZA_TEXTO)
+      const linhasLegenda = doc.splitTextToSize(legenda, imgW)
+      let legendaY = y + imgH + 3.5
+      linhasLegenda.forEach(linha => {
+        doc.text(linha, x, legendaY)
+        legendaY += 3.5
+      })
+      doc.setTextColor(0, 0, 0)
+      linhasLegendaMax = Math.max(linhasLegendaMax, linhasLegenda.length)
+    }
+    if (col === porLinha - 1 || i === evidencias.length - 1) y += imgH + (linhasLegendaMax * 3.5) + gap
   }
-  if (!urls.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y) }
+  if (!evidencias.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y) }
 
   rodape()
 

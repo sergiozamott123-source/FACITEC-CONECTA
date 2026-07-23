@@ -5,6 +5,7 @@ import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Modal } from '@/components/common/Modal'
 import { RelatorioMensalDocumento } from '@/components/admin/RelatorioMensalDocumento'
 import {
   listarCiclos,
@@ -35,6 +36,8 @@ export function RelatoriosMensais() {
   const [visualizando, setVisualizando] = useState(null)
   const [nomesBolsistas, setNomesBolsistas] = useState({})
   const [reabrindoId, setReabrindoId] = useState(null)
+  const [reabrirAlvo, setReabrirAlvo] = useState(null)
+  const [motivoReabertura, setMotivoReabertura] = useState('')
   const [janelas, setJanelas] = useState({})
   const [salvandoJanelaId, setSalvandoJanelaId] = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
@@ -117,7 +120,7 @@ export function RelatoriosMensais() {
   }
 
   async function handleExportarPDF() {
-    if (!visualizando) return
+    if (!visualizando || visualizando.relatorio?.status !== 'enviado') return
     setExportandoPDF(true)
     try {
       await gerarPDFRelatorioMensal({
@@ -162,11 +165,18 @@ export function RelatoriosMensais() {
     }
   }
 
-  async function handleReabrir(relatorioId) {
-    setReabrindoId(relatorioId)
+  function abrirModalReabrir(relatorio) {
+    setReabrirAlvo(relatorio)
+    setMotivoReabertura('')
+  }
+
+  async function handleReabrir() {
+    if (!reabrirAlvo) return
+    setReabrindoId(reabrirAlvo.id)
     try {
-      await reabrirRelatorio(relatorioId, session.user.id)
+      await reabrirRelatorio(reabrirAlvo.id, session.user.id, motivoReabertura)
       await carregarStatus()
+      setReabrirAlvo(null)
     } catch {
       setErro('Não foi possível reabrir o relatório.')
     } finally {
@@ -256,9 +266,24 @@ export function RelatoriosMensais() {
                 <td className="px-4 py-2.5 text-muted-foreground">{orientador.projeto ?? '—'}</td>
                 <td className="px-4 py-2.5">
                   <Badge variant={STATUS_INFO[status].variant}>{STATUS_INFO[status].label}</Badge>
+                  {relatorio?.status === 'rascunho' && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Atualizado em {new Date(relatorio.updated_at).toLocaleString('pt-BR')}
+                    </p>
+                  )}
+                  {relatorio?.status === 'enviado' && relatorio.enviado_em && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Enviado em {new Date(relatorio.enviado_em).toLocaleString('pt-BR')}
+                    </p>
+                  )}
                 </td>
                 <td className="px-4 py-2.5 text-right space-x-2">
-                  {relatorio && (
+                  {relatorio?.status === 'rascunho' && (
+                    <Button variant="ghost" size="sm" onClick={() => abrirVisualizacao(relatorio, orientador)}>
+                      Ver rascunho
+                    </Button>
+                  )}
+                  {relatorio && relatorio.status !== 'rascunho' && (
                     <Button variant="outline" size="sm" onClick={() => abrirVisualizacao(relatorio, orientador)}>
                       Ver relatório
                     </Button>
@@ -268,7 +293,7 @@ export function RelatoriosMensais() {
                       variant="outline"
                       size="sm"
                       disabled={reabrindoId === relatorio.id}
-                      onClick={() => handleReabrir(relatorio.id)}
+                      onClick={() => abrirModalReabrir(relatorio)}
                     >
                       <RotateCcw className="w-3.5 h-3.5 mr-1.5" />
                       {reabrindoId === relatorio.id ? 'Reabrindo...' : 'Reabrir para edição'}
@@ -340,7 +365,39 @@ export function RelatoriosMensais() {
         nomesBolsistas={nomesBolsistas}
         onExportarPDF={handleExportarPDF}
         exportando={exportandoPDF}
+        permitirExportar={visualizando?.relatorio?.status === 'enviado'}
       />
+
+      <Modal
+        open={!!reabrirAlvo}
+        onClose={() => !reabrindoId && setReabrirAlvo(null)}
+        title="Reabrir relatório para edição"
+        size="sm"
+      >
+        <div className="space-y-3">
+          <label className="block text-sm font-medium text-foreground">
+            O que o orientador precisa corrigir?
+          </label>
+          <textarea
+            value={motivoReabertura}
+            onChange={e => setMotivoReabertura(e.target.value)}
+            rows={4}
+            className="w-full rounded-md border border-border px-3 py-2 text-sm bg-background"
+          />
+          <div className="flex gap-2 justify-end">
+            <Button variant="outline" size="sm" disabled={!!reabrindoId} onClick={() => setReabrirAlvo(null)}>
+              Cancelar
+            </Button>
+            <Button
+              size="sm"
+              disabled={motivoReabertura.trim().length < 5 || !!reabrindoId}
+              onClick={handleReabrir}
+            >
+              {reabrindoId ? 'Reabrindo...' : 'Reabrir e notificar'}
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

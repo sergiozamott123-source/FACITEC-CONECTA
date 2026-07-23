@@ -61,10 +61,16 @@ export async function enviarRelatorio(id) {
   return data
 }
 
-export async function reabrirRelatorio(id, userId) {
+export async function reabrirRelatorio(id, userId, motivo) {
   const { error } = await supabase
     .from('relatorio_mensal')
-    .update({ status: 'rascunho', reaberto_em: new Date().toISOString(), reaberto_por: userId })
+    .update({
+      status: 'rascunho',
+      reaberto_em: new Date().toISOString(),
+      reaberto_por: userId,
+      motivo_reabertura: motivo,
+      enviado_em: null,
+    })
     .eq('id', id)
   if (error) throw error
 }

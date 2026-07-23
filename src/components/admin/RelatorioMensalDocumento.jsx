@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { X, Download, CheckCircle2, ClipboardList, Target, AlertTriangle, Camera, Users, Loader2 } from 'lucide-react'
 import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
-export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas, onExportarPDF, exportando }) {
+export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas, onExportarPDF, exportando, permitirExportar }) {
   useEffect(() => {
     const handler = e => { if (e.key === 'Escape') onClose() }
     if (open) document.addEventListener('keydown', handler)
@@ -27,15 +27,17 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
             </div>
           </div>
           <div className="flex items-center gap-2 shrink-0">
-            <button
-              type="button"
-              onClick={onExportarPDF}
-              disabled={exportando}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors disabled:opacity-50"
-            >
-              {exportando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
-              {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
-            </button>
+            {permitirExportar && (
+              <button
+                type="button"
+                onClick={onExportarPDF}
+                disabled={exportando}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 hover:bg-white/20 text-white text-xs font-semibold transition-colors disabled:opacity-50"
+              >
+                {exportando ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Download className="w-3.5 h-3.5" />}
+                {exportando ? 'Gerando PDF...' : 'Exportar PDF'}
+              </button>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -57,10 +59,15 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
             <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
               Ciclo {ciclo?.numero_ciclo} · {ciclo?.mes_referencia}
             </p>
-            {relatorio.enviado_em && (
+            {relatorio.status === 'enviado' && relatorio.enviado_em && (
               <span className="inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                <CheckCircle2 className="w-3 h-3" /> Enviado em {new Date(relatorio.enviado_em).toLocaleDateString('pt-BR')}
+                <CheckCircle2 className="w-3 h-3" /> Enviado em {new Date(relatorio.enviado_em).toLocaleString('pt-BR')}
               </span>
+            )}
+            {relatorio.motivo_reabertura && (
+              <p className="text-[11px] text-gray-400 mt-1 max-w-[220px]">
+                Motivo da última reabertura: {relatorio.motivo_reabertura}
+              </p>
             )}
           </div>
         </div>
@@ -97,23 +104,28 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
           </SecaoDoc>
 
           <SecaoDoc icone={Camera} titulo="Evidências" cor="text-purple-600">
-            {(relatorio.evidencias_urls ?? []).length === 0 ? (
-              <p className="text-sm text-gray-400">—</p>
-            ) : (
-              <div className="grid grid-cols-3 gap-2">
-                {relatorio.evidencias_urls.map(url => (
-                  <a
-                    key={url}
-                    href={url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="block aspect-[4/3] rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity"
-                  >
-                    <img src={url} alt="Evidência" className="w-full h-full object-cover" />
-                  </a>
-                ))}
-              </div>
-            )}
+            {(() => {
+              const evidencias = (relatorio.evidencias_urls ?? []).map(e =>
+                typeof e === 'string' ? { url: e, legenda: '' } : e)
+              if (evidencias.length === 0) return <p className="text-sm text-gray-400">—</p>
+              return (
+                <div className="grid grid-cols-3 gap-2">
+                  {evidencias.map(({ url, legenda }) => (
+                    <div key={url}>
+                      <a
+                        href={url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="block aspect-[4/3] rounded-lg overflow-hidden border border-gray-200 hover:opacity-90 transition-opacity"
+                      >
+                        <img src={url} alt="Evidência" className="w-full h-full object-cover" />
+                      </a>
+                      {legenda && <p className="text-[11px] text-gray-500 mt-1">{legenda}</p>}
+                    </div>
+                  ))}
+                </div>
+              )
+            })()}
           </SecaoDoc>
         </div>
       </div>
