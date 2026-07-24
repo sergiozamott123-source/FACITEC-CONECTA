@@ -20,13 +20,14 @@ import {
   buscarCndVigente,
 } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve, uploadCnd } from '@/lib/cnd'
-import { exportarRelatorioGAF } from '@/lib/relatorioPagamentoGAF'
+import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
 
 const ESTADO_LABEL = {
   liberado: 'Liberado',
   pendente_requisito: 'Pendente',
   retido_cnd: 'CND retida',
   bloqueado_saldo: 'Saldo insuficiente',
+  pago: 'Pago',
 }
 
 const BADGE_VARIANT = {
@@ -34,6 +35,7 @@ const BADGE_VARIANT = {
   pendente_requisito: 'secondary',
   retido_cnd: 'destructive',
   bloqueado_saldo: 'warning',
+  pago: 'success',
 }
 
 function fmt(valor) {
@@ -86,13 +88,17 @@ function CndModal({ item, onClose, onMarcarStatus, onUpload }) {
     if (!file || !dataValidade) return
     setUploading(true)
     try {
-      const doc = await onUpload({
-        beneficiarioTipo: item.beneficiario.beneficiario_tipo,
-        beneficiarioId: item.beneficiario.id,
-        cpf: item.beneficiario.cpf,
-        file,
-        dataValidade,
-      })
+      const doc = await onUpload(
+        {
+          beneficiarioTipo: item.beneficiario.beneficiario_tipo,
+          beneficiarioId: item.beneficiario.id,
+          cpf: item.beneficiario.cpf,
+          file,
+          dataValidade,
+        },
+        item.pagamento.id,
+        item.beneficiario
+      )
       setCndVigente(doc)
       setFile(null)
       setDataValidade('')
@@ -121,7 +127,7 @@ function CndModal({ item, onClose, onMarcarStatus, onUpload }) {
         ) : cndVigente ? (
           <div className="text-sm space-y-1">
             <p className="text-muted-foreground">
-              CND vigente até {new Date(cndVigente.data_validade).toLocaleDateString('pt-BR')}
+              CND vigente até {new Date(cndVigente.data_validade + 'T12:00:00').toLocaleDateString('pt-BR')}
             </p>
             <a href={cndVigente.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline">
               Ver PDF
@@ -204,14 +210,16 @@ function LiberarSaldoModal({ item, onClose, onConfirmar }) {
 // ── Card de um contrato (orientador + sua equipe pagável) ───────────────────
 function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosSet,
   onToggleSelecionado, onSelecionarTodosLiberados, onMarcarSelecionadosPagos,
-  onMarcarUmPago, onAbrirCnd, onAbrirSaldo, onEmitirGAF }) {
+  onMarcarUmPago, onAbrirCnd, onAbrirSaldo, onEmitirDAF, temBolsistaDesligado }) {
   const percentual = saldo.reservado > 0
     ? Math.min(100, ((saldo.pago + saldo.comprometido) / saldo.reservado) * 100)
     : 0
 
+  const orientadorDesclassificado = contrato.orientador?.status === 'desclassificado'
+
   const liberados = linhas.filter(l => l.pagamento && l.eligibilidade?.estado === 'liberado')
   const liberadosIds = liberados.map(l => l.pagamento.id)
-  const liberadosParaGAF = liberados.map(l => ({
+  const liberadosParaDAF = liberados.map(l => ({
     nome: l.beneficiario.nome,
     cpf: l.beneficiario.cpf,
     beneficiario_tipo: l.beneficiario.beneficiario_tipo,
@@ -223,7 +231,11 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between flex-wrap gap-2">
           <div>
-            <CardTitle className="text-base">{contrato.orientador?.nome_completo ?? '—'}</CardTitle>
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-base">{contrato.orientador?.nome_completo ?? '—'}</CardTitle>
+              {orientadorDesclassificado && <Badge variant="destructive">Desclassificado</Badge>}
+              {temBolsistaDesligado && <Badge variant="destructive">Tem bolsista desligado</Badge>}
+            </div>
             <p className="text-xs text-muted-foreground mt-0.5">
               {contrato.numero_contrato ? `Contrato nº ${contrato.numero_contrato}` : 'Sem número de contrato'}
               {contrato.codigo_facitec_orientador ? ` · ${contrato.codigo_facitec_orientador}` : ''}
@@ -232,10 +244,10 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onEmitirGAF(contrato, cicloSelecionado, liberadosParaGAF)}
-            disabled={!liberadosParaGAF.length}
+            onClick={() => onEmitirDAF(contrato, cicloSelecionado, liberadosParaDAF)}
+            disabled={!liberadosParaDAF.length}
           >
-            <FileDown className="w-4 h-4" /> Emitir relatório para GAF
+            <FileDown className="w-4 h-4" /> Emitir relatório para DAF
           </Button>
         </div>
       </CardHeader>
@@ -304,6 +316,16 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
                       {pagamento && eligibilidade?.estado === 'liberado' && (
                         <Button size="sm" variant="outline" onClick={() => onMarcarUmPago(pagamento.id)}>Marcar como pago</Button>
                       )}
+                      {pagamento && eligibilidade?.estado === 'pago' && (
+                        <div className="space-y-0.5">
+                          <Badge variant="success">
+                            Pago {pagamento.data_pagamento ? `em ${new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')}` : ''}
+                          </Badge>
+                          {pagamento.desligamento_automatico && pagamento.observacoes && (
+                            <p className="text-xs text-amber-600">{pagamento.observacoes}</p>
+                          )}
+                        </div>
+                      )}
                       {pagamento && eligibilidade?.estado === 'retido_cnd' && (
                         <Button size="sm" variant="outline" onClick={() => onAbrirCnd(pagamento, beneficiario)}>Conferir CND</Button>
                       )}
@@ -346,6 +368,7 @@ export function Financeiro() {
   const [beneficiarios, setBeneficiarios] = useState([])
   const [contratos, setContratos] = useState([])
   const [cndAlertas, setCndAlertas] = useState([])
+  const [projetosComBolsistaDesligado, setProjetosComBolsistaDesligado] = useState(new Set())
 
   const [pagamentos, setPagamentos] = useState([])
   const [relatorios, setRelatorios] = useState([])
@@ -400,6 +423,18 @@ export function Financeiro() {
     return false
   }, [])
 
+  // ── Projetos com bolsista desligado (badge permanente no card) ──────────
+  async function buscarProjetosComBolsistaDesligado(projetoIds) {
+    if (!projetoIds.length) return new Set()
+    const { data, error } = await supabase
+      .from('bolsista')
+      .select('projeto_id')
+      .eq('status', 'desligado')
+      .in('projeto_id', projetoIds)
+    if (error) throw error
+    return new Set((data ?? []).map(b => b.projeto_id))
+  }
+
   // ── Carga inicial (independe do ciclo selecionado) ───────────────────────
   const carregarTudo = useCallback(async () => {
     if (!edicaoId) return
@@ -414,7 +449,11 @@ export function Financeiro() {
       ])
 
       setCiclos(ciclosData)
-      setContratos(contratosResult.data ?? [])
+      const contratosCarregados = contratosResult.data ?? []
+      setContratos(contratosCarregados)
+
+      const projetoIds = [...new Set(contratosCarregados.map(c => c.projeto_id).filter(Boolean))]
+      setProjetosComBolsistaDesligado(await buscarProjetosComBolsistaDesligado(projetoIds))
 
       const hoje = hojeISO()
       const abertos = ciclosData.filter(c => c.data_abertura <= hoje)
@@ -429,6 +468,7 @@ export function Financeiro() {
         ])
         setBeneficiarios(beneficiariosAtualizados)
         setCndAlertas(cndAtualizadas)
+        setProjetosComBolsistaDesligado(await buscarProjetosComBolsistaDesligado(projetoIds))
       } else {
         setBeneficiarios(beneficiariosData)
         setCndAlertas(cndAlertasData)
@@ -583,10 +623,11 @@ export function Financeiro() {
     }
   }
 
-  async function handleUploadCnd(payload) {
+  async function handleUploadCnd(payload, pagamentoId, beneficiario) {
     try {
       const doc = await uploadCnd(payload)
       showToast('CND enviada com sucesso.', 'ok')
+      await handleMarcarStatusCnd(pagamentoId, 'regular', beneficiario)
       return doc
     } catch (e) {
       showToast(e.message ?? 'Erro ao enviar CND.', 'err')
@@ -605,10 +646,10 @@ export function Financeiro() {
     }
   }
 
-  function handleEmitirGAF(contrato, ciclo, liberados) {
+  function handleEmitirDAF(contrato, ciclo, liberados) {
     if (!liberados.length || !ciclo) return
     const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
-    exportarRelatorioGAF({ ...contrato, saldo }, ciclo, liberados)
+    exportarRelatorioDAF({ ...contrato, saldo }, ciclo, liberados)
   }
 
   const totalPagamentos = pagamentos.length
@@ -686,6 +727,7 @@ export function Financeiro() {
               contrato={contrato}
               saldo={saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }}
               linhas={linhasPorContrato[contrato.id] ?? []}
+              temBolsistaDesligado={projetosComBolsistaDesligado.has(contrato.projeto_id)}
               cicloSelecionado={cicloSelecionado}
               selecionadosSet={selecionados[contrato.id] ?? new Set()}
               onToggleSelecionado={toggleSelecionado}
@@ -694,7 +736,7 @@ export function Financeiro() {
               onMarcarUmPago={handleMarcarUmPago}
               onAbrirCnd={(pagamento, beneficiario) => setModalCnd({ pagamento, beneficiario })}
               onAbrirSaldo={(pagamento, beneficiario) => setModalSaldo({ pagamento, beneficiario })}
-              onEmitirGAF={handleEmitirGAF}
+              onEmitirDAF={handleEmitirDAF}
             />
           ))}
         </div>

@@ -1,7 +1,7 @@
-// src/lib/relatorioPagamentoGAF.js
+// src/lib/relatorioPagamentoDAF.js
 //
-// Solicitação de pagamento de bolsas encaminhada à Gerência Administrativa
-// Financeira (GAF), por contrato/ciclo — apenas os beneficiários com selo
+// Solicitação de pagamento de bolsas encaminhada à Diretoria Administrativa
+// Financeira (DAF), por contrato/ciclo — apenas os beneficiários com selo
 // "liberado" entram no lote. Mesmo padrão visual (timbre FACITEC/CDTIV,
 // cores AZUL/CINZA) usado em src/lib/relatorioFinanceiro.js.
 
@@ -19,7 +19,7 @@ function sufixoArquivo(numeroProcesso) {
   return String(numeroProcesso ?? 'sn').replace(/[\\/]/g, '-')
 }
 
-export function exportarRelatorioGAF(contrato, ciclo, beneficiariosLiberados) {
+export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 20, mR = 20, mT = 26, mB = 20
   const pgW = 210, pgH = 297
@@ -81,7 +81,7 @@ export function exportarRelatorioGAF(contrato, ciclo, beneficiariosLiberados) {
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)
-  const texto = `A Secretaria Executiva do FACITEC encaminha à Gerência Administrativa Financeira - GAF a presente solicitação de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
+  const texto = `A Secretaria Executiva do FACITEC encaminha à Diretoria Administrativa Financeira - DAF a presente solicitação de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
   const linhasTexto = doc.splitTextToSize(texto, usableW)
   doc.text(linhasTexto, mL, y)
   y += linhasTexto.length * 5.2 + 8

@@ -142,6 +142,10 @@ export async function gerarPagamentosDoCiclo(edicaoId, cicloId) {
 
 // ── 3 — Elegibilidade de um pagamento ─────────────────────────────────────
 export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoContrato) {
+  if (pagamento.status === 'pago') {
+    return { estado: 'pago', motivo: null }
+  }
+
   if (!relatorioDoCiclo || relatorioDoCiclo.status !== 'enviado') {
     return { estado: 'pendente_requisito', motivo: 'Relatório não enviado' }
   }

@@ -133,7 +133,7 @@ export const bolsistaService = {
 
 export const contratoService = {
   list: async (edicaoId) => {
-    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)'
+    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo, status)'
     if (!edicaoId) return db.list('contrato', { select })
     const ids = await projetoIdsDaEdicao(edicaoId)
     if (ids.length === 0) return EMPTY_LIST
