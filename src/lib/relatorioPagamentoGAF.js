@@ -1,0 +1,185 @@
+// src/lib/relatorioPagamentoGAF.js
+//
+// Solicitação de pagamento de bolsas encaminhada à Gerência Administrativa
+// Financeira (GAF), por contrato/ciclo — apenas os beneficiários com selo
+// "liberado" entram no lote. Mesmo padrão visual (timbre FACITEC/CDTIV,
+// cores AZUL/CINZA) usado em src/lib/relatorioFinanceiro.js.
+
+import { jsPDF } from 'jspdf'
+
+const AZUL = [26, 39, 68]
+const CINZA_CLARO = [244, 246, 249]
+const CINZA_TEXTO = [90, 96, 110]
+
+function fmtMoeda(valor) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor ?? 0))
+}
+
+function sufixoArquivo(numeroProcesso) {
+  return String(numeroProcesso ?? 'sn').replace(/[\\/]/g, '-')
+}
+
+export function exportarRelatorioGAF(contrato, ciclo, beneficiariosLiberados) {
+  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
+  const mL = 20, mR = 20, mT = 26, mB = 20
+  const pgW = 210, pgH = 297
+  const usableW = pgW - mL - mR
+
+  let pagina = 1
+
+  function cabecalho() {
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text('FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC', pgW / 2, 12, { align: 'center' })
+    doc.setFont('helvetica', 'normal')
+    doc.text('Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV', pgW / 2, 16.5, { align: 'center' })
+    doc.setDrawColor(...AZUL)
+    doc.setLineWidth(0.6)
+    doc.line(mL, 19.5, pgW - mR, 19.5)
+    doc.setTextColor(0, 0, 0)
+  }
+
+  function rodape() {
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(7.5)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text(
+      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
+      mL, pgH - 10,
+    )
+    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
+  }
+
+  function novaPagina() {
+    rodape()
+    doc.addPage()
+    pagina++
+    cabecalho()
+    return mT
+  }
+
+  function checkPage(y, needed) {
+    if (y + needed > pgH - mB) return novaPagina()
+    return y
+  }
+
+  cabecalho()
+  let y = mT
+
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(15)
+  doc.setTextColor(...AZUL)
+  doc.text('SOLICITAÇÃO DE PAGAMENTO DE BOLSAS', pgW / 2, y, { align: 'center' })
+  y += 7
+  doc.text('PROGRAMA PIBICJR', pgW / 2, y, { align: 'center' })
+  y += 12
+  doc.setTextColor(0, 0, 0)
+
+  const cicloLabel = ciclo ? `Ciclo ${ciclo.numero_ciclo} — ${ciclo.mes_referencia}` : '—'
+
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(10.5)
+  const texto = `A Secretaria Executiva do FACITEC encaminha à Gerência Administrativa Financeira - GAF a presente solicitação de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
+  const linhasTexto = doc.splitTextToSize(texto, usableW)
+  doc.text(linhasTexto, mL, y)
+  y += linhasTexto.length * 5.2 + 8
+
+  // ── Tabela de beneficiários liberados ────────────────────────────────
+  y = checkPage(y, 14)
+  const colX = { nome: mL + 2, cpf: mL + 70, tipo: mL + 105, valor: pgW - mR - 2 }
+
+  function cabecalhoTabela() {
+    doc.setFillColor(...AZUL)
+    doc.rect(mL, y, usableW, 8, 'F')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(9)
+    doc.setTextColor(255, 255, 255)
+    doc.text('NOME', colX.nome, y + 5.5)
+    doc.text('CPF', colX.cpf, y + 5.5)
+    doc.text('TIPO', colX.tipo, y + 5.5)
+    doc.text('VALOR', colX.valor, y + 5.5, { align: 'right' })
+    doc.setTextColor(0, 0, 0)
+    y += 8
+  }
+
+  cabecalhoTabela()
+
+  let total = 0
+  ;(beneficiariosLiberados ?? []).forEach((b, idx) => {
+    y = checkPage(y, 8)
+    if (y === mT) cabecalhoTabela()
+
+    if (idx % 2 === 1) {
+      doc.setFillColor(...CINZA_CLARO)
+      doc.rect(mL, y, usableW, 7, 'F')
+    }
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(0, 0, 0)
+    doc.text(doc.splitTextToSize(b.nome ?? '—', 66)[0], colX.nome, y + 5)
+    doc.text(b.cpf ?? '—', colX.cpf, y + 5)
+    doc.text(b.beneficiario_tipo === 'orientador' ? 'Orientador' : 'Bolsista', colX.tipo, y + 5)
+    doc.text(fmtMoeda(b.valor), colX.valor, y + 5, { align: 'right' })
+    y += 7
+    total += Number(b.valor ?? 0)
+  })
+
+  doc.setDrawColor(...CINZA_TEXTO)
+  doc.setLineWidth(0.2)
+  doc.line(mL, y, pgW - mR, y)
+  y += 2
+
+  y = checkPage(y, 10)
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text('TOTAL DO LOTE', colX.tipo, y + 5)
+  doc.text(fmtMoeda(total), colX.valor, y + 5, { align: 'right' })
+  y += 14
+
+  // ── Situação do contrato ──────────────────────────────────────────────
+  y = checkPage(y, 34)
+  const reservado = Number(contrato?.valor_global ?? contrato?.saldo?.reservado ?? 0)
+  const pagoAntes = Number(contrato?.saldo?.pago ?? 0)
+  const pagoAteEsteLote = pagoAntes + total
+  const comprometidoRestante = Number(contrato?.saldo?.comprometido ?? total) - total
+  const saldoRestante = reservado - pagoAteEsteLote - comprometidoRestante
+
+  doc.setFillColor(...CINZA_CLARO)
+  doc.roundedRect(mL, y, usableW, 28, 2, 2, 'F')
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(9.5)
+  doc.setTextColor(...AZUL)
+  doc.text('SITUAÇÃO DO CONTRATO', mL + 4, y + 7)
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.setTextColor(0, 0, 0)
+  doc.text(`Reservado: ${fmtMoeda(reservado)}`, mL + 4, y + 14)
+  doc.text(`Pago até este lote (incluindo-o): ${fmtMoeda(pagoAteEsteLote)}`, mL + 4, y + 20)
+  doc.text(`Saldo restante após este pagamento: ${fmtMoeda(saldoRestante)}`, mL + 4, y + 26)
+  doc.setTextColor(0, 0, 0)
+  y += 28 + 20
+
+  // ── Assinatura ────────────────────────────────────────────────────────
+  y = checkPage(y, 26)
+  doc.setDrawColor(0, 0, 0)
+  doc.setLineWidth(0.3)
+  doc.line(pgW / 2 - 40, y, pgW / 2 + 40, y)
+  y += 5
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(10)
+  doc.text('Sérgio Paulo Tomáz', pgW / 2, y, { align: 'center' })
+  y += 5
+  doc.setFont('helvetica', 'normal')
+  doc.setFontSize(9)
+  doc.text('Secretário Executivo, FACITEC/CDTIV', pgW / 2, y, { align: 'center' })
+  y += 8
+  doc.setFontSize(8.5)
+  doc.setTextColor(...CINZA_TEXTO)
+  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, pgW / 2, y, { align: 'center' })
+  doc.setTextColor(0, 0, 0)
+
+  rodape()
+  doc.save(`Solicitacao_Pagamento_${sufixoArquivo(contrato?.numero_processo)}_Ciclo${ciclo?.numero_ciclo ?? ''}.pdf`)
+}

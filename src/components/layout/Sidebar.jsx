@@ -33,6 +33,8 @@ import { Separator } from '@/components/ui/separator'
 import { useAdmin } from '@/contexts/AdminContext'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { edicaoService } from '@/lib/db'
+import { contarPagamentosEmAtencao } from '@/lib/pagamentos'
+import { listarCndVencendoEmBreve } from '@/lib/cnd'
 import { PROGRAMAS as PROGRAMAS_REGISTRO, getProgramaByProgramaId } from '@/lib/programas'
 
 // URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
@@ -101,7 +103,7 @@ function buildCategoriasAcervoEdicao(edicaoId) {
 }
 
 // ── Menu — nível Programa/Edição ─────────────────────────────────────────────
-function buildCategoriasPrograma(ano, slug, programaNome) {
+function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge) {
   return [
     {
       titulo: 'Visão geral',
@@ -138,7 +140,7 @@ function buildCategoriasPrograma(ano, slug, programaNome) {
       titulo: 'Relatórios e financeiro',
       itens: [
         { label: 'Central de relatórios', href: `/admin/${slug}/${ano}/historico`, icon: BarChart2 },
-        { label: 'Financeiro', href: `/admin/${slug}/${ano}/financeiro`, icon: DollarSign },
+        { label: 'Financeiro', href: `/admin/${slug}/${ano}/financeiro`, icon: DollarSign, badge: financeiroBadge > 0 ? financeiroBadge : undefined },
       ],
     },
   ]
@@ -243,7 +245,12 @@ function NavItem({ item, collapsed, pathname }) {
       className={cls}
     >
       <Icon className={cn('w-5 h-5 shrink-0', active ? 'text-[#534AB7]' : '')} />
-      {!collapsed && <span className="truncate">{item.label}</span>}
+      {!collapsed && <span className="truncate flex-1">{item.label}</span>}
+      {!collapsed && !!item.badge && (
+        <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+          {item.badge}
+        </span>
+      )}
     </NavLink>
   )
 }
@@ -335,6 +342,21 @@ export function Sidebar() {
     return () => { cancelado = true }
   }, [edicaoIdAcervo])
 
+  const [financeiroAlertas, setFinanceiroAlertas] = useState(0)
+  const edicaoSelecionadaId = edicaoSelecionada?.id
+
+  useEffect(() => {
+    if (!edicaoSelecionadaId) { setFinanceiroAlertas(0); return }
+    let ativo = true
+    Promise.all([
+      contarPagamentosEmAtencao(edicaoSelecionadaId),
+      listarCndVencendoEmBreve(edicaoSelecionadaId, 15),
+    ]).then(([countPagamentos, cndVencendo]) => {
+      if (ativo) setFinanceiroAlertas(countPagamentos + cndVencendo.length)
+    }).catch(() => {})
+    return () => { ativo = false }
+  }, [edicaoSelecionadaId])
+
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
   const isSistema = isSistemaPath(location.pathname)
   const programaAtual = PROGRAMAS.find((p) => p.id === programaSelecionado)
@@ -343,7 +365,7 @@ export function Sidebar() {
     ? buildCategoriasAcervoEdicao(edicaoIdAcervo)
     : isSistema
       ? buildCategoriasSistema()
-      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa')
+      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa', financeiroAlertas)
 
   return (
     <aside
