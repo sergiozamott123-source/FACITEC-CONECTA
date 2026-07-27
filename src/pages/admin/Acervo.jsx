@@ -69,15 +69,60 @@ function CadastroEdicaoLegadaModal({ open, onClose, onCreated }) {
   )
 }
 
+function GrupoPrograma({ programa, edicoes, navigate }) {
+  return (
+    <section className="space-y-3">
+      <div className="flex items-center gap-2">
+        <span className="w-2 h-2 rounded-full shrink-0" style={{ background: programa.cor }} />
+        <h3 className="text-sm font-bold text-foreground">{programa.nome}</h3>
+        <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
+          {edicoes.length}
+        </span>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {edicoes.map((ed) => (
+          <Card
+            key={ed.id}
+            className="hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => navigate(`/admin/acervo/${ed.id}`)}
+          >
+            <CardContent className="pt-4 pb-4 flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  Edição {ed.ano_referencia ?? '—'}
+                </p>
+                {ed.numero_edital && (
+                  <p className="text-xs text-muted-foreground mt-0.5">Edital {ed.numero_edital}</p>
+                )}
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <Badge variant={ed.status === 'ativo' ? 'success' : 'secondary'}>
+                  {ed.status === 'ativo' ? 'Em andamento' : 'Encerrado'}
+                </Badge>
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function agruparPorPrograma(edicoes) {
+  return PROGRAMAS
+    .map((p) => ({ programa: p, edicoes: edicoes.filter((e) => e.programa_id === p.programaId) }))
+    .filter((g) => g.edicoes.length > 0)
+}
+
 export function Acervo() {
   const navigate = useNavigate()
-  const fetch = useCallback(() => acervoService.listEdicoesEncerradas(), [])
+  const fetch = useCallback(() => acervoService.listEdicoesParaAcervo(), [])
   const { data, loading, error, reload } = useTable(fetch)
   const [modalAberto, setModalAberto] = useState(false)
 
-  const grupos = PROGRAMAS
-    .map((p) => ({ programa: p, edicoes: data.filter((e) => e.programa_id === p.programaId) }))
-    .filter((g) => g.edicoes.length > 0)
+  const gruposAtivas = agruparPorPrograma(data.filter((e) => e.status === 'ativo'))
+  const gruposEncerradas = agruparPorPrograma(data.filter((e) => e.status === 'encerrado'))
 
   function handleCreated(edicao) {
     setModalAberto(false)
@@ -95,7 +140,7 @@ export function Acervo() {
           <div>
             <h1 className="text-xl font-bold text-foreground leading-tight">Acervo</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Edições encerradas de todos os programas — projetos, orientadores, bolsistas e material histórico.
+              Edições de todos os programas — projetos, orientadores, bolsistas e material histórico.
             </p>
           </div>
         </div>
@@ -106,45 +151,30 @@ export function Acervo() {
 
       <ErrorAlert message={error} />
 
-      {loading ? <LoadingState /> : grupos.length === 0 ? (
-        <EmptyState message="Nenhuma edição encerrada cadastrada ainda. Edições da tela “Edições” com status Encerrado aparecem aqui automaticamente." />
+      {loading ? <LoadingState /> : gruposAtivas.length === 0 && gruposEncerradas.length === 0 ? (
+        <EmptyState message="Nenhuma edição cadastrada ainda. Edições da tela “Edições” aparecem aqui automaticamente." />
       ) : (
-        <div className="space-y-8">
-          {grupos.map(({ programa, edicoes }) => (
-            <section key={programa.programaId} className="space-y-3">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ background: programa.cor }} />
-                <h2 className="text-sm font-bold text-foreground">{programa.nome}</h2>
-                <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {edicoes.length}
-                </span>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {edicoes.map((ed) => (
-                  <Card
-                    key={ed.id}
-                    className="hover:shadow-md transition-shadow cursor-pointer"
-                    onClick={() => navigate(`/admin/acervo/${ed.id}`)}
-                  >
-                    <CardContent className="pt-4 pb-4 flex items-center justify-between gap-2">
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">
-                          Edição {ed.ano_referencia ?? '—'}
-                        </p>
-                        {ed.numero_edital && (
-                          <p className="text-xs text-muted-foreground mt-0.5">Edital {ed.numero_edital}</p>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant="secondary">Encerrado</Badge>
-                        <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </section>
-          ))}
+        <div className="space-y-10">
+          {gruposAtivas.length > 0 && (
+            <div className="space-y-8">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                Em andamento
+              </h2>
+              {gruposAtivas.map(({ programa, edicoes }) => (
+                <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
+              ))}
+            </div>
+          )}
+          {gruposEncerradas.length > 0 && (
+            <div className="space-y-8">
+              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                Encerradas
+              </h2>
+              {gruposEncerradas.map(({ programa, edicoes }) => (
+                <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 

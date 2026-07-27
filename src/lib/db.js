@@ -267,9 +267,10 @@ export const documentoAcervoService = {
 }
 
 export const acervoService = {
-  // Edições encerradas (legado) de todos os programas, mais recentes primeiro.
-  listEdicoesEncerradas: () => db.list('edicao', {
-    filters: [['status', 'eq', 'encerrado']],
+  // Edições ativas e encerradas de todos os programas, mais recentes primeiro.
+  // 'planejado' fica de fora — edição que ainda nem começou não tem acervo.
+  listEdicoesParaAcervo: () => db.list('edicao', {
+    filters: [['status', 'in', '("ativo","encerrado")']],
     order: 'ano_referencia', asc: false,
   }),
 }

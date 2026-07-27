@@ -136,16 +136,23 @@ export function AcervoDocumentosDisponiveis() {
 
   async function handleArquivarItem(item) {
     setArquivandoId(item.id)
+    setItens((prev) => prev.map((i) => (i.id === item.id ? { ...i, erro: null } : i)))
     try {
       await item.arquivar()
       setItens((prev) => prev.filter((i) => i.id !== item.id))
     } catch (err) {
-      showToast(err.message || 'Erro ao arquivar documento.', 'err')
+      const motivo = err.message || 'Erro ao arquivar documento.'
+      setItens((prev) => prev.map((i) => (i.id === item.id ? { ...i, erro: motivo } : i)))
+      showToast(motivo, 'err')
     } finally {
       setArquivandoId(null)
     }
   }
 
+  // Cada item da lista é tentado uma única vez por clique em "Arquivar todos" —
+  // não há retry automático. Um item que falhar permanece na lista com o
+  // motivo do erro anexado (item.erro), visível na linha; para tentar de novo
+  // é preciso um clique manual (aqui ou no botão individual da linha).
   async function handleArquivarTodos() {
     const pendentes = [...itens]
     setLote({ atual: 0, total: pendentes.length })
@@ -156,15 +163,17 @@ export function AcervoDocumentosDisponiveis() {
       try {
         await item.arquivar()
         setItens((prev) => prev.filter((x) => x.id !== item.id))
-      } catch {
+      } catch (err) {
         falhas++
+        const motivo = err.message || 'Erro ao arquivar documento.'
+        setItens((prev) => prev.map((x) => (x.id === item.id ? { ...x, erro: motivo } : x)))
       }
       setLote({ atual: i + 1, total: pendentes.length })
     }
     setArquivandoId(null)
     setLote(null)
     showToast(
-      falhas > 0 ? `Concluído com ${falhas} erro(s). Veja os itens restantes na lista.` : 'Todos os documentos disponíveis foram arquivados.',
+      falhas > 0 ? `Concluído com ${falhas} erro(s). Veja o motivo nos itens restantes na lista.` : 'Todos os documentos disponíveis foram arquivados.',
       falhas > 0 ? 'err' : 'ok'
     )
   }
@@ -205,7 +214,12 @@ export function AcervoDocumentosDisponiveis() {
             <tbody>
               {itens.map((item) => (
                 <tr key={item.id} className="border-t border-border align-top">
-                  <td className="px-4 py-2.5 font-medium text-foreground">{item.nome}</td>
+                  <td className="px-4 py-2.5 font-medium text-foreground">
+                    {item.nome}
+                    {item.erro && (
+                      <p className="text-xs font-normal text-destructive mt-0.5">{item.erro}</p>
+                    )}
+                  </td>
                   <td className="px-4 py-2.5 text-muted-foreground">{item.tipo}</td>
                   <td className="px-4 py-2.5">
                     <ArquivarBotao
