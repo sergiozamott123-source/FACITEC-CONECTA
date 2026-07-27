@@ -14,6 +14,11 @@ import {
   formatarDataBR,
 } from '@/lib/relatorioMensal'
 import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
+import { documentoAcervoService } from '@/lib/db'
+import { arquivarRelatorioMensal, jaArquivado } from '@/lib/acervoArquivamento'
+import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
+import { useToast } from '@/hooks/useToast'
+import { Toast } from '@/components/common/Toast'
 
 const STATUS_INFO = {
   enviado:          { label: 'Enviado',          variant: 'success' },
@@ -39,6 +44,9 @@ export function RelatoriosMensais() {
   const [salvandoJanelaId, setSalvandoJanelaId] = useState(null)
   const [exportandoPDF, setExportandoPDF] = useState(false)
   const [exportandoLote, setExportandoLote] = useState(false)
+  const [docsArquivados, setDocsArquivados] = useState([])
+  const [arquivandoId, setArquivandoId] = useState(null)
+  const { toast, showToast } = useToast()
 
   useEffect(() => {
     if (!edicaoSelecionada?.id) return
@@ -84,10 +92,39 @@ export function RelatoriosMensais() {
       if (e2) throw e2
       setOrientadores((projetos ?? []).filter(p => p.orientador).map(p => ({ ...p.orientador, projeto: p.titulo })))
       setRelatorios(relatoriosData ?? [])
+      const { data: docs } = await documentoAcervoService.listPorEdicao(edicaoSelecionada.id)
+      setDocsArquivados(docs ?? [])
     } catch {
       setErro('Erro ao carregar o status dos relatórios.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleArquivar(relatorio, orientador) {
+    setArquivandoId(relatorio.id)
+    try {
+      const ids = (relatorio.frequencia_bolsistas ?? []).map(f => f.bolsista_id)
+      let nomesBolsistas = {}
+      if (ids.length) {
+        const { data } = await supabase.from('bolsista').select('id, nome_completo').in('id', ids)
+        nomesBolsistas = Object.fromEntries((data ?? []).map(b => [b.id, b.nome_completo]))
+      }
+      await arquivarRelatorioMensal({
+        relatorio,
+        edicaoId: relatorio.edicao_id ?? edicaoSelecionada.id,
+        ciclo: cicloSelecionado,
+        orientador,
+        projetoTitulo: orientador?.projeto,
+        nomesBolsistas,
+      })
+      const { data: docs } = await documentoAcervoService.listPorEdicao(edicaoSelecionada.id)
+      setDocsArquivados(docs ?? [])
+      showToast('Relatório arquivado no Acervo.', 'ok')
+    } catch (err) {
+      showToast(err.message || 'Erro ao arquivar relatório.', 'err')
+    } finally {
+      setArquivandoId(null)
     }
   }
 
@@ -274,6 +311,13 @@ export function RelatoriosMensais() {
                       {reabrindoId === relatorio.id ? 'Reabrindo...' : 'Reabrir para edição'}
                     </Button>
                   )}
+                  {relatorio?.status === 'enviado' && (
+                    <ArquivarBotao
+                      arquivado={jaArquivado(docsArquivados, 'orientador', orientador.id, 'relatorio_mensal')}
+                      loading={arquivandoId === relatorio.id}
+                      onClick={() => handleArquivar(relatorio, orientador)}
+                    />
+                  )}
                 </td>
               </tr>
             ))}
@@ -341,6 +385,8 @@ export function RelatoriosMensais() {
         onExportarPDF={handleExportarPDF}
         exportando={exportandoPDF}
       />
+
+      <Toast toast={toast} />
     </div>
   )
 }

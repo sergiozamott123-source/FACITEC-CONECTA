@@ -94,6 +94,7 @@ function buildCategoriasAcervoEdicao(edicaoId) {
         { label: 'Orientadores', href: `/admin/acervo/${edicaoId}/orientadores`, icon: Users },
         { label: 'Bolsistas Jr', href: `/admin/acervo/${edicaoId}/bolsistas`, icon: GraduationCap },
         { label: 'Inscritos', href: `/admin/acervo/${edicaoId}/inscritos`, icon: ClipboardList },
+        { label: 'Documentos disponíveis', href: `/admin/acervo/${edicaoId}/documentos-disponiveis`, icon: FileUp },
       ],
     },
   ]

@@ -64,7 +64,10 @@
       "Read(//tmp/**)",
       "Bash(echo \"exit:$?\")",
       "Bash(pkill -f \"vite --port 5183\")",
-      "Bash(pkill -f \"vite --port 5184\")"
+      "Bash(pkill -f \"vite --port 5184\")",
+      "mcp__claude_ai_Supabase__list_projects",
+      "mcp__claude_ai_Supabase__list_tables",
+      "Bash(python *)"
     ]
   }
 }

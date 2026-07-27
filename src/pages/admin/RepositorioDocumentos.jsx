@@ -5,6 +5,13 @@ import { Button } from '@/components/ui/button'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/contexts/AdminContext'
+import { documentoAcervoService } from '@/lib/db'
+import { arquivarRecursoDocumento, jaArquivado } from '@/lib/acervoArquivamento'
+import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
+import { useToast } from '@/hooks/useToast'
+import { Toast } from '@/components/common/Toast'
+
+const STATUS_DECIDIDO = ['deferido', 'indeferido']
 
 // ── helpers ─────────────────────────────────────────────────────────────────
 
@@ -50,9 +57,10 @@ function statusBadge(status) {
 
 // ── RecursoCard ──────────────────────────────────────────────────────────────
 
-function RecursoCard({ recurso }) {
+function RecursoCard({ recurso, docsArquivados, arquivandoDocId, onArquivar }) {
   const docs = recurso.recurso_documento ?? []
   const nomeRecorrente = recurso.orientador?.nome_completo ?? '—'
+  const decidido = STATUS_DECIDIDO.includes(recurso.status)
 
   return (
     <Card>
@@ -135,6 +143,13 @@ function RecursoCard({ recurso }) {
                     <Download className="w-3 h-3" />
                     Baixar
                   </a>
+                  {decidido && recurso.orientador?.id && (
+                    <ArquivarBotao
+                      arquivado={jaArquivado(docsArquivados, 'orientador', recurso.orientador.id, doc.tipo)}
+                      loading={arquivandoDocId === doc.id}
+                      onClick={() => onArquivar(doc, recurso)}
+                    />
+                  )}
                 </div>
               </div>
             ))}
@@ -234,6 +249,9 @@ export function RepositorioDocumentos() {
   const [avaliadores, setAvaliadores] = useState([])
   const [loading,     setLoading]     = useState(true)
   const [error,       setError]       = useState(null)
+  const [docsArquivados, setDocsArquivados] = useState([])
+  const [arquivandoDocId, setArquivandoDocId] = useState(null)
+  const { toast, showToast } = useToast()
 
   useEffect(() => {
     if (!edicaoSelecionada?.id) return
@@ -291,10 +309,27 @@ export function RepositorioDocumentos() {
 
       setRecursos(recursosRes.data ?? [])
       setAvaliadores([...avMap.values()])
+
+      const { data: docs } = await documentoAcervoService.listPorEdicao(edicaoId)
+      setDocsArquivados(docs ?? [])
     } catch (err) {
       setError(err.message)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function handleArquivar(doc, recurso) {
+    setArquivandoDocId(doc.id)
+    try {
+      await arquivarRecursoDocumento(doc, edicaoSelecionada.id, recurso.orientador.id)
+      const { data: docs } = await documentoAcervoService.listPorEdicao(edicaoSelecionada.id)
+      setDocsArquivados(docs ?? [])
+      showToast('Documento arquivado no Acervo.', 'ok')
+    } catch (err) {
+      showToast(err.message || 'Erro ao arquivar documento.', 'err')
+    } finally {
+      setArquivandoDocId(null)
     }
   }
 
@@ -345,7 +380,13 @@ export function RepositorioDocumentos() {
         ) : (
           <div className="grid grid-cols-1 gap-4">
             {recursos.map((rec) => (
-              <RecursoCard key={rec.id} recurso={rec} />
+              <RecursoCard
+                key={rec.id}
+                recurso={rec}
+                docsArquivados={docsArquivados}
+                arquivandoDocId={arquivandoDocId}
+                onArquivar={handleArquivar}
+              />
             ))}
           </div>
         )}
@@ -374,6 +415,7 @@ export function RepositorioDocumentos() {
         )}
       </section>
 
+      <Toast toast={toast} />
     </div>
   )
 }

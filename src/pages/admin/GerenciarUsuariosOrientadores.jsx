@@ -1,12 +1,29 @@
 import { useEffect, useRef, useState } from 'react'
 import { KeyRound, ShieldCheck, UserPlus, FileText, CheckCircle2, Upload } from 'lucide-react'
-import { orientadorService } from '@/lib/db'
+import { orientadorService, documentoAcervoService } from '@/lib/db'
 import { supabase } from '@/lib/supabase'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAdmin } from '@/contexts/AdminContext'
+import { arquivarContratoOrientador, jaArquivado } from '@/lib/acervoArquivamento'
+import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
+import { useToast } from '@/hooks/useToast'
+import { Toast } from '@/components/common/Toast'
 
 const BUCKET_CONTRATOS = 'contratos-orientadores'
+
+// Resolve a edição "de verdade" de um orientador para o arquivamento: a
+// fonte mais confiável é o projeto dele (orientador.edicao_id não é
+// preenchido de forma consistente pelo fluxo real, ver comentário em db.js).
+async function edicaoIdDoOrientador(orientador) {
+  const { data } = await supabase
+    .from('projeto')
+    .select('edicao_id')
+    .eq('orientador_id', orientador.id)
+    .limit(1)
+    .maybeSingle()
+  return data?.edicao_id ?? orientador.edicao_id ?? null
+}
 
 function sanitizarNomeArquivo(nome) {
   return nome.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-zA-Z0-9.\-_]/g, '_')
@@ -21,6 +38,9 @@ export function GerenciarUsuariosOrientadores() {
   const [erro, setErro] = useState(null)
   const [resultado, setResultado] = useState(null) // { nome, email, senhaTemporaria }
   const [verTodos, setVerTodos] = useState(false)
+  const [docsArquivados, setDocsArquivados] = useState([])
+  const [arquivandoId, setArquivandoId] = useState(null)
+  const { toast, showToast } = useToast()
 
   // Orientador "de verdade" (selecionado na edição, não mero inscrito): tem
   // codigo_orientador atribuído — codigo_facitec está sempre vazio nesta
@@ -30,8 +50,12 @@ export function GerenciarUsuariosOrientadores() {
   async function carregar() {
     setLoading(true)
     try {
-      const { data } = await orientadorService.list(edicaoSelecionada?.id)
+      const [{ data }, { data: docs }] = await Promise.all([
+        orientadorService.list(edicaoSelecionada?.id),
+        documentoAcervoService.listPorTipo('orientador'),
+      ])
       setOrientadores(data ?? [])
+      setDocsArquivados(docs ?? [])
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -40,6 +64,22 @@ export function GerenciarUsuariosOrientadores() {
   }
 
   useEffect(() => { carregar() }, [edicaoSelecionada?.id])
+
+  async function handleArquivar(orientador) {
+    setArquivandoId(orientador.id)
+    try {
+      const edicaoId = await edicaoIdDoOrientador(orientador)
+      if (!edicaoId) throw new Error('Não foi possível identificar a edição deste orientador.')
+      await arquivarContratoOrientador(orientador, edicaoId)
+      const { data: docs } = await documentoAcervoService.listPorTipo('orientador')
+      setDocsArquivados(docs ?? [])
+      showToast('Contrato arquivado no Acervo.', 'ok')
+    } catch (err) {
+      showToast(err.message || 'Erro ao arquivar contrato.', 'err')
+    } finally {
+      setArquivandoId(null)
+    }
+  }
 
   async function chamarFuncao(action, orientador) {
     setErro(null)
@@ -173,6 +213,9 @@ export function GerenciarUsuariosOrientadores() {
                     orientador={o}
                     uploading={uploadingId === o.id}
                     onUpload={file => handleUploadContrato(o, file)}
+                    arquivado={jaArquivado(docsArquivados, 'orientador', o.id, 'contrato')}
+                    arquivando={arquivandoId === o.id}
+                    onArquivar={() => handleArquivar(o)}
                   />
                 </td>
                 <td className="px-4 py-2.5 text-right">
@@ -209,15 +252,17 @@ export function GerenciarUsuariosOrientadores() {
         <ShieldCheck className="w-3.5 h-3.5" />
         A conta é criada com o e-mail cadastrado do orientador — a senha temporária deve ser repassada por um canal seguro.
       </p>
+
+      <Toast toast={toast} />
     </div>
   )
 }
 
-function ContratoCell({ orientador, uploading, onUpload }) {
+function ContratoCell({ orientador, uploading, onUpload, arquivado, arquivando, onArquivar }) {
   const inputRef = useRef()
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 flex-wrap">
       {orientador.contrato_url ? (
         <>
           <CheckCircle2 className="w-3.5 h-3.5 text-green-600 shrink-0" />
@@ -237,6 +282,9 @@ function ContratoCell({ orientador, uploading, onUpload }) {
         {orientador.contrato_url ? <FileText className="w-3.5 h-3.5 mr-1.5" /> : <Upload className="w-3.5 h-3.5 mr-1.5" />}
         {uploading ? 'Enviando...' : orientador.contrato_url ? 'Substituir' : 'Enviar contrato assinado'}
       </Button>
+      {orientador.contrato_url && (
+        <ArquivarBotao arquivado={arquivado} loading={arquivando} onClick={onArquivar} />
+      )}
       <input
         ref={inputRef}
         type="file"

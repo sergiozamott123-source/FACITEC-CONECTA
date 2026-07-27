@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Plus, Trash2, Upload } from 'lucide-react'
+import { ChevronDown, ChevronRight, Plus, Trash2, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { ConfirmDialog } from '@/components/common/ConfirmDialog'
@@ -10,6 +11,7 @@ import { useAcervoEdicao } from './useAcervoEdicao'
 import { AcervoEdicaoHeader } from './AcervoEdicaoHeader'
 import { DocumentosCell } from './DocumentosCell'
 import { ImportarPlanilhaModal } from './ImportarPlanilhaModal'
+import { HistoricoProjeto } from './HistoricoProjeto'
 
 const CAMPOS_IMPORTACAO_PROJETO = [
   { key: 'titulo', label: 'Título do projeto' },
@@ -27,6 +29,25 @@ const TIPOS_BOLSISTA = [
 ]
 
 const EMPTY_BOLSISTA = () => ({ key: crypto.randomUUID(), nome_completo: '', tipo: 'titular' })
+
+// Rótulo/cor de cada status possível de projeto.status (constraint
+// projeto_status_check no banco) — usado como badge quando a edição tem
+// dados reais (todos os status aparecem, não só selecionado).
+const STATUS_PROJETO = {
+  rascunho: { label: 'Rascunho', variant: 'outline' },
+  inscrito: { label: 'Inscrito', variant: 'secondary' },
+  em_avaliacao: { label: 'Em avaliação', variant: 'default' },
+  avaliado: { label: 'Avaliado', variant: 'default' },
+  selecionado: { label: 'Selecionado', variant: 'success' },
+  reserva: { label: 'Reserva', variant: 'warning' },
+  nao_selecionado: { label: 'Não selecionado', variant: 'secondary' },
+  cancelado: { label: 'Cancelado', variant: 'destructive' },
+}
+
+export function StatusProjetoBadge({ status }) {
+  const cfg = STATUS_PROJETO[status] ?? { label: status ?? '—', variant: 'outline' }
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>
+}
 
 const EMPTY_FORM = {
   modoOrientador: 'novo',
@@ -265,6 +286,17 @@ export function AcervoProjetos() {
   const [modalImportarAberto, setModalImportarAberto] = useState(false)
   const [projetoParaExcluir, setProjetoParaExcluir] = useState(null)
   const [excluindo, setExcluindo] = useState(false)
+  const [expandidos, setExpandidos] = useState(() => new Set())
+  const [dadosReais, setDadosReais] = useState(false)
+
+  function toggleHistorico(projetoId) {
+    setExpandidos((prev) => {
+      const next = new Set(prev)
+      if (next.has(projetoId)) next.delete(projetoId)
+      else next.add(projetoId)
+      return next
+    })
+  }
 
   async function handleExcluir() {
     if (!projetoParaExcluir) return
@@ -291,14 +323,16 @@ export function AcervoProjetos() {
     setLoading(true)
     setError(null)
     try {
-      const [projetosRes, orientadoresRes, docsRes] = await Promise.all([
+      const [projetosRes, orientadoresRes, docsRes, real] = await Promise.all([
         projetoService.list(edicaoId),
         orientadorService.listAll(),
         documentoAcervoService.listPorEdicao(edicaoId),
+        projetoService.existeDadoReal(edicaoId),
       ])
       setProjetos(projetosRes.data)
       setOrientadores(orientadoresRes.data)
       setDocs(docsRes.data)
+      setDadosReais(real)
     } catch (err) {
       setError(err.message ?? 'Erro ao carregar projetos.')
     } finally {
@@ -314,8 +348,8 @@ export function AcervoProjetos() {
   }, [edicaoId])
 
   const projetosSelecionados = useMemo(
-    () => projetos.filter((p) => p.status !== 'inscrito'),
-    [projetos]
+    () => (dadosReais ? projetos : projetos.filter((p) => p.status !== 'inscrito')),
+    [projetos, dadosReais]
   )
   const docsPorProjeto = useCallback(
     (projetoId) => docs.filter((d) => d.entidade_tipo === 'projeto' && d.entidade_id === projetoId),
@@ -331,10 +365,10 @@ export function AcervoProjetos() {
     <div className="space-y-6">
       <AcervoEdicaoHeader
         edicao={edicao}
-        acaoLabel="Novo projeto legado"
+        acaoLabel={dadosReais ? undefined : 'Novo projeto legado'}
         acaoIcon={Plus}
         onAcao={() => setModalAberto(true)}
-        acaoSecundariaLabel="Importar planilha"
+        acaoSecundariaLabel={dadosReais ? undefined : 'Importar planilha'}
         acaoSecundariaIcon={Upload}
         onAcaoSecundaria={() => setModalImportarAberto(true)}
       />
@@ -347,37 +381,63 @@ export function AcervoProjetos() {
             <thead className="bg-muted/40 text-muted-foreground">
               <tr>
                 <th className="text-left font-medium px-4 py-2.5">Título</th>
+                {dadosReais && <th className="text-left font-medium px-4 py-2.5">Status</th>}
                 <th className="text-left font-medium px-4 py-2.5">Orientador</th>
                 <th className="text-left font-medium px-4 py-2.5">Documentos</th>
                 <th className="text-left font-medium px-4 py-2.5 w-10"></th>
+                {!dadosReais && <th className="text-left font-medium px-4 py-2.5 w-10"></th>}
               </tr>
             </thead>
             <tbody>
               {projetosSelecionados.map((p) => (
-                <tr key={p.id} className="border-t border-border align-top">
-                  <td className="px-4 py-2.5 font-medium text-foreground">{p.titulo}</td>
-                  <td className="px-4 py-2.5 text-muted-foreground">{p.orientador?.nome_completo ?? '—'}</td>
-                  <td className="px-4 py-2.5">
-                    <DocumentosCell
-                      edicaoId={edicaoId}
-                      entidadeTipo="projeto"
-                      entidadeId={p.id}
-                      docs={docsPorProjeto(p.id)}
-                      label="Anexar documento do projeto"
-                      onChange={recarregarDocs}
-                    />
-                  </td>
-                  <td className="px-4 py-2.5">
-                    <button
-                      type="button"
-                      onClick={() => setProjetoParaExcluir(p)}
-                      className="p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors"
-                      aria-label="Excluir projeto"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </td>
-                </tr>
+                <Fragment key={p.id}>
+                  <tr className="border-t border-border align-top">
+                    <td className="px-4 py-2.5 font-medium text-foreground">{p.titulo}</td>
+                    {dadosReais && (
+                      <td className="px-4 py-2.5"><StatusProjetoBadge status={p.status} /></td>
+                    )}
+                    <td className="px-4 py-2.5 text-muted-foreground">{p.orientador?.nome_completo ?? '—'}</td>
+                    <td className="px-4 py-2.5">
+                      <DocumentosCell
+                        edicaoId={edicaoId}
+                        entidadeTipo="projeto"
+                        entidadeId={p.id}
+                        docs={docsPorProjeto(p.id)}
+                        label="Anexar documento do projeto"
+                        onChange={recarregarDocs}
+                      />
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <button
+                        type="button"
+                        onClick={() => toggleHistorico(p.id)}
+                        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {expandidos.has(p.id) ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                        Ver histórico
+                      </button>
+                    </td>
+                    {!dadosReais && (
+                      <td className="px-4 py-2.5">
+                        <button
+                          type="button"
+                          onClick={() => setProjetoParaExcluir(p)}
+                          className="p-1.5 text-muted-foreground hover:text-destructive rounded transition-colors"
+                          aria-label="Excluir projeto"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    )}
+                  </tr>
+                  {expandidos.has(p.id) && (
+                    <tr className="border-t border-border bg-muted/10">
+                      <td colSpan={5} className="px-4">
+                        <HistoricoProjeto projetoId={p.id} />
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
               ))}
             </tbody>
           </table>

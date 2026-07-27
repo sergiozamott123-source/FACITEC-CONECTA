@@ -100,6 +100,19 @@ export const projetoService = {
   create: (p) => db.insert('projeto', p),
   update: (id, p) => db.update('projeto', id, p),
   remove: (id) => db.remove('projeto', id),
+  // Uma edição "tem dado real" quando pelo menos um projeto veio do fluxo de
+  // inscrição de verdade (enviado_em preenchido no envio, ver FichaInscricao.jsx)
+  // — o cadastro leve do Acervo nunca preenche esse campo.
+  existeDadoReal: async (edicaoId) => {
+    const { data, error } = await supabase
+      .from('projeto')
+      .select('id')
+      .eq('edicao_id', edicaoId)
+      .not('enviado_em', 'is', null)
+      .limit(1)
+    if (error) throw error
+    return (data ?? []).length > 0
+  },
 }
 
 export const orientadorService = {
@@ -240,6 +253,13 @@ export const documentoAcervoService = {
   }),
   listPorEntidade: (entidadeTipo, entidadeId) => db.list('documento_acervo', {
     filters: [['entidade_tipo', 'eq', entidadeTipo], ['entidade_id', 'eq', entidadeId]],
+    order: 'criado_em', asc: false,
+  }),
+  // Sem filtro de edição — usado por telas que listam entidades de várias
+  // edições ao mesmo tempo (ex: "Ver todos os inscritos" em Usuários Orientadores),
+  // onde jaArquivado() já resolve a combinação certa via entidade_id + categoria.
+  listPorTipo: (entidadeTipo) => db.list('documento_acervo', {
+    filters: [['entidade_tipo', 'eq', entidadeTipo]],
     order: 'criado_em', asc: false,
   }),
   create: (p) => db.insert('documento_acervo', p),

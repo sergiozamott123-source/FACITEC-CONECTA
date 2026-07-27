@@ -24,7 +24,10 @@ async function urlParaDataURL(url) {
   return { dataUrl, formato }
 }
 
-export async function gerarPDFRelatorioMensal({ relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas }) {
+// Monta o documento jsPDF do relatório — reaproveitado tanto para download
+// direto (gerarPDFRelatorioMensal) quanto para gerar um blob e arquivar no
+// Acervo sem passar pelo disco do usuário (gerarBlobPDFRelatorioMensal).
+async function construirPDFRelatorioMensal({ relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 20, mR = 20, mT = 26, mB = 20
   const pgW = 210, pgH = 297
@@ -199,5 +202,18 @@ export async function gerarPDFRelatorioMensal({ relatorio, ciclo, orientador, pr
   rodape()
 
   const codigoArquivo = (orientador?.codigo_facitec || orientador?.codigo_orientador || 'orientador').replace(/\s+/g, '')
-  doc.save(`relatorio-ciclo${ciclo.numero_ciclo}-${codigoArquivo}.pdf`)
+  const nomeArquivo = `relatorio-ciclo${ciclo.numero_ciclo}-${codigoArquivo}.pdf`
+  return { doc, nomeArquivo }
+}
+
+export async function gerarPDFRelatorioMensal(params) {
+  const { doc, nomeArquivo } = await construirPDFRelatorioMensal(params)
+  doc.save(nomeArquivo)
+}
+
+// Mesma geração, mas devolve o PDF como Blob (+ nome sugerido) em vez de
+// baixar no navegador — usado para arquivar o relatório direto no Acervo.
+export async function gerarBlobPDFRelatorioMensal(params) {
+  const { doc, nomeArquivo } = await construirPDFRelatorioMensal(params)
+  return { blob: doc.output('blob'), nomeArquivo }
 }

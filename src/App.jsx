@@ -18,6 +18,7 @@ import { AcervoProjetos } from '@/pages/admin/acervo/AcervoProjetos'
 import { AcervoOrientadores } from '@/pages/admin/acervo/AcervoOrientadores'
 import { AcervoBolsistas } from '@/pages/admin/acervo/AcervoBolsistas'
 import { AcervoInscritos } from '@/pages/admin/acervo/AcervoInscritos'
+import { AcervoDocumentosDisponiveis } from '@/pages/admin/acervo/AcervoDocumentosDisponiveis'
 import { Classificacao } from '@/pages/Classificacao'
 import { HomeAdmin } from '@/pages/admin/HomeAdmin'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
@@ -190,6 +191,7 @@ function App() {
                     <Route path="/admin/acervo/:edicaoId/orientadores" element={<AcervoOrientadores />} />
                     <Route path="/admin/acervo/:edicaoId/bolsistas" element={<AcervoBolsistas />} />
                     <Route path="/admin/acervo/:edicaoId/inscritos" element={<AcervoInscritos />} />
+                    <Route path="/admin/acervo/:edicaoId/documentos-disponiveis" element={<AcervoDocumentosDisponiveis />} />
                     {/* Órfãs — não linkadas em nenhum menu hoje (verificado via grep),
                         mantidas na URL antiga em vez de migradas para não adivinhar intenção. */}
                     <Route path="/equipes" element={<Equipes />} />

@@ -1,12 +1,17 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
 import { getPrograma } from '@/lib/programas'
+import { documentoAcervoService } from '@/lib/db'
+import { arquivarTermoAdesao, jaArquivado } from '@/lib/acervoArquivamento'
+import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
 import {
   ChevronRight, ChevronLeft, ExternalLink, Download, FileText,
-  CheckCircle, Clock, AlertTriangle, X,
+  CheckCircle, Clock, AlertTriangle, X, Upload,
 } from 'lucide-react'
+
+const BUCKET_TERMOS = 'inscricoes'
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
 const MESES = [
@@ -152,6 +157,10 @@ export default function BolsistaDetalhe() {
   const [error,         setError]         = useState(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
   const [toast,         setToast]         = useState(null)
+  const [uploadingTermo, setUploadingTermo] = useState(false)
+  const [docsArquivados, setDocsArquivados] = useState([])
+  const [arquivandoTermo, setArquivandoTermo] = useState(false)
+  const termoInputRef = useRef()
 
   const [colegas, setColegas] = useState([])
 
@@ -193,6 +202,9 @@ export default function BolsistaDetalhe() {
       setCpfResponsavel(b.cpf_responsavel   ?? '')
       setDocResponsavel(b.rg_responsavel    ?? '')
       setNomeEscola(b.escola_origem         ?? '')
+
+      const { data: docs } = await documentoAcervoService.listPorEntidade('bolsista', b.id)
+      setDocsArquivados(docs ?? [])
 
       // 2 — orientador + colegas do mesmo orientador
       if (b.orientador_id) {
@@ -442,6 +454,44 @@ export default function BolsistaDetalhe() {
     }
   }
 
+  async function handleUploadTermoAssinado(file) {
+    if (!bolsista) return
+    setUploadingTermo(true)
+    try {
+      const ext = file.name.split('.').pop()
+      const path = `termos-adesao/${bolsista.id}/${Date.now()}.${ext}`
+      const { error: upErr } = await supabase.storage.from(BUCKET_TERMOS).upload(path, file, { upsert: true })
+      if (upErr) throw upErr
+      const { data: { publicUrl } } = supabase.storage.from(BUCKET_TERMOS).getPublicUrl(path)
+      const { error: updErr } = await supabase
+        .from('bolsista')
+        .update({ termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name, termo_adesao_enviado_em: new Date().toISOString() })
+        .eq('id', bolsista.id)
+      if (updErr) throw updErr
+      setBolsista(b => ({ ...b, termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name }))
+      showToast('Termo assinado enviado.', 'ok')
+    } catch (err) {
+      showToast(`Erro ao enviar termo assinado: ${err.message}`, 'err')
+    } finally {
+      setUploadingTermo(false)
+    }
+  }
+
+  async function handleArquivarTermo() {
+    if (!bolsista) return
+    setArquivandoTermo(true)
+    try {
+      await arquivarTermoAdesao(bolsista, bolsista.edicao_id)
+      const { data: docs } = await documentoAcervoService.listPorEntidade('bolsista', bolsista.id)
+      setDocsArquivados(docs ?? [])
+      showToast('Termo de adesão arquivado no Acervo.', 'ok')
+    } catch (err) {
+      showToast(err.message || 'Erro ao arquivar termo de adesão.', 'err')
+    } finally {
+      setArquivandoTermo(false)
+    }
+  }
+
   // ── ESTADOS DE CARREGAMENTO ───────────────────────────────────────────────
   if (loading) {
     return (
@@ -637,6 +687,63 @@ export default function BolsistaDetalhe() {
                 filename={`${d.key}_${bolsista.codigo_bolsista ?? bolsista.id}`}
               />
             ))}
+          </div>
+        </Section>
+
+        {/* ── 2b. Termo assinado ── */}
+        <Section title="Termo assinado">
+          <div className="flex items-center justify-between gap-4 flex-wrap">
+            <div className="flex items-center gap-2 min-w-0">
+              {bolsista.termo_adesao_url ? (
+                <>
+                  <CheckCircle className="w-4 h-4 text-green-600 shrink-0" />
+                  <span className="text-sm text-gray-700 truncate" title={bolsista.termo_adesao_nome_arquivo}>
+                    {bolsista.termo_adesao_nome_arquivo ?? 'termo_adesao.pdf'}
+                  </span>
+                </>
+              ) : (
+                <span className="text-sm text-gray-400">Nenhum termo assinado enviado ainda.</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              {bolsista.termo_adesao_url && (
+                <>
+                  <a
+                    href={bolsista.termo_adesao_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5" /> Visualizar
+                  </a>
+                  <ArquivarBotao
+                    arquivado={jaArquivado(docsArquivados, 'bolsista', bolsista.id, 'termo_adesao')}
+                    loading={arquivandoTermo}
+                    onClick={handleArquivarTermo}
+                  />
+                </>
+              )}
+              <button
+                type="button"
+                disabled={uploadingTermo}
+                onClick={() => termoInputRef.current?.click()}
+                className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-gray-700 border border-gray-200 rounded hover:bg-gray-50 disabled:opacity-50 transition-colors"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                {uploadingTermo ? 'Enviando...' : bolsista.termo_adesao_url ? 'Substituir' : 'Enviar'}
+              </button>
+              <input
+                ref={termoInputRef}
+                type="file"
+                accept=".pdf,.jpg,.jpeg,.png"
+                className="hidden"
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUploadTermoAssinado(file)
+                  e.target.value = ''
+                }}
+              />
+            </div>
           </div>
         </Section>
 
