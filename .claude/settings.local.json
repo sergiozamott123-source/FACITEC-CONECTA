@@ -65,9 +65,10 @@
       "Bash(echo \"exit:$?\")",
       "Bash(pkill -f \"vite --port 5183\")",
       "Bash(pkill -f \"vite --port 5184\")",
-      "mcp__claude_ai_Supabase__list_projects",
+      "PowerShell(git *)",
       "mcp__claude_ai_Supabase__list_tables",
-      "Bash(python *)"
+      "Bash(python -c ' *)",
+      "Bash(Select-String -Pattern \"handleUploadTermoAssinado|Termo assinado|Upload\" -SimpleMatch)"
     ]
   }
 }

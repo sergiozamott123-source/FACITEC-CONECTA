@@ -156,8 +156,8 @@ export default function BolsistaDetalhe() {
   const [loading,       setLoading]       = useState(true)
   const [error,         setError]         = useState(null)
   const [generatingPDF, setGeneratingPDF] = useState(false)
-  const [toast,         setToast]         = useState(null)
   const [uploadingTermo, setUploadingTermo] = useState(false)
+  const [toast,         setToast]         = useState(null)
   const [docsArquivados, setDocsArquivados] = useState([])
   const [arquivandoTermo, setArquivandoTermo] = useState(false)
   const termoInputRef = useRef()
@@ -468,7 +468,7 @@ export default function BolsistaDetalhe() {
         .update({ termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name, termo_adesao_enviado_em: new Date().toISOString() })
         .eq('id', bolsista.id)
       if (updErr) throw updErr
-      setBolsista(b => ({ ...b, termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name }))
+      setBolsista(b => ({ ...b, termo_adesao_url: publicUrl, termo_adesao_nome_arquivo: file.name, termo_adesao_enviado_em: new Date().toISOString() }))
       showToast('Termo assinado enviado.', 'ok')
     } catch (err) {
       showToast(`Erro ao enviar termo assinado: ${err.message}`, 'err')

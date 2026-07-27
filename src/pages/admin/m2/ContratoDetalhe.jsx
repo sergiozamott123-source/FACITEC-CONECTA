@@ -473,12 +473,17 @@ export default function ContratoDetalhe() {
     const status   = overrideStatus ?? curr?.status ?? "rascunho"
     const vOri     = Number(dados.valor_bolsa_orientador || 0)
     const vEst     = Number(dados.valor_bolsa_estudante  || 0)
+    const dataOuNull = (v) => (v && v.trim() !== "" ? v : null)
     return {
       ...dados,
       projeto_id:    projetoId,
       orientador_id: projeto.orientador_id,
       valor_global:  vOri * 6 + maxBolsistas * vEst * 6,
       status,
+      data_assinatura:       dataOuNull(dados.data_assinatura),
+      data_inicio_vigencia:  dataOuNull(dados.data_inicio_vigencia),
+      data_fim_vigencia:     dataOuNull(dados.data_fim_vigencia),
+      data_inicio_bolsa:     dataOuNull(dados.data_inicio_bolsa),
     }
   }
 

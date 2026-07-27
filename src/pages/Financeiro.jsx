@@ -1,123 +1,690 @@
-import { useState, useCallback } from 'react'
-import { Plus, Pencil, Trash2, DollarSign, TrendingUp } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertTriangle, DollarSign, FileDown, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
-import { ConfirmDialog } from '@/components/common/ConfirmDialog'
-import { FormField, Input, Select, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
-import { useTable, useCrud } from '@/hooks/useTable'
-import { pagamentoService, bolsistaService, edicaoService } from '@/lib/db'
+import { FormField, Input, Select, Textarea, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useAdmin } from '@/contexts/AdminContext'
+import { supabase } from '@/lib/supabase'
+import { contratoService } from '@/lib/db'
+import { listarCiclos } from '@/lib/relatorioMensal'
+import {
+  listarBeneficiariosPagaveis,
+  gerarPagamentosDoCiclo,
+  calcularElegibilidade,
+  calcularSaldoContrato,
+  marcarComoPago,
+  liberarManualmente,
+  verificarCndConsecutiva,
+  buscarCndVigente,
+} from '@/lib/pagamentos'
+import { listarCndVencendoEmBreve, uploadCnd } from '@/lib/cnd'
+import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
 
-const STATUS_OPTS = ['pendente', 'agendado', 'pago', 'cancelado', 'devolvido']
-const STATUS_VARIANT = { pago: 'success', pendente: 'warning', agendado: 'secondary', cancelado: 'destructive', devolvido: 'destructive' }
-
-const EMPTY = { valor: '', data_pagamento: '', mes_referencia: '', status: 'pendente', bolsista_id: '', edicao_id: '' }
-
-function fmt(val) {
-  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val ?? 0)
+const ESTADO_LABEL = {
+  liberado: 'Liberado',
+  pendente_requisito: 'Pendente',
+  retido_cnd: 'CND retida',
+  bloqueado_saldo: 'Saldo insuficiente',
+  pago: 'Pago',
 }
 
-function PagamentoForm({ value, onChange, bolsistas, edicoes }) {
-  const set = k => e => onChange({ ...value, [k]: e.target.value })
+const BADGE_VARIANT = {
+  liberado: 'success',
+  pendente_requisito: 'secondary',
+  retido_cnd: 'destructive',
+  bloqueado_saldo: 'warning',
+  pago: 'success',
+}
+
+function fmt(valor) {
+  return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor ?? 0))
+}
+
+function hojeISO() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+// ── Toast local (mesmo padrão simples usado em ContratoDetalhe.jsx) ────────
+function Toast({ toast }) {
+  if (!toast) return null
+  const estilos = {
+    ok: 'bg-emerald-600 text-white',
+    err: 'bg-red-600 text-white',
+    warn: 'bg-amber-500 text-white',
+  }
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Valor (R$)" required>
-          <Input type="number" step="0.01" min="0" placeholder="0,00" value={value.valor ?? ''} onChange={set('valor')} />
-        </FormField>
-        <FormField label="Status">
-          <Select value={value.status} onChange={set('status')}>
-            {STATUS_OPTS.map(s => <option key={s} value={s}>{s}</option>)}
-          </Select>
-        </FormField>
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <FormField label="Data de Pagamento">
-          <Input type="date" value={value.data_pagamento ?? ''} onChange={set('data_pagamento')} />
-        </FormField>
-        <FormField label="Mês de Referência">
-          <Input type="month" value={value.mes_referencia ?? ''} onChange={set('mes_referencia')} />
-        </FormField>
-      </div>
-      <FormField label="Bolsista">
-        <Select value={value.bolsista_id ?? ''} onChange={set('bolsista_id')}>
-          <option value="">Selecione o bolsista</option>
-          {bolsistas.map(b => <option key={b.id} value={b.id}>{b.nome_completo ?? b.email}</option>)}
-        </Select>
-      </FormField>
-      <FormField label="Edição">
-        <Select value={value.edicao_id ?? ''} onChange={set('edicao_id')}>
-          <option value="">Selecione a edição</option>
-          {edicoes.map(e => <option key={e.id} value={e.id}>Edição #{e.id} – {e.status}</option>)}
-        </Select>
-      </FormField>
+    <div className={`fixed bottom-6 right-6 z-[100] px-4 py-3 rounded-lg shadow-lg text-sm font-medium max-w-sm ${estilos[toast.type] ?? estilos.ok}`}>
+      {toast.msg}
     </div>
   )
 }
 
-export function Financeiro() {
-  const { edicaoSelecionada, programaSelecionado } = useAdmin()
-  const edicaoId = edicaoSelecionada?.id
-  const fetchP = useCallback(() => pagamentoService.list(edicaoId), [edicaoId])
-  const fetchB = useCallback(() => bolsistaService.listAll(), [])
-  const fetchE = useCallback(() => edicaoService.list(programaSelecionado), [programaSelecionado])
+// ── Modal — conferir/atualizar CND ──────────────────────────────────────────
+function CndModal({ item, onClose, onMarcarStatus, onUpload }) {
+  const [cndVigente, setCndVigente] = useState(null)
+  const [loadingCnd, setLoadingCnd] = useState(false)
+  const [file, setFile] = useState(null)
+  const [dataValidade, setDataValidade] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const [marcando, setMarcando] = useState(false)
+  const fileRef = useRef(null)
 
-  const { data, loading, error, reload } = useTable(fetchP)
-  const { data: bolsistas } = useTable(fetchB)
-  const { data: edicoes } = useTable(fetchE)
-  const { saving, crudError, create, update, remove } = useCrud(pagamentoService)
+  useEffect(() => {
+    if (!item) return
+    let cancelado = false
+    setLoadingCnd(true)
+    buscarCndVigente(item.beneficiario.beneficiario_tipo, item.beneficiario.id, hojeISO())
+      .then(doc => { if (!cancelado) setCndVigente(doc) })
+      .catch(() => {})
+      .finally(() => { if (!cancelado) setLoadingCnd(false) })
+    return () => { cancelado = true }
+  }, [item])
 
-  const [modal, setModal] = useState(null)
-  const [form, setForm] = useState(EMPTY)
-  const [confirm, setConfirm] = useState(null)
+  if (!item) return null
 
-  function openCreate() { setForm(EMPTY); setModal({ mode: 'create' }) }
-  function openEdit(item) {
-    setForm({
-      valor: item.valor ?? '',
-      data_pagamento: item.data_pagamento ?? '',
-      mes_referencia: item.mes_referencia ?? '',
-      status: item.status ?? 'pendente',
-      bolsista_id: item.bolsista_id ?? '',
-      edicao_id: item.edicao_id ?? '',
-    })
-    setModal({ mode: 'edit', item })
-  }
-  function closeModal() { setModal(null) }
-
-  async function handleSubmit(e) {
-    e.preventDefault()
-    const payload = {
-      valor: form.valor ? Number(form.valor) : null,
-      data_pagamento: form.data_pagamento || null,
-      mes_referencia: form.mes_referencia || null,
-      status: form.status,
-      bolsista_id: form.bolsista_id || null,
-      edicao_id: form.edicao_id || null,
-    }
+  async function handleUpload() {
+    if (!file || !dataValidade) return
+    setUploading(true)
     try {
-      if (modal.mode === 'create') await create(payload)
-      else await update(modal.item.id, payload)
-      closeModal(); reload()
-    } catch { /* */ }
+      const doc = await onUpload(
+        {
+          beneficiarioTipo: item.beneficiario.beneficiario_tipo,
+          beneficiarioId: item.beneficiario.id,
+          cpf: item.beneficiario.cpf,
+          file,
+          dataValidade,
+        },
+        item.pagamento.id,
+        item.beneficiario
+      )
+      setCndVigente(doc)
+      setFile(null)
+      setDataValidade('')
+      if (fileRef.current) fileRef.current.value = ''
+    } catch {
+      /* toast já emitido pelo chamador */
+    } finally {
+      setUploading(false)
+    }
   }
 
-  async function handleDelete() {
-    try { await remove(confirm); setConfirm(null); reload() } catch { /* */ }
+  async function handleMarcar(status) {
+    setMarcando(true)
+    try {
+      await onMarcarStatus(item.pagamento.id, status, item.beneficiario)
+    } finally {
+      setMarcando(false)
+    }
   }
 
-  const totalPago = data.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
-  const totalPendente = data.filter(p => ['pendente', 'agendado'].includes(p.status)).reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  return (
+    <Modal open onClose={onClose} title={`Conferir CND — ${item.beneficiario.nome}`} size="sm">
+      <div className="space-y-4">
+        {loadingCnd ? (
+          <p className="text-sm text-muted-foreground">Verificando CND vigente...</p>
+        ) : cndVigente ? (
+          <div className="text-sm space-y-1">
+            <p className="text-muted-foreground">
+              CND vigente até {new Date(cndVigente.data_validade + 'T12:00:00').toLocaleDateString('pt-BR')}
+            </p>
+            <a href={cndVigente.arquivo_url} target="_blank" rel="noreferrer" className="text-primary underline">
+              Ver PDF
+            </a>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Nenhuma CND vigente cadastrada.</p>
+        )}
+
+        <div className="space-y-2 border-t border-border pt-3">
+          <FormField label="Enviar novo PDF">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="application/pdf"
+              onChange={e => setFile(e.target.files?.[0] ?? null)}
+              className="text-sm"
+            />
+          </FormField>
+          <FormField label="Validade">
+            <Input type="date" value={dataValidade} onChange={e => setDataValidade(e.target.value)} />
+          </FormField>
+          <Button size="sm" variant="outline" disabled={!file || !dataValidade || uploading} onClick={handleUpload}>
+            {uploading ? 'Enviando...' : 'Enviar PDF'}
+          </Button>
+        </div>
+
+        <div className="flex gap-2 justify-end pt-3 border-t border-border">
+          <Button size="sm" variant="destructive" disabled={marcando} onClick={() => handleMarcar('irregular')}>
+            Marcar irregular
+          </Button>
+          <Button size="sm" disabled={marcando} onClick={() => handleMarcar('regular')}>
+            Marcar regular
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Modal — liberar mesmo assim (bloqueio de saldo) ─────────────────────────
+function LiberarSaldoModal({ item, onClose, onConfirmar }) {
+  const [motivo, setMotivo] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => { setMotivo('') }, [item])
+
+  if (!item) return null
+  const valido = motivo.trim().length >= 10
+
+  async function confirmar() {
+    setSalvando(true)
+    try {
+      await onConfirmar(item.pagamento.id, motivo.trim())
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={`Liberar mesmo assim — ${item.beneficiario.nome}`} size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Este pagamento ultrapassa o saldo disponível do contrato. Informe o motivo para liberar mesmo assim.
+        </p>
+        <FormField label="Motivo" required>
+          <Textarea value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Mín. 10 caracteres" rows={4} />
+        </FormField>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button size="sm" disabled={!valido || salvando} onClick={confirmar}>
+            {salvando ? 'Salvando...' : 'Liberar mesmo assim'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+// ── Card de um contrato (orientador + sua equipe pagável) ───────────────────
+function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosSet,
+  onToggleSelecionado, onSelecionarTodosLiberados, onMarcarSelecionadosPagos,
+  onMarcarUmPago, onAbrirCnd, onAbrirSaldo, onEmitirDAF, temBolsistaDesligado }) {
+  const percentual = saldo.reservado > 0
+    ? Math.min(100, ((saldo.pago + saldo.comprometido) / saldo.reservado) * 100)
+    : 0
+
+  const orientadorDesclassificado = contrato.orientador?.status === 'desclassificado'
+
+  const liberados = linhas.filter(l => l.pagamento && l.eligibilidade?.estado === 'liberado')
+  const liberadosIds = liberados.map(l => l.pagamento.id)
+  const liberadosParaDAF = liberados.map(l => ({
+    nome: l.beneficiario.nome,
+    cpf: l.beneficiario.cpf,
+    beneficiario_tipo: l.beneficiario.beneficiario_tipo,
+    valor: l.pagamento.valor,
+  }))
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle className="text-base">{contrato.orientador?.nome_completo ?? '—'}</CardTitle>
+              {orientadorDesclassificado && <Badge variant="destructive">Desclassificado</Badge>}
+              {temBolsistaDesligado && <Badge variant="destructive">Tem bolsista desligado</Badge>}
+            </div>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {contrato.numero_contrato ? `Contrato nº ${contrato.numero_contrato}` : 'Sem número de contrato'}
+              {contrato.codigo_facitec_orientador ? ` · ${contrato.codigo_facitec_orientador}` : ''}
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => onEmitirDAF(contrato, cicloSelecionado, liberadosParaDAF)}
+            disabled={!liberadosParaDAF.length}
+          >
+            <FileDown className="w-4 h-4" /> Emitir relatório para DAF
+          </Button>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-1.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div><p className="text-muted-foreground">Reservado</p><p className="font-semibold text-foreground">{fmt(saldo.reservado)}</p></div>
+            <div><p className="text-muted-foreground">Pago</p><p className="font-semibold text-emerald-600">{fmt(saldo.pago)}</p></div>
+            <div><p className="text-muted-foreground">Comprometido</p><p className="font-semibold text-amber-600">{fmt(saldo.comprometido)}</p></div>
+            <div><p className="text-muted-foreground">Disponível</p><p className={`font-semibold ${saldo.disponivel < 0 ? 'text-destructive' : 'text-foreground'}`}>{fmt(saldo.disponivel)}</p></div>
+          </div>
+          <div className="h-2 rounded-full bg-muted overflow-hidden">
+            <div className="h-full bg-primary" style={{ width: `${percentual}%` }} />
+          </div>
+        </div>
+
+        {linhas.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nenhum beneficiário pagável neste contrato.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs text-muted-foreground border-b border-border">
+                  <th className="pb-2 font-medium w-8"></th>
+                  <th className="pb-2 font-medium">Nome</th>
+                  <th className="pb-2 font-medium">Situação</th>
+                  <th className="pb-2 font-medium text-right">Valor</th>
+                  <th className="pb-2 font-medium text-right">Ação</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map(({ beneficiario, pagamento, eligibilidade }) => (
+                  <tr key={`${beneficiario.beneficiario_tipo}-${beneficiario.id}`} className="border-b border-border last:border-0">
+                    <td className="py-2 pr-2 align-top">
+                      {pagamento && eligibilidade?.estado === 'liberado' && (
+                        <input
+                          type="checkbox"
+                          checked={selecionadosSet.has(pagamento.id)}
+                          onChange={() => onToggleSelecionado(contrato.id, pagamento.id)}
+                          className="w-4 h-4 rounded border-gray-300"
+                        />
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 align-top">
+                      <p className="text-foreground">{beneficiario.nome}</p>
+                      <p className="text-xs text-muted-foreground">{beneficiario.beneficiario_tipo === 'orientador' ? 'Orientador' : 'Bolsista'}</p>
+                    </td>
+                    <td className="py-2 pr-2 align-top">
+                      {!pagamento ? (
+                        <Badge variant="secondary">Não gerado</Badge>
+                      ) : (
+                        <div className="space-y-0.5">
+                          <Badge variant={BADGE_VARIANT[eligibilidade?.estado] ?? 'secondary'}>
+                            {ESTADO_LABEL[eligibilidade?.estado] ?? '—'}
+                          </Badge>
+                          {eligibilidade?.estado !== 'liberado' && eligibilidade?.motivo && (
+                            <p className="text-xs text-muted-foreground">{eligibilidade.motivo}</p>
+                          )}
+                        </div>
+                      )}
+                    </td>
+                    <td className="py-2 pr-2 align-top text-right font-medium">
+                      {fmt(pagamento?.valor ?? beneficiario.valor_padrao)}
+                    </td>
+                    <td className="py-2 align-top text-right">
+                      {pagamento && eligibilidade?.estado === 'liberado' && (
+                        <Button size="sm" variant="outline" onClick={() => onMarcarUmPago(pagamento.id)}>Marcar como pago</Button>
+                      )}
+                      {pagamento && eligibilidade?.estado === 'pago' && (
+                        <div className="space-y-0.5">
+                          <Badge variant="success">
+                            Pago {pagamento.data_pagamento ? `em ${new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')}` : ''}
+                          </Badge>
+                          {pagamento.desligamento_automatico && pagamento.observacoes && (
+                            <p className="text-xs text-amber-600">{pagamento.observacoes}</p>
+                          )}
+                        </div>
+                      )}
+                      {pagamento && eligibilidade?.estado === 'retido_cnd' && (
+                        <Button size="sm" variant="outline" onClick={() => onAbrirCnd(pagamento, beneficiario)}>Conferir CND</Button>
+                      )}
+                      {pagamento && eligibilidade?.estado === 'bloqueado_saldo' && (
+                        <Button size="sm" variant="outline" onClick={() => onAbrirSaldo(pagamento, beneficiario)}>Liberar mesmo assim</Button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
+          <Button size="sm" variant="ghost" onClick={() => onSelecionarTodosLiberados(contrato.id, liberadosIds)} disabled={!liberadosIds.length}>
+            Selecionar todos os liberados
+          </Button>
+          <Button size="sm" onClick={() => onMarcarSelecionadosPagos(contrato.id)} disabled={!selecionadosSet.size}>
+            Marcar selecionados como pagos
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+// ── Tela principal ──────────────────────────────────────────────────────────
+export function Financeiro() {
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id
+
+  const [loading, setLoading] = useState(true)
+  const [loadingCiclo, setLoadingCiclo] = useState(false)
+  const [erro, setErro] = useState(null)
+  const [toast, setToast] = useState(null)
+
+  const [ciclos, setCiclos] = useState([])
+  const [cicloId, setCicloId] = useState(null)
+  const [beneficiarios, setBeneficiarios] = useState([])
+  const [contratos, setContratos] = useState([])
+  const [cndAlertas, setCndAlertas] = useState([])
+  const [projetosComBolsistaDesligado, setProjetosComBolsistaDesligado] = useState(new Set())
+
+  const [pagamentos, setPagamentos] = useState([])
+  const [relatorios, setRelatorios] = useState([])
+  const [saldos, setSaldos] = useState({})
+  const [elegibilidades, setElegibilidades] = useState({})
+
+  const [gerando, setGerando] = useState(false)
+  const [selecionados, setSelecionados] = useState({})
+  const [modalCnd, setModalCnd] = useState(null)
+  const [modalSaldo, setModalSaldo] = useState(null)
+
+  function showToast(msg, type = 'ok') {
+    setToast({ msg, type })
+    setTimeout(() => setToast(null), type === 'warn' ? 7000 : 4000)
+  }
+
+  // ── Regra automática dos 2 ciclos de CND irregular (Etapa 4) ────────────
+  const rodarChecagemAutomatica = useCallback(async (ciclosData, beneficiariosData) => {
+    const hoje = hojeISO()
+    const abertos = ciclosData.filter(c => c.data_abertura <= hoje)
+    if (!abertos.length) return false
+    const cicloRecente = abertos.reduce((max, c) => (c.numero_ciclo > max.numero_ciclo ? c : max))
+
+    const { data: irregulares, error } = await supabase
+      .from('pagamento')
+      .select('beneficiario_tipo, orientador_id, bolsista_id')
+      .eq('ciclo_id', cicloRecente.id)
+      .eq('cnd_status', 'irregular')
+    if (error) throw error
+
+    const vistos = new Set()
+    const desligados = []
+    for (const p of irregulares ?? []) {
+      const id = p.beneficiario_tipo === 'orientador' ? p.orientador_id : p.bolsista_id
+      const chave = `${p.beneficiario_tipo}:${id}`
+      if (vistos.has(chave)) continue
+      vistos.add(chave)
+      const resultado = await verificarCndConsecutiva(p.beneficiario_tipo, id)
+      if (resultado?.desligado) {
+        const beneficiario = beneficiariosData.find(b => b.beneficiario_tipo === p.beneficiario_tipo && b.id === id)
+        desligados.push({ ...resultado, nome: beneficiario?.nome ?? 'Beneficiário' })
+      }
+    }
+
+    if (desligados.length) {
+      const lista = desligados
+        .map(d => `${d.nome} (${d.beneficiarioTipo === 'orientador' ? 'desclassificado' : 'desligado'})`)
+        .join('; ')
+      showToast(`Atenção: ${lista} por CND irregular em 2 ciclos consecutivos.`, 'warn')
+      return true
+    }
+    return false
+  }, [])
+
+  // ── Projetos com bolsista desligado (badge permanente no card) ──────────
+  async function buscarProjetosComBolsistaDesligado(projetoIds) {
+    if (!projetoIds.length) return new Set()
+    const { data, error } = await supabase
+      .from('bolsista')
+      .select('projeto_id')
+      .eq('status', 'desligado')
+      .in('projeto_id', projetoIds)
+    if (error) throw error
+    return new Set((data ?? []).map(b => b.projeto_id))
+  }
+
+  // ── Carga inicial (independe do ciclo selecionado) ───────────────────────
+  const carregarTudo = useCallback(async () => {
+    if (!edicaoId) return
+    setLoading(true)
+    setErro(null)
+    try {
+      const [ciclosData, beneficiariosData, contratosResult, cndAlertasData] = await Promise.all([
+        listarCiclos(edicaoId),
+        listarBeneficiariosPagaveis(edicaoId),
+        contratoService.list(edicaoId),
+        listarCndVencendoEmBreve(edicaoId, 15),
+      ])
+
+      setCiclos(ciclosData)
+      const contratosCarregados = contratosResult.data ?? []
+      setContratos(contratosCarregados)
+
+      const projetoIds = [...new Set(contratosCarregados.map(c => c.projeto_id).filter(Boolean))]
+      setProjetosComBolsistaDesligado(await buscarProjetosComBolsistaDesligado(projetoIds))
+
+      const hoje = hojeISO()
+      const abertos = ciclosData.filter(c => c.data_abertura <= hoje)
+      const padrao = abertos.length ? abertos.reduce((m, c) => (c.numero_ciclo > m.numero_ciclo ? c : m)) : ciclosData[0]
+      setCicloId(prev => prev ?? padrao?.id ?? null)
+
+      const houveMudanca = await rodarChecagemAutomatica(ciclosData, beneficiariosData)
+      if (houveMudanca) {
+        const [beneficiariosAtualizados, cndAtualizadas] = await Promise.all([
+          listarBeneficiariosPagaveis(edicaoId),
+          listarCndVencendoEmBreve(edicaoId, 15),
+        ])
+        setBeneficiarios(beneficiariosAtualizados)
+        setCndAlertas(cndAtualizadas)
+        setProjetosComBolsistaDesligado(await buscarProjetosComBolsistaDesligado(projetoIds))
+      } else {
+        setBeneficiarios(beneficiariosData)
+        setCndAlertas(cndAlertasData)
+      }
+    } catch (e) {
+      setErro(e.message ?? 'Erro ao carregar dados financeiros.')
+    } finally {
+      setLoading(false)
+    }
+  }, [edicaoId, rodarChecagemAutomatica])
+
+  useEffect(() => { carregarTudo() }, [carregarTudo])
+
+  // ── Dados do ciclo selecionado (pagamentos, relatórios, saldos) ─────────
+  const carregarDadosCiclo = useCallback(async () => {
+    if (!edicaoId || !cicloId || !contratos.length) {
+      setPagamentos([]); setRelatorios([]); setSaldos({})
+      return
+    }
+    setLoadingCiclo(true)
+    try {
+      const [{ data: pagamentosData, error: ePag }, { data: relatoriosData, error: eRel }, saldosArr] = await Promise.all([
+        supabase.from('pagamento').select('*').eq('edicao_id', edicaoId).eq('ciclo_id', cicloId),
+        supabase.from('relatorio_mensal').select('*').eq('ciclo_id', cicloId),
+        Promise.all(contratos.map(c => calcularSaldoContrato(c.id))),
+      ])
+      if (ePag) throw ePag
+      if (eRel) throw eRel
+
+      setPagamentos(pagamentosData ?? [])
+      setRelatorios(relatoriosData ?? [])
+      setSaldos(Object.fromEntries(contratos.map((c, i) => [c.id, saldosArr[i]])))
+    } catch (e) {
+      setErro(e.message ?? 'Erro ao carregar pagamentos do ciclo.')
+    } finally {
+      setLoadingCiclo(false)
+    }
+  }, [edicaoId, cicloId, contratos])
+
+  useEffect(() => { carregarDadosCiclo() }, [carregarDadosCiclo])
+
+  // ── Elegibilidade de cada pagamento do ciclo selecionado ────────────────
+  useEffect(() => {
+    let cancelado = false
+    async function calcular() {
+      const map = {}
+      for (const p of pagamentos) {
+        const relatorio = relatorios.find(r => r.orientador_id === p.orientador_id) ?? null
+        const saldo = saldos[p.contrato_id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
+        map[p.id] = await calcularElegibilidade(p, relatorio, saldo)
+      }
+      if (!cancelado) setElegibilidades(map)
+    }
+    calcular()
+    return () => { cancelado = true }
+  }, [pagamentos, relatorios, saldos])
+
+  const linhasPorContrato = useMemo(() => {
+    const map = {}
+    for (const contrato of contratos) {
+      const doContrato = beneficiarios.filter(b => b.contrato_id === contrato.id)
+      map[contrato.id] = doContrato.map(beneficiario => {
+        const pagamento = pagamentos.find(p =>
+          p.beneficiario_tipo === beneficiario.beneficiario_tipo &&
+          (beneficiario.beneficiario_tipo === 'orientador' ? p.orientador_id === beneficiario.id : p.bolsista_id === beneficiario.id)
+        ) ?? null
+        const eligibilidade = pagamento ? (elegibilidades[pagamento.id] ?? null) : null
+        return { beneficiario, pagamento, eligibilidade }
+      })
+    }
+    return map
+  }, [contratos, beneficiarios, pagamentos, elegibilidades])
+
+  const cicloSelecionado = ciclos.find(c => c.id === cicloId) ?? null
+
+  // ── Ações ─────────────────────────────────────────────────────────────
+  async function handleGerarPagamentos() {
+    if (!cicloId) return
+    setGerando(true)
+    try {
+      const n = await gerarPagamentosDoCiclo(edicaoId, cicloId)
+      showToast(`${n} pagamento(s) gerado(s) para o ciclo.`, 'ok')
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao gerar pagamentos do ciclo.', 'err')
+    } finally {
+      setGerando(false)
+    }
+  }
+
+  function toggleSelecionado(contratoId, pagamentoId) {
+    setSelecionados(prev => {
+      const atual = new Set(prev[contratoId] ?? [])
+      if (atual.has(pagamentoId)) atual.delete(pagamentoId)
+      else atual.add(pagamentoId)
+      return { ...prev, [contratoId]: atual }
+    })
+  }
+
+  function selecionarTodosLiberados(contratoId, ids) {
+    setSelecionados(prev => ({ ...prev, [contratoId]: new Set(ids) }))
+  }
+
+  async function handleMarcarUmPago(pagamentoId) {
+    try {
+      await marcarComoPago([pagamentoId])
+      showToast('Pagamento marcado como pago.', 'ok')
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao marcar pagamento.', 'err')
+    }
+  }
+
+  async function handleMarcarSelecionadosPagos(contratoId) {
+    const ids = Array.from(selecionados[contratoId] ?? [])
+    if (!ids.length) return
+    try {
+      await marcarComoPago(ids)
+      setSelecionados(prev => ({ ...prev, [contratoId]: new Set() }))
+      showToast(`${ids.length} pagamento(s) marcado(s) como pago(s).`, 'ok')
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao marcar pagamentos selecionados.', 'err')
+    }
+  }
+
+  async function handleMarcarStatusCnd(pagamentoId, status, beneficiario) {
+    try {
+      const { error } = await supabase
+        .from('pagamento')
+        .update({ cnd_status: status, cnd_verificado_em: new Date().toISOString() })
+        .eq('id', pagamentoId)
+      if (error) throw error
+
+      if (status === 'irregular') {
+        const resultado = await verificarCndConsecutiva(beneficiario.beneficiario_tipo, beneficiario.id)
+        if (resultado?.desligado) {
+          showToast(
+            `Atenção: ${beneficiario.nome} foi ${beneficiario.beneficiario_tipo === 'orientador' ? 'desclassificado' : 'desligado'} automaticamente por CND irregular em 2 ciclos consecutivos.`,
+            'warn'
+          )
+          setModalCnd(null)
+          await carregarTudo()
+          return
+        }
+      }
+      showToast(`CND marcada como ${status}.`, 'ok')
+      setModalCnd(null)
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao atualizar CND.', 'err')
+    }
+  }
+
+  async function handleUploadCnd(payload, pagamentoId, beneficiario) {
+    try {
+      const doc = await uploadCnd(payload)
+      showToast('CND enviada com sucesso.', 'ok')
+      await handleMarcarStatusCnd(pagamentoId, 'regular', beneficiario)
+      return doc
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao enviar CND.', 'err')
+      throw e
+    }
+  }
+
+  async function handleLiberarManualmente(pagamentoId, motivo) {
+    try {
+      await liberarManualmente(pagamentoId, motivo)
+      showToast('Pagamento liberado manualmente.', 'ok')
+      setModalSaldo(null)
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao liberar pagamento.', 'err')
+    }
+  }
+
+  function handleEmitirDAF(contrato, ciclo, liberados) {
+    if (!liberados.length || !ciclo) return
+    const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
+    exportarRelatorioDAF({ ...contrato, saldo }, ciclo, liberados)
+  }
+
+  const totalPagamentos = pagamentos.length
+  const totalPago = pagamentos.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const totalAPagar = pagamentos.filter(p => p.status === 'pendente').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+
+  if (loading) return <LoadingState />
 
   return (
     <div className="space-y-6">
+      {cndAlertas.length > 0 && (
+        <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-amber-800">
+            <p className="font-semibold">CND vencendo em breve</p>
+            <ul className="mt-1 space-y-0.5">
+              {cndAlertas.map(a => (
+                <li key={`${a.beneficiario_tipo}-${a.id}`}>
+                  {a.nome} — {a.data_validade
+                    ? `vence em ${new Date(a.data_validade).toLocaleDateString('pt-BR')}`
+                    : 'sem CND cadastrada'}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
+      <ErrorAlert message={erro} />
+
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total de Pagamentos', value: data.length, icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50', display: String(data.length) },
-          { label: 'Total Pago', value: totalPago, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50', display: fmt(totalPago) },
-          { label: 'A Pagar', value: totalPendente, icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50', display: fmt(totalPendente) },
+          { label: 'Total de Pagamentos', display: String(totalPagamentos), icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Total Pago', display: fmt(totalPago), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
+          { label: 'A Pagar', display: fmt(totalAPagar), icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
         ].map(c => {
           const Icon = c.icon
           return (
@@ -136,57 +703,58 @@ export function Financeiro() {
         })}
       </div>
 
-      <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">{data.length} pagamento(s)</p>
-        <Button size="sm" onClick={openCreate}><Plus className="w-4 h-4" />Novo Pagamento</Button>
+      <div className="flex items-end gap-3 flex-wrap">
+        <FormField label="Ciclo" className="w-56">
+          <Select value={cicloId ?? ''} onChange={e => setCicloId(e.target.value)}>
+            {ciclos.map(c => (
+              <option key={c.id} value={c.id}>Ciclo {c.numero_ciclo} — {c.mes_referencia}</option>
+            ))}
+          </Select>
+        </FormField>
+        <Button size="sm" onClick={handleGerarPagamentos} disabled={!cicloId || gerando}>
+          {gerando ? 'Gerando...' : 'Gerar pagamentos do ciclo'}
+        </Button>
+        {loadingCiclo && <span className="text-xs text-muted-foreground">Atualizando...</span>}
       </div>
 
-      <ErrorAlert message={error} />
-
-      {loading ? <LoadingState /> : data.length === 0 ? <EmptyState message="Nenhum pagamento registrado." /> : (
-        <div className="space-y-2">
-          {data.map(p => (
-            <Card key={p.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="pt-3 pb-3">
-                <div className="flex items-center justify-between gap-4">
-                  <div className="space-y-0.5 flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <Badge variant={STATUS_VARIANT[p.status] ?? 'secondary'}>{p.status}</Badge>
-                      {p.mes_referencia && <span className="text-xs text-muted-foreground">{p.mes_referencia}</span>}
-                    </div>
-                    {p.bolsista?.nome_completo && (
-                      <p className="text-sm text-foreground">{p.bolsista.nome_completo}
-                        {p.bolsista.tipo && <span className="text-xs text-muted-foreground ml-1">({p.bolsista.tipo})</span>}
-                      </p>
-                    )}
-                    {p.data_pagamento && (
-                      <p className="text-xs text-muted-foreground">{new Date(p.data_pagamento).toLocaleDateString('pt-BR')}</p>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0">
-                    <p className="text-base font-bold text-foreground">{fmt(p.valor)}</p>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}><Pencil className="w-4 h-4" /></Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setConfirm(p.id)}><Trash2 className="w-4 h-4" /></Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+      {contratos.length === 0 ? (
+        <EmptyState message="Nenhum contrato encontrado para esta edição." />
+      ) : (
+        <div className="space-y-4">
+          {contratos.map(contrato => (
+            <ContratoCard
+              key={contrato.id}
+              contrato={contrato}
+              saldo={saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }}
+              linhas={linhasPorContrato[contrato.id] ?? []}
+              temBolsistaDesligado={projetosComBolsistaDesligado.has(contrato.projeto_id)}
+              cicloSelecionado={cicloSelecionado}
+              selecionadosSet={selecionados[contrato.id] ?? new Set()}
+              onToggleSelecionado={toggleSelecionado}
+              onSelecionarTodosLiberados={selecionarTodosLiberados}
+              onMarcarSelecionadosPagos={handleMarcarSelecionadosPagos}
+              onMarcarUmPago={handleMarcarUmPago}
+              onAbrirCnd={(pagamento, beneficiario) => setModalCnd({ pagamento, beneficiario })}
+              onAbrirSaldo={(pagamento, beneficiario) => setModalSaldo({ pagamento, beneficiario })}
+              onEmitirDAF={handleEmitirDAF}
+            />
           ))}
         </div>
       )}
 
-      <Modal open={!!modal} onClose={closeModal} title={modal?.mode === 'create' ? 'Novo Pagamento' : 'Editar Pagamento'}>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <PagamentoForm value={form} onChange={setForm} bolsistas={bolsistas} edicoes={edicoes} />
-          <ErrorAlert message={crudError} />
-          <div className="flex gap-2 justify-end pt-2 border-t border-border">
-            <Button type="button" variant="outline" size="sm" onClick={closeModal}>Cancelar</Button>
-            <Button type="submit" size="sm" disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</Button>
-          </div>
-        </form>
-      </Modal>
+      <CndModal
+        item={modalCnd}
+        onClose={() => setModalCnd(null)}
+        onMarcarStatus={handleMarcarStatusCnd}
+        onUpload={handleUploadCnd}
+      />
+      <LiberarSaldoModal
+        item={modalSaldo}
+        onClose={() => setModalSaldo(null)}
+        onConfirmar={handleLiberarManualmente}
+      />
 
-      <ConfirmDialog open={!!confirm} onClose={() => setConfirm(null)} onConfirm={handleDelete} loading={saving} />
+      <Toast toast={toast} />
     </div>
   )
 }

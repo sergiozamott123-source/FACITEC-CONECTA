@@ -99,7 +99,6 @@ export function OrientadorDocumentos() {
   const { orientador, projeto } = usePortalOrientador()
   const [bolsistas, setBolsistas] = useState([])
   const [contrato, setContrato] = useState(null)
-  const [termos, setTermos] = useState([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState({})
   const [meusDocUrls, setMeusDocUrls] = useState({})
@@ -118,15 +117,12 @@ export function OrientadorDocumentos() {
     const [
       { data: bData },
       { data: cData },
-      { data: tData },
     ] = await Promise.all([
-      supabase.from('bolsista').select('id,nome_completo,codigo_facitec,data_nascimento,tipo').eq('projeto_id', projeto.id).eq('status', 'ativo').order('created_at'),
+      supabase.from('bolsista').select('id,nome_completo,codigo_facitec,data_nascimento,tipo,termo_adesao_url,termo_adesao_nome_arquivo,termo_adesao_enviado_em').eq('projeto_id', projeto.id).eq('status', 'ativo').order('created_at'),
       supabase.from('contrato').select('*').eq('projeto_id', projeto.id).maybeSingle(),
-      supabase.from('termo_adesao').select('*').eq('projeto_id', projeto.id),
     ])
     setBolsistas(bData ?? [])
     setContrato(cData ?? null)
-    setTermos(tData ?? [])
 
     // Carregar URLs dos docs do orientador
     const urls = {}
@@ -175,10 +171,6 @@ export function OrientadorDocumentos() {
     } finally {
       setUploading(prev => ({ ...prev, [video.key]: false }))
     }
-  }
-
-  function getTermoBolsista(bolsistaId) {
-    return termos.find(t => t.bolsista_id === bolsistaId) ?? null
   }
 
   function tipoTermo(dataNasc) {
@@ -274,7 +266,7 @@ export function OrientadorDocumentos() {
           ) : (
             <div className="space-y-2">
               {bolsistas.map(b => {
-                const termo = getTermoBolsista(b.id)
+                const status = b.termo_adesao_url ? 'emitido' : null
                 return (
                   <div key={b.id} className="flex items-center gap-4 py-2 border-b border-gray-100 last:border-0">
                     <div className="flex-1 min-w-0">
@@ -289,8 +281,8 @@ export function OrientadorDocumentos() {
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <StatusChip status={termo?.status} />
-                      {termo?.status === 'emitido' && <DocActions url={termo.arquivo_url} />}
+                      <StatusChip status={status} />
+                      {status === 'emitido' && <DocActions url={b.termo_adesao_url} />}
                     </div>
                   </div>
                 )
