@@ -26,15 +26,16 @@ function calcEtapaAtual(orientador, bolsistas, maxBolsistas) {
 }
 
 function StatusBolsista({ bolsista }) {
-  const campos = ['nome_completo', 'cpf', 'data_nascimento', 'escola_origem', 'doc_rg_url', 'doc_cpf_url', 'doc_matricula_url']
-  const completo = campos.every(c => bolsista[c])
+  const status = bolsista.status ?? 'indefinido'
+  const ativo = status === 'ativo'
+  const label = status.charAt(0).toUpperCase() + status.slice(1)
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-      completo
+      ativo
         ? 'bg-green-50 text-green-700 border-green-200'
-        : 'bg-amber-50 text-amber-700 border-amber-200'
+        : 'bg-gray-50 text-gray-600 border-gray-200'
     }`}>
-      {completo ? 'Completo' : 'Pendente'}
+      {label}
     </span>
   )
 }
@@ -42,11 +43,11 @@ function StatusBolsista({ bolsista }) {
 function TipoBadge({ tipo }) {
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-      tipo === 'bolsista'
+      tipo === 'titular'
         ? 'bg-blue-50 text-blue-700 border-blue-200'
         : 'bg-purple-50 text-purple-700 border-purple-200'
     }`}>
-      {tipo === 'bolsista' ? 'Bolsista' : 'Voluntário'}
+      {tipo === 'titular' ? 'Titular' : 'Voluntário'}
     </span>
   )
 }
