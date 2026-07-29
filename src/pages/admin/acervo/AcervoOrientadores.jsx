@@ -116,6 +116,10 @@ export function AcervoOrientadores() {
     [docs]
   )
 
+  // Acervo > Orientadores mostra só quem de fato assinou contrato — os demais
+  // convidados/candidatos aparecem em Acervo > Inscritos (ver AcervoInscritos.jsx).
+  const orientadoresComContrato = orientadores.filter((o) => o.contrato_url)
+
   if (loadingEdicao || loading) return <LoadingState />
   if (erroEdicao) return <ErrorAlert message={erroEdicao} />
   if (error) return <ErrorAlert message={error} />
@@ -133,8 +137,8 @@ export function AcervoOrientadores() {
         onAcaoSecundaria={() => setModalImportarAberto(true)}
       />
 
-      {orientadores.length === 0 ? (
-        <EmptyState message="Nenhum orientador cadastrado nesta edição ainda." />
+      {orientadoresComContrato.length === 0 ? (
+        <EmptyState message="Nenhum orientador com contrato assinado nesta edição ainda." />
       ) : (
         <div className="border border-border rounded-lg overflow-hidden">
           <table className="w-full text-sm">
@@ -147,7 +151,7 @@ export function AcervoOrientadores() {
               </tr>
             </thead>
             <tbody>
-              {orientadores.map((o) => (
+              {orientadoresComContrato.map((o) => (
                 <tr key={o.id} className="border-t border-border align-top">
                   <td className="px-4 py-2.5 font-medium text-foreground">{o.nome_completo}</td>
                   <td className="px-4 py-2.5 text-muted-foreground">{o.email ?? '—'}</td>
