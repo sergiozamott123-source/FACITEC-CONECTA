@@ -10,11 +10,12 @@ import { useTable, useCrud } from '@/hooks/useTable'
 import { acervoService, edicaoService } from '@/lib/db'
 import { PROGRAMAS } from '@/lib/programas'
 import { AtasCmctTab } from '@/components/acervo/AtasCmctTab'
+import { ProjetosPesquisaTab } from '@/components/acervo/ProjetosPesquisaTab'
 
 const ABAS = [
   { key: 'edicoes', label: 'Edições PIBIC Jr/PROFIC' },
   { key: 'atas-cmct', label: 'Atas do CMCT' },
-  { key: 'projetos-pesquisa', label: 'Projetos de Pesquisa', emBreve: true },
+  { key: 'projetos-pesquisa', label: 'Projetos de Pesquisa' },
   { key: 'pos-graduacao', label: 'Pós-Graduação', emBreve: true },
   { key: 'editais-antigos', label: 'Editais antigos', emBreve: true },
 ]
@@ -222,6 +223,7 @@ export function Acervo() {
       )}
 
       {aba === 'atas-cmct' && <AtasCmctTab />}
+      {aba === 'projetos-pesquisa' && <ProjetosPesquisaTab />}
     </div>
   )
 }

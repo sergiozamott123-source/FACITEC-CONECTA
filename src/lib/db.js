@@ -276,6 +276,24 @@ export const reuniaoCmctService = {
   remove: (id) => db.remove('reuniao_cmct', id),
 }
 
+export const areaPesquisaService = {
+  // Tabela pequena e estática (7 linhas hoje) — sem created_at, por isso
+  // sempre passamos `order` explicitamente em vez de cair no default de db.list.
+  list: () => db.list('area_pesquisa', { order: 'nome', asc: true }),
+}
+
+export const acervoItemService = {
+  // Sem created_at — mesmo motivo do reuniaoCmctService acima.
+  listPorCategoria: (categoria) => db.list('acervo_item', {
+    filters: [['categoria', 'eq', categoria]],
+    order: 'ano', asc: false,
+  }),
+  get: (id) => db.get('acervo_item', id),
+  create: (p) => db.insert('acervo_item', p),
+  update: (id, p) => db.update('acervo_item', id, p),
+  remove: (id) => db.remove('acervo_item', id),
+}
+
 export const acervoService = {
   // Edições ativas e encerradas de todos os programas, mais recentes primeiro.
   // 'planejado' fica de fora — edição que ainda nem começou não tem acervo.
