@@ -266,6 +266,16 @@ export const documentoAcervoService = {
   remove: (id) => db.remove('documento_acervo', id),
 }
 
+export const reuniaoCmctService = {
+  // Tabela nova (módulo Atas do CMCT) — sem created_at, por isso sempre
+  // passamos `order` explicitamente em vez de cair no default de db.list.
+  list: () => db.list('reuniao_cmct', { order: 'ano', asc: false }),
+  get: (id) => db.get('reuniao_cmct', id),
+  create: (p) => db.insert('reuniao_cmct', p),
+  update: (id, p) => db.update('reuniao_cmct', id, p),
+  remove: (id) => db.remove('reuniao_cmct', id),
+}
+
 export const acervoService = {
   // Edições ativas e encerradas de todos os programas, mais recentes primeiro.
   // 'planejado' fica de fora — edição que ainda nem começou não tem acervo.

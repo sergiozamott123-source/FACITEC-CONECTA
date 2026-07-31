@@ -9,6 +9,15 @@ import { FormField, Input, Textarea, Select, ErrorAlert, EmptyState, LoadingStat
 import { useTable, useCrud } from '@/hooks/useTable'
 import { acervoService, edicaoService } from '@/lib/db'
 import { PROGRAMAS } from '@/lib/programas'
+import { AtasCmctTab } from '@/components/acervo/AtasCmctTab'
+
+const ABAS = [
+  { key: 'edicoes', label: 'Edições PIBIC Jr/PROFIC' },
+  { key: 'atas-cmct', label: 'Atas do CMCT' },
+  { key: 'projetos-pesquisa', label: 'Projetos de Pesquisa', emBreve: true },
+  { key: 'pos-graduacao', label: 'Pós-Graduação', emBreve: true },
+  { key: 'editais-antigos', label: 'Editais antigos', emBreve: true },
+]
 
 const EMPTY_EDICAO = {
   programa_id: PROGRAMAS[0]?.programaId ?? '',
@@ -120,6 +129,7 @@ export function Acervo() {
   const fetch = useCallback(() => acervoService.listEdicoesParaAcervo(), [])
   const { data, loading, error, reload } = useTable(fetch)
   const [modalAberto, setModalAberto] = useState(false)
+  const [aba, setAba] = useState('edicoes')
 
   const gruposAtivas = agruparPorPrograma(data.filter((e) => e.status === 'ativo'))
   const gruposEncerradas = agruparPorPrograma(data.filter((e) => e.status === 'encerrado'))
@@ -140,49 +150,78 @@ export function Acervo() {
           <div>
             <h1 className="text-xl font-bold text-foreground leading-tight">Acervo</h1>
             <p className="text-sm text-muted-foreground mt-0.5">
-              Edições de todos os programas — projetos, orientadores, bolsistas e material histórico.
+              Tudo que já foi concluído nos programas — edições, atas e material histórico.
             </p>
           </div>
         </div>
-        <Button size="sm" onClick={() => setModalAberto(true)}>
-          <Plus className="w-4 h-4" /> Nova edição legada
-        </Button>
+        {aba === 'edicoes' && (
+          <Button size="sm" onClick={() => setModalAberto(true)}>
+            <Plus className="w-4 h-4" /> Nova edição legada
+          </Button>
+        )}
       </div>
 
-      <ErrorAlert message={error} />
+      <div className="flex gap-1 border-b border-border overflow-x-auto">
+        {ABAS.map((a) => (
+          <button
+            key={a.key}
+            type="button"
+            disabled={a.emBreve}
+            onClick={() => setAba(a.key)}
+            className={`shrink-0 px-3 py-2 text-sm font-medium border-b-2 transition-colors ${
+              aba === a.key
+                ? 'border-primary text-primary'
+                : a.emBreve
+                ? 'border-transparent text-muted-foreground/50 cursor-not-allowed'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {a.label}
+            {a.emBreve && <span className="ml-1.5 text-[10px] uppercase tracking-wide">(em breve)</span>}
+          </button>
+        ))}
+      </div>
 
-      {loading ? <LoadingState /> : gruposAtivas.length === 0 && gruposEncerradas.length === 0 ? (
-        <EmptyState message="Nenhuma edição cadastrada ainda. Edições da tela “Edições” aparecem aqui automaticamente." />
-      ) : (
-        <div className="space-y-10">
-          {gruposAtivas.length > 0 && (
-            <div className="space-y-8">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                Em andamento
-              </h2>
-              {gruposAtivas.map(({ programa, edicoes }) => (
-                <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
-              ))}
+      {aba === 'edicoes' && (
+        <>
+          <ErrorAlert message={error} />
+
+          {loading ? <LoadingState /> : gruposAtivas.length === 0 && gruposEncerradas.length === 0 ? (
+            <EmptyState message="Nenhuma edição cadastrada ainda. Edições da tela “Edições” aparecem aqui automaticamente." />
+          ) : (
+            <div className="space-y-10">
+              {gruposAtivas.length > 0 && (
+                <div className="space-y-8">
+                  <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                    Em andamento
+                  </h2>
+                  {gruposAtivas.map(({ programa, edicoes }) => (
+                    <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
+                  ))}
+                </div>
+              )}
+              {gruposEncerradas.length > 0 && (
+                <div className="space-y-8">
+                  <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
+                    Encerradas
+                  </h2>
+                  {gruposEncerradas.map(({ programa, edicoes }) => (
+                    <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
+                  ))}
+                </div>
+              )}
             </div>
           )}
-          {gruposEncerradas.length > 0 && (
-            <div className="space-y-8">
-              <h2 className="text-xs font-bold text-muted-foreground uppercase tracking-wide border-b border-border pb-2">
-                Encerradas
-              </h2>
-              {gruposEncerradas.map(({ programa, edicoes }) => (
-                <GrupoPrograma key={programa.programaId} programa={programa} edicoes={edicoes} navigate={navigate} />
-              ))}
-            </div>
-          )}
-        </div>
+
+          <CadastroEdicaoLegadaModal
+            open={modalAberto}
+            onClose={() => setModalAberto(false)}
+            onCreated={handleCreated}
+          />
+        </>
       )}
 
-      <CadastroEdicaoLegadaModal
-        open={modalAberto}
-        onClose={() => setModalAberto(false)}
-        onCreated={handleCreated}
-      />
+      {aba === 'atas-cmct' && <AtasCmctTab />}
     </div>
   )
 }
