@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, Textarea, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useAdmin } from '@/contexts/AdminContext'
+import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { supabase } from '@/lib/supabase'
 import { contratoService } from '@/lib/db'
 import { listarCiclos } from '@/lib/relatorioMensal'
@@ -14,10 +15,13 @@ import {
   gerarPagamentosDoCiclo,
   calcularElegibilidade,
   calcularSaldoContrato,
-  marcarComoPago,
+  enviarParaPagamento,
+  confirmarPagamento,
   liberarManualmente,
   verificarCndConsecutiva,
   buscarCndVigente,
+  buscarNumeroFspbDoLote,
+  buscarCndMaisRecentePorBeneficiario,
 } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve, uploadCnd } from '@/lib/cnd'
 import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
@@ -27,7 +31,9 @@ const ESTADO_LABEL = {
   pendente_requisito: 'Pendente',
   retido_cnd: 'CND retida',
   bloqueado_saldo: 'Saldo insuficiente',
+  solicitado: 'Aguardando confirmação',
   pago: 'Pago',
+  cancelado: 'Cancelado',
 }
 
 const BADGE_VARIANT = {
@@ -35,7 +41,9 @@ const BADGE_VARIANT = {
   pendente_requisito: 'secondary',
   retido_cnd: 'destructive',
   bloqueado_saldo: 'warning',
+  solicitado: 'info',
   pago: 'success',
+  cancelado: 'destructive',
 }
 
 function fmt(valor) {
@@ -207,10 +215,50 @@ function LiberarSaldoModal({ item, onClose, onConfirmar }) {
   )
 }
 
+// ── Modal — confirmar pagamento (Financeiro já processou, informa data real) ─
+function ConfirmarPagamentoModal({ item, onClose, onConfirmar }) {
+  const [dataPagamento, setDataPagamento] = useState('')
+  const [salvando, setSalvando] = useState(false)
+
+  useEffect(() => { setDataPagamento('') }, [item])
+
+  if (!item) return null
+  const valido = !!dataPagamento
+
+  async function confirmar() {
+    setSalvando(true)
+    try {
+      await onConfirmar(item.ids, dataPagamento)
+    } finally {
+      setSalvando(false)
+    }
+  }
+
+  return (
+    <Modal open onClose={onClose} title={item.titulo} size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Informe a data do pagamento que consta no comprovante devolvido pelo Financeiro.
+          {item.ids.length > 1 ? ` Esta data será aplicada aos ${item.ids.length} pagamentos selecionados.` : ''}
+        </p>
+        <FormField label="Data do pagamento" required>
+          <Input type="date" value={dataPagamento} onChange={e => setDataPagamento(e.target.value)} />
+        </FormField>
+        <div className="flex gap-2 justify-end">
+          <Button variant="outline" size="sm" onClick={onClose} disabled={salvando}>Cancelar</Button>
+          <Button size="sm" disabled={!valido || salvando} onClick={confirmar}>
+            {salvando ? 'Confirmando...' : 'Confirmar pagamento'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
 // ── Card de um contrato (orientador + sua equipe pagável) ───────────────────
 function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosSet,
-  onToggleSelecionado, onSelecionarTodosLiberados, onMarcarSelecionadosPagos,
-  onMarcarUmPago, onAbrirCnd, onAbrirSaldo, onEmitirDAF, temBolsistaDesligado }) {
+  onToggleSelecionado, onSelecionarConjunto, onEnviarSelecionados, onAbrirConfirmarLote,
+  onEnviarUm, onAbrirConfirmarUm, onAbrirCnd, onAbrirSaldo, onEmitirDAF, temBolsistaDesligado }) {
   const percentual = saldo.reservado > 0
     ? Math.min(100, ((saldo.pago + saldo.comprometido) / saldo.reservado) * 100)
     : 0
@@ -219,11 +267,27 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
 
   const liberados = linhas.filter(l => l.pagamento && l.eligibilidade?.estado === 'liberado')
   const liberadosIds = liberados.map(l => l.pagamento.id)
-  const liberadosParaDAF = liberados.map(l => ({
+  const solicitados = linhas.filter(l => l.pagamento && l.eligibilidade?.estado === 'solicitado')
+  const solicitadosIds = solicitados.map(l => l.pagamento.id)
+
+  const selecionadosLiberadosIds = liberadosIds.filter(id => selecionadosSet.has(id))
+  const selecionadosSolicitadosIds = solicitadosIds.filter(id => selecionadosSet.has(id))
+
+  // Relatório para a DAF: acompanha o processo desde que foi liberado até
+  // ser confirmado — inclui liberado/solicitado/pago para poder ser emitido
+  // antes do envio e reimpresso como registro histórico depois.
+  const elegiveisParaDAF = linhas.filter(l =>
+    l.pagamento && ['liberado', 'solicitado', 'pago'].includes(l.eligibilidade?.estado)
+  )
+  const beneficiariosParaDAF = elegiveisParaDAF.map(l => ({
     nome: l.beneficiario.nome,
     cpf: l.beneficiario.cpf,
     beneficiario_tipo: l.beneficiario.beneficiario_tipo,
     valor: l.pagamento.valor,
+    // usados só para buscar o nº da FSPB já emitida e a CND mais recente —
+    // não vão para o PDF diretamente.
+    pagamentoId: l.pagamento.id,
+    beneficiarioId: l.beneficiario.id,
   }))
 
   return (
@@ -244,8 +308,8 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
           <Button
             size="sm"
             variant="outline"
-            onClick={() => onEmitirDAF(contrato, cicloSelecionado, liberadosParaDAF)}
-            disabled={!liberadosParaDAF.length}
+            onClick={() => onEmitirDAF(contrato, cicloSelecionado, beneficiariosParaDAF)}
+            disabled={!beneficiariosParaDAF.length}
           >
             <FileDown className="w-4 h-4" /> Emitir relatório para DAF
           </Button>
@@ -282,7 +346,7 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
                 {linhas.map(({ beneficiario, pagamento, eligibilidade }) => (
                   <tr key={`${beneficiario.beneficiario_tipo}-${beneficiario.id}`} className="border-b border-border last:border-0">
                     <td className="py-2 pr-2 align-top">
-                      {pagamento && eligibilidade?.estado === 'liberado' && (
+                      {pagamento && (eligibilidade?.estado === 'liberado' || eligibilidade?.estado === 'solicitado') && (
                         <input
                           type="checkbox"
                           checked={selecionadosSet.has(pagamento.id)}
@@ -298,12 +362,21 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
                     <td className="py-2 pr-2 align-top">
                       {!pagamento ? (
                         <Badge variant="secondary">Não gerado</Badge>
+                      ) : eligibilidade?.estado === 'pago' ? (
+                        <div className="space-y-0.5">
+                          <Badge variant="success">
+                            Pago{pagamento.data_pagamento ? ` em ${new Date(pagamento.data_pagamento + 'T12:00:00').toLocaleDateString('pt-BR')}` : ''}
+                          </Badge>
+                          {pagamento.desligamento_automatico && pagamento.observacoes && (
+                            <p className="text-xs text-amber-600">{pagamento.observacoes}</p>
+                          )}
+                        </div>
                       ) : (
                         <div className="space-y-0.5">
                           <Badge variant={BADGE_VARIANT[eligibilidade?.estado] ?? 'secondary'}>
                             {ESTADO_LABEL[eligibilidade?.estado] ?? '—'}
                           </Badge>
-                          {eligibilidade?.estado !== 'liberado' && eligibilidade?.motivo && (
+                          {eligibilidade?.estado !== 'liberado' && eligibilidade?.estado !== 'solicitado' && eligibilidade?.motivo && (
                             <p className="text-xs text-muted-foreground">{eligibilidade.motivo}</p>
                           )}
                         </div>
@@ -314,17 +387,10 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
                     </td>
                     <td className="py-2 align-top text-right">
                       {pagamento && eligibilidade?.estado === 'liberado' && (
-                        <Button size="sm" variant="outline" onClick={() => onMarcarUmPago(pagamento.id)}>Marcar como pago</Button>
+                        <Button size="sm" variant="outline" onClick={() => onEnviarUm(pagamento.id)}>Enviar para pagamento</Button>
                       )}
-                      {pagamento && eligibilidade?.estado === 'pago' && (
-                        <div className="space-y-0.5">
-                          <Badge variant="success">
-                            Pago {pagamento.data_pagamento ? `em ${new Date(pagamento.data_pagamento).toLocaleDateString('pt-BR')}` : ''}
-                          </Badge>
-                          {pagamento.desligamento_automatico && pagamento.observacoes && (
-                            <p className="text-xs text-amber-600">{pagamento.observacoes}</p>
-                          )}
-                        </div>
+                      {pagamento && eligibilidade?.estado === 'solicitado' && (
+                        <Button size="sm" variant="outline" onClick={() => onAbrirConfirmarUm(pagamento, beneficiario)}>Confirmar pagamento</Button>
                       )}
                       {pagamento && eligibilidade?.estado === 'retido_cnd' && (
                         <Button size="sm" variant="outline" onClick={() => onAbrirCnd(pagamento, beneficiario)}>Conferir CND</Button>
@@ -340,13 +406,32 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
           </div>
         )}
 
-        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border">
-          <Button size="sm" variant="ghost" onClick={() => onSelecionarTodosLiberados(contrato.id, liberadosIds)} disabled={!liberadosIds.length}>
-            Selecionar todos os liberados
-          </Button>
-          <Button size="sm" onClick={() => onMarcarSelecionadosPagos(contrato.id)} disabled={!selecionadosSet.size}>
-            Marcar selecionados como pagos
-          </Button>
+        <div className="flex items-center justify-between gap-2 pt-2 border-t border-border flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button size="sm" variant="ghost" onClick={() => onSelecionarConjunto(contrato.id, liberadosIds)} disabled={!liberadosIds.length}>
+              Selecionar todos os liberados
+            </Button>
+            <Button size="sm" variant="ghost" onClick={() => onSelecionarConjunto(contrato.id, solicitadosIds)} disabled={!solicitadosIds.length}>
+              Selecionar todos aguardando confirmação
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onAbrirConfirmarLote(contrato.id, selecionadosSolicitadosIds)}
+              disabled={!selecionadosSolicitadosIds.length}
+            >
+              Confirmar pagamento
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => onEnviarSelecionados(contrato.id, selecionadosLiberadosIds)}
+              disabled={!selecionadosLiberadosIds.length}
+            >
+              Enviar para pagamento
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -357,6 +442,8 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
 export function Financeiro() {
   const { edicaoSelecionada } = useAdmin()
   const edicaoId = edicaoSelecionada?.id
+  const { session } = useSecretaria()
+  const criadoPor = session?.user?.email ?? null
 
   const [loading, setLoading] = useState(true)
   const [loadingCiclo, setLoadingCiclo] = useState(false)
@@ -379,6 +466,7 @@ export function Financeiro() {
   const [selecionados, setSelecionados] = useState({})
   const [modalCnd, setModalCnd] = useState(null)
   const [modalSaldo, setModalSaldo] = useState(null)
+  const [modalConfirmarPagamento, setModalConfirmarPagamento] = useState(null)
 
   function showToast(msg, type = 'ok') {
     setToast({ msg, type })
@@ -543,6 +631,7 @@ export function Financeiro() {
   }, [contratos, beneficiarios, pagamentos, elegibilidades])
 
   const cicloSelecionado = ciclos.find(c => c.id === cicloId) ?? null
+  const cicloLabel = cicloSelecionado ? `Ciclo ${cicloSelecionado.numero_ciclo} — ${cicloSelecionado.mes_referencia}` : null
 
   // ── Ações ─────────────────────────────────────────────────────────────
   async function handleGerarPagamentos() {
@@ -568,30 +657,82 @@ export function Financeiro() {
     })
   }
 
-  function selecionarTodosLiberados(contratoId, ids) {
+  function selecionarConjunto(contratoId, ids) {
     setSelecionados(prev => ({ ...prev, [contratoId]: new Set(ids) }))
   }
 
-  async function handleMarcarUmPago(pagamentoId) {
+  // Remove ids de todas as seleções (usado após uma ação em massa/avulsa
+  // consumir esses pagamentos, para não deixá-los marcados indevidamente).
+  function removerDaSelecao(ids) {
+    setSelecionados(prev => {
+      const next = {}
+      for (const [contratoId, set] of Object.entries(prev)) {
+        const atual = new Set(set)
+        ids.forEach(id => atual.delete(id))
+        next[contratoId] = atual
+      }
+      return next
+    })
+  }
+
+  async function handleEnviarUm(pagamentoId) {
+    const pag = pagamentos.find(p => p.id === pagamentoId)
+    const contrato = contratos.find(c => c.id === pag?.contrato_id)
     try {
-      await marcarComoPago([pagamentoId])
-      showToast('Pagamento marcado como pago.', 'ok')
+      await enviarParaPagamento({
+        pagamentoIds: [pagamentoId],
+        contratoId: pag?.contrato_id ?? null,
+        orientadorId: pag?.orientador_id ?? null,
+        ciclo: cicloLabel,
+        criadoPor,
+        anoExercicio: contrato?.ano_exercicio,
+      })
+      removerDaSelecao([pagamentoId])
+      showToast('Pagamento enviado para o Financeiro.', 'ok')
       await carregarDadosCiclo()
     } catch (e) {
-      showToast(e.message ?? 'Erro ao marcar pagamento.', 'err')
+      showToast(e.message ?? 'Erro ao enviar pagamento.', 'err')
     }
   }
 
-  async function handleMarcarSelecionadosPagos(contratoId) {
-    const ids = Array.from(selecionados[contratoId] ?? [])
+  async function handleEnviarSelecionados(contratoId, ids) {
     if (!ids.length) return
+    const contrato = contratos.find(c => c.id === contratoId)
     try {
-      await marcarComoPago(ids)
-      setSelecionados(prev => ({ ...prev, [contratoId]: new Set() }))
-      showToast(`${ids.length} pagamento(s) marcado(s) como pago(s).`, 'ok')
+      await enviarParaPagamento({
+        pagamentoIds: ids,
+        contratoId,
+        orientadorId: contrato?.orientador_id ?? null,
+        ciclo: cicloLabel,
+        criadoPor,
+        anoExercicio: contrato?.ano_exercicio,
+      })
+      removerDaSelecao(ids)
+      showToast(`${ids.length} pagamento(s) enviado(s) para pagamento.`, 'ok')
       await carregarDadosCiclo()
     } catch (e) {
-      showToast(e.message ?? 'Erro ao marcar pagamentos selecionados.', 'err')
+      showToast(e.message ?? 'Erro ao enviar pagamentos selecionados.', 'err')
+    }
+  }
+
+  function abrirConfirmarUm(pagamento, beneficiario) {
+    setModalConfirmarPagamento({ ids: [pagamento.id], titulo: `Confirmar pagamento — ${beneficiario.nome}` })
+  }
+
+  function abrirConfirmarLote(contratoId, ids) {
+    if (!ids.length) return
+    setModalConfirmarPagamento({ ids, titulo: `Confirmar pagamento de ${ids.length} beneficiário(s)` })
+  }
+
+  async function handleConfirmarPagamento(ids, dataPagamento) {
+    try {
+      await confirmarPagamento(ids, dataPagamento)
+      removerDaSelecao(ids)
+      showToast(`${ids.length} pagamento(s) confirmado(s) como pago(s).`, 'ok')
+      setModalConfirmarPagamento(null)
+      await carregarDadosCiclo()
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao confirmar pagamento.', 'err')
     }
   }
 
@@ -646,10 +787,23 @@ export function Financeiro() {
     }
   }
 
-  function handleEmitirDAF(contrato, ciclo, liberados) {
-    if (!liberados.length || !ciclo) return
-    const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
-    exportarRelatorioDAF({ ...contrato, saldo }, ciclo, liberados)
+  async function handleEmitirDAF(contrato, ciclo, beneficiarios) {
+    if (!beneficiarios.length || !ciclo) return
+    try {
+      const pagamentoIds = beneficiarios.map(b => b.pagamentoId).filter(Boolean)
+      const [numeroFspb, cndPorBeneficiario] = await Promise.all([
+        buscarNumeroFspbDoLote(pagamentoIds),
+        buscarCndMaisRecentePorBeneficiario(beneficiarios.map(b => ({ beneficiario_tipo: b.beneficiario_tipo, id: b.beneficiarioId }))),
+      ])
+      const beneficiariosComCnd = beneficiarios.map(b => ({
+        ...b,
+        cndValidade: cndPorBeneficiario[`${b.beneficiario_tipo}:${b.beneficiarioId}`] ?? null,
+      }))
+      const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
+      exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb)
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao emitir relatório para DAF.', 'err')
+    }
   }
 
   const totalPagamentos = pagamentos.length
@@ -731,9 +885,11 @@ export function Financeiro() {
               cicloSelecionado={cicloSelecionado}
               selecionadosSet={selecionados[contrato.id] ?? new Set()}
               onToggleSelecionado={toggleSelecionado}
-              onSelecionarTodosLiberados={selecionarTodosLiberados}
-              onMarcarSelecionadosPagos={handleMarcarSelecionadosPagos}
-              onMarcarUmPago={handleMarcarUmPago}
+              onSelecionarConjunto={selecionarConjunto}
+              onEnviarSelecionados={handleEnviarSelecionados}
+              onAbrirConfirmarLote={abrirConfirmarLote}
+              onEnviarUm={handleEnviarUm}
+              onAbrirConfirmarUm={abrirConfirmarUm}
               onAbrirCnd={(pagamento, beneficiario) => setModalCnd({ pagamento, beneficiario })}
               onAbrirSaldo={(pagamento, beneficiario) => setModalSaldo({ pagamento, beneficiario })}
               onEmitirDAF={handleEmitirDAF}
@@ -752,6 +908,11 @@ export function Financeiro() {
         item={modalSaldo}
         onClose={() => setModalSaldo(null)}
         onConfirmar={handleLiberarManualmente}
+      />
+      <ConfirmarPagamentoModal
+        item={modalConfirmarPagamento}
+        onClose={() => setModalConfirmarPagamento(null)}
+        onConfirmar={handleConfirmarPagamento}
       />
 
       <Toast toast={toast} />
