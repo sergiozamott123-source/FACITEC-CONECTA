@@ -213,7 +213,44 @@ async function construirPDFRelatorioMensal({ relatorio, ciclo, orientador, proje
     }
     if (col === porLinha - 1 || i === evidencias.length - 1) y += imgH + (linhasLegendaMax * 3.5) + gap
   }
-  if (!evidencias.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y) }
+  if (!evidencias.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y); y += 5.5 }
+
+  // 6 — Assinatura eletrônica (omitida se o relatório nunca chegou a ser
+  // assinado — ex.: dado incompleto de alguma migração antiga)
+  if (relatorio.nome_assinatura && relatorio.assinado_em) {
+    y = checkPage(y, 22)
+    y += 4
+    doc.setDrawColor(...CINZA_TEXTO)
+    doc.setLineWidth(0.2)
+    doc.line(mL, y, pgW - mR, y)
+    y += 6
+
+    const dataAssinatura = new Date(relatorio.assinado_em)
+    const dataFmt = dataAssinatura.toLocaleDateString('pt-BR')
+    const horaFmt = dataAssinatura.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    const ipTexto = relatorio.ip_assinatura ? ` (IP: ${relatorio.ip_assinatura})` : ''
+
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(8.5)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text(`Documento assinado eletronicamente por ${relatorio.nome_assinatura}`, mL, y)
+    y += 4.2
+    doc.text(`em ${dataFmt} às ${horaFmt}${ipTexto}`, mL, y)
+    y += 4.2
+
+    if (relatorio.assinatura_origem === 'reconstituida_retroativamente') {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      const nota = 'Assinatura eletrônica reconstituída a partir do envio original deste relatório pelo sistema, anterior à implementação deste controle de assinatura.'
+      const linhasNota = doc.splitTextToSize(nota, usableW)
+      linhasNota.forEach(linha => {
+        y = checkPage(y, 5)
+        doc.text(linha, mL, y)
+        y += 3.6
+      })
+    }
+    doc.setTextColor(0, 0, 0)
+  }
 
   rodape()
 

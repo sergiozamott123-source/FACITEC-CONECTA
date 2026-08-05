@@ -50,10 +50,39 @@ export async function salvarRascunho(payload) {
   return data
 }
 
-export async function enviarRelatorio(id) {
+// Assinatura eletrônica no envio — mesmos campos que public.recurso já tem
+// (nome_assinatura, declaracao_aceita, assinado_em, ip_assinatura), mas o
+// recurso na prática nunca chegou a capturar o IP (coluna sempre nula lá).
+// Aqui implementamos a captura de verdade via um serviço público de eco de
+// IP, best-effort: se falhar ou expirar em 3s, o envio segue com IP nulo em
+// vez de travar o orientador.
+async function capturarIpAssinatura() {
+  try {
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 3000)
+    const res = await fetch('https://api.ipify.org?format=json', { signal: controller.signal })
+    clearTimeout(timeout)
+    if (!res.ok) return null
+    const { ip } = await res.json()
+    return ip ?? null
+  } catch {
+    return null
+  }
+}
+
+export async function enviarRelatorio(id, { nomeAssinatura, declaracaoAceita }) {
+  const ipAssinatura = await capturarIpAssinatura()
   const { data, error } = await supabase
     .from('relatorio_mensal')
-    .update({ status: 'enviado', enviado_em: new Date().toISOString() })
+    .update({
+      status: 'enviado',
+      enviado_em: new Date().toISOString(),
+      nome_assinatura: nomeAssinatura,
+      declaracao_aceita: !!declaracaoAceita,
+      assinado_em: new Date().toISOString(),
+      ip_assinatura: ipAssinatura,
+      assinatura_origem: 'capturada_no_envio',
+    })
     .eq('id', id)
     .select()
     .single()

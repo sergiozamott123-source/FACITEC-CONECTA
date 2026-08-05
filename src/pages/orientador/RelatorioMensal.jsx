@@ -63,6 +63,8 @@ export function RelatorioMensal() {
   const [uploading, setUploading] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [erro, setErro] = useState(null)
+  const [nomeAssinatura, setNomeAssinatura] = useState('')
+  const [declaracaoAceita, setDeclaracaoAceita] = useState(false)
 
   const prontoParaAutoSave = useRef(false)
   const debounceRef = useRef(null)
@@ -185,13 +187,23 @@ export function RelatorioMensal() {
     form.evidencias_urls.every(e => (e.legenda || '').trim().length >= 10)
   const podeEnviar = camposObrigatoriosOk && fotosOk && !!relatorioAtual
 
+  function abrirConfirmacaoEnvio() {
+    setNomeAssinatura('')
+    setDeclaracaoAceita(false)
+    setConfirmando(true)
+  }
+
   async function handleConfirmarEnvio() {
     if (!relatorioAtual) return
+    if (!nomeAssinatura.trim() || !declaracaoAceita) return
     setEnviando(true)
     try {
       if (debounceRef.current) clearTimeout(debounceRef.current)
       await persistirRascunho(form)
-      const enviado = await enviarRelatorio(relatorioAtual.id)
+      const enviado = await enviarRelatorio(relatorioAtual.id, {
+        nomeAssinatura: nomeAssinatura.trim(),
+        declaracaoAceita,
+      })
       setRelatorioAtual(enviado)
       setConfirmando(false)
     } catch {
@@ -406,7 +418,7 @@ export function RelatorioMensal() {
                 <button
                   type="button"
                   disabled={!podeEnviar || enviando}
-                  onClick={() => setConfirmando(true)}
+                  onClick={abrirConfirmacaoEnvio}
                   className="w-full py-2.5 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   Enviar relatório do ciclo {cicloInfo.ciclo.numero_ciclo}
@@ -417,26 +429,54 @@ export function RelatorioMensal() {
         )}
 
         <Modal open={confirmando} onClose={() => !enviando && setConfirmando(false)} title="Confirmar envio" size="sm">
-          <p className="text-sm text-gray-600 mb-6">
-            Após enviar, não será possível editar sem solicitar reabertura à Secretaria. Confirmar envio?
-          </p>
-          <div className="flex gap-2 justify-end">
-            <button
-              type="button"
-              disabled={enviando}
-              onClick={() => setConfirmando(false)}
-              className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
-              disabled={enviando}
-              onClick={handleConfirmarEnvio}
-              className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
-            >
-              {enviando ? 'Enviando...' : 'Confirmar envio'}
-            </button>
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">
+              Após enviar, não será possível editar sem solicitar reabertura à Secretaria.
+            </p>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-1">
+                Para confirmar sua identidade, digite seu nome completo <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={nomeAssinatura}
+                onChange={e => setNomeAssinatura(e.target.value)}
+                placeholder="Seu nome completo"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <label className="flex items-start gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={declaracaoAceita}
+                onChange={e => setDeclaracaoAceita(e.target.checked)}
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 shrink-0 cursor-pointer"
+              />
+              <span className="text-sm text-gray-700 leading-relaxed">
+                Declaro que as informações prestadas neste relatório são verdadeiras e de minha responsabilidade.
+              </span>
+            </label>
+
+            <div className="flex gap-2 justify-end pt-2">
+              <button
+                type="button"
+                disabled={enviando}
+                onClick={() => setConfirmando(false)}
+                className="px-3 py-1.5 text-sm font-medium text-gray-600 border border-gray-200 rounded-md hover:bg-gray-50"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                disabled={enviando || !nomeAssinatura.trim() || !declaracaoAceita}
+                onClick={handleConfirmarEnvio}
+                className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+              >
+                {enviando ? 'Enviando...' : 'Assinar e enviar'}
+              </button>
+            </div>
           </div>
         </Modal>
       </main>
