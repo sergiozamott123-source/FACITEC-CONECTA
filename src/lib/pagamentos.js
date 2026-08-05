@@ -145,6 +145,12 @@ export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoCo
   if (pagamento.status === 'pago') {
     return { estado: 'pago', motivo: null }
   }
+  if (pagamento.status === 'solicitado') {
+    return { estado: 'solicitado', motivo: null }
+  }
+  if (pagamento.status === 'cancelado') {
+    return { estado: 'cancelado', motivo: null }
+  }
 
   if (!relatorioDoCiclo || relatorioDoCiclo.status !== 'enviado') {
     return { estado: 'pendente_requisito', motivo: 'Relatório não enviado' }
@@ -169,27 +175,43 @@ export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoCo
 }
 
 // ── 5 — Saldo do contrato ─────────────────────────────────────────────────
+// "Pago" = já confirmado pelo Financeiro. "Comprometido" = processo enviado
+// à DAF ('solicitado') mas ainda não confirmado. Pagamentos ainda
+// 'pendente' (nem sequer enviados) não reservam saldo — ver Prompt 03.
 export async function calcularSaldoContrato(contratoId) {
   const [{ data: contrato, error: eCon }, { data: pagamentos, error: ePag }] = await Promise.all([
     supabase.from('contrato').select('valor_global').eq('id', contratoId).single(),
-    supabase.from('pagamento').select('valor, status').eq('contrato_id', contratoId).in('status', ['pendente', 'pago']),
+    supabase.from('pagamento').select('valor, status').eq('contrato_id', contratoId).in('status', ['solicitado', 'pago']),
   ])
   if (eCon) throw eCon
   if (ePag) throw ePag
 
   const reservado = Number(contrato?.valor_global ?? 0)
   const pago = (pagamentos ?? []).filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
-  const comprometido = (pagamentos ?? []).filter(p => p.status === 'pendente').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const comprometido = (pagamentos ?? []).filter(p => p.status === 'solicitado').reduce((s, p) => s + Number(p.valor ?? 0), 0)
 
   return { reservado, pago, comprometido, disponivel: reservado - pago - comprometido }
 }
 
 // ── 6/7 — Ações sobre pagamentos ──────────────────────────────────────────
-export async function marcarComoPago(pagamentoIds) {
+// Etapa 1→2: Coordenação envia o processo à DAF/Financeiro. Ainda não é
+// pagamento confirmado — não mexe em data_pagamento.
+export async function enviarParaPagamento(pagamentoIds) {
   if (!pagamentoIds?.length) return
   const { error } = await supabase
     .from('pagamento')
-    .update({ status: 'pago', data_pagamento: hojeISO() })
+    .update({ status: 'solicitado', solicitado_em: new Date().toISOString() })
+    .in('id', pagamentoIds)
+  if (error) throw error
+}
+
+// Etapa 2→3: Financeiro confirmou o pagamento (comprovante em mãos) e a
+// Coordenação registra a data real informada manualmente.
+export async function confirmarPagamento(pagamentoIds, dataPagamento) {
+  if (!pagamentoIds?.length || !dataPagamento) return
+  const { error } = await supabase
+    .from('pagamento')
+    .update({ status: 'pago', data_pagamento: dataPagamento })
     .in('id', pagamentoIds)
   if (error) throw error
 }
@@ -203,13 +225,17 @@ export async function liberarManualmente(pagamentoId, motivo) {
 }
 
 // ── 8 — Regra dos 2 ciclos consecutivos de CND irregular ──────────────────
+// O desligamento em si (bolsista/orientador) é automático, mas o dinheiro
+// represado não é — segue a mesma esteira manual (pendente→solicitado→pago):
+// aqui só enviamos o processo à DAF; a confirmação real do pagamento, com a
+// data do comprovante, é feita depois via ConfirmarPagamentoModal.
 export async function aplicarDesligamentoPorCnd(beneficiarioTipo, id, pagamentosIrregulares) {
   const ids = pagamentosIrregulares.map(p => p.id)
   const { error: ePag } = await supabase
     .from('pagamento')
     .update({
-      status: 'pago',
-      data_pagamento: hojeISO(),
+      status: 'solicitado',
+      solicitado_em: new Date().toISOString(),
       desligamento_automatico: true,
       observacoes: 'Liberado automaticamente após 2 ciclos de CND irregular',
     })
