@@ -20,6 +20,7 @@ import {
   liberarManualmente,
   verificarCndConsecutiva,
   buscarCndVigente,
+  garantirSolicitacaoPagamento,
   buscarNumeroFspbDoLote,
   buscarCndMaisRecentePorBeneficiario,
 } from '@/lib/pagamentos'
@@ -791,6 +792,19 @@ export function Financeiro() {
     if (!beneficiarios.length || !ciclo) return
     try {
       const pagamentoIds = beneficiarios.map(b => b.pagamentoId).filter(Boolean)
+
+      // Na prática "Emitir relatório para DAF" é usado como a ação completa
+      // de enviar — se o lote (ou parte dele) ainda não tem FSPB, gera agora
+      // em vez de exigir um clique prévio em "Enviar para pagamento".
+      const novaFicha = await garantirSolicitacaoPagamento({
+        pagamentoIds,
+        contratoId: contrato.id,
+        orientadorId: contrato.orientador_id ?? null,
+        ciclo: cicloLabel,
+        criadoPor,
+        anoExercicio: contrato.ano_exercicio,
+      })
+
       const [numeroFspb, cndPorBeneficiario] = await Promise.all([
         buscarNumeroFspbDoLote(pagamentoIds),
         buscarCndMaisRecentePorBeneficiario(beneficiarios.map(b => ({ beneficiario_tipo: b.beneficiario_tipo, id: b.beneficiarioId }))),
@@ -801,6 +815,11 @@ export function Financeiro() {
       }))
       const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
       exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb)
+
+      if (novaFicha) {
+        showToast(`Processo enviado ao Financeiro e relatório emitido — ${novaFicha.numero_fspb}.`, 'ok')
+        await carregarDadosCiclo()
+      }
     } catch (e) {
       showToast(e.message ?? 'Erro ao emitir relatório para DAF.', 'err')
     }

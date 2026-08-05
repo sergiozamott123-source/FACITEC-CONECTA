@@ -74,26 +74,32 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   cabecalho()
   let y = mT
 
+  // "FSPB 01/2026" já vem formatado do banco — em qualquer lugar que já diga
+  // "FSPB Nº"/"FSPB nº" por extenso, usamos só o sequencial/ano para não
+  // repetir "FSPB" duas vezes ("FSPB Nº FSPB 01/2026").
+  const fspbCurto = numeroFspb ? numeroFspb.replace(/^FSPB\s*/i, '') : null
+
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(15)
   doc.setTextColor(...AZUL)
-  doc.text('SOLICITAÇÃO DE PAGAMENTO DE BOLSAS', pgW / 2, y, { align: 'center' })
+  doc.text('FICHA DE SOLICITAÇÃO DE PAGAMENTO DE BOLSA', pgW / 2, y, { align: 'center' })
   y += 7
   doc.text('PROGRAMA PIBICJR', pgW / 2, y, { align: 'center' })
-  y += 7
-  if (numeroFspb) {
-    doc.setFontSize(11)
-    doc.text(`Ficha nº ${numeroFspb}`, pgW / 2, y, { align: 'center' })
+  y += 8
+  if (fspbCurto) {
+    doc.setFontSize(12)
+    doc.text(`FSPB Nº ${fspbCurto}`, pgW / 2, y, { align: 'center' })
     y += 8
   } else {
-    y += 5
+    doc.setFont('helvetica', 'italic')
+    doc.setFontSize(10)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text('(rascunho — ainda não enviado)', pgW / 2, y, { align: 'center' })
+    y += 7
   }
   doc.setTextColor(0, 0, 0)
 
   const cicloLabel = ciclo ? `Ciclo ${ciclo.numero_ciclo} — ${ciclo.mes_referencia}` : '—'
-  // "FSPB 01/2026" já vem formatado do banco — no parágrafo usamos só o
-  // sequencial/ano para não repetir "FSPB" duas vezes ("FSPB nº FSPB 01/2026").
-  const fspbCurto = numeroFspb ? numeroFspb.replace(/^FSPB\s*/i, '') : null
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)

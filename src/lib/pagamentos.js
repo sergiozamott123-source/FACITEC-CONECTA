@@ -242,6 +242,27 @@ export async function enviarParaPagamento({ pagamentoIds, contratoId, orientador
   return solicitacao
 }
 
+// Na prática o botão usado como "ação completa" de enviar+emitir é o
+// "Emitir relatório para DAF", não o "Enviar para pagamento" — então antes
+// de montar o PDF, garantimos que o lote selecionado já tem FSPB. Só cria
+// uma ficha nova para os pagamentos que ainda não têm solicitacao_pagamento_id;
+// os que já tiverem (reimpressão, ou reenvio parcial raro) mantêm a ficha
+// original intocada. Se o lote inteiro já estava enviado, não faz nada e
+// retorna null.
+export async function garantirSolicitacaoPagamento({ pagamentoIds, contratoId, orientadorId, ciclo, criadoPor, anoExercicio }) {
+  if (!pagamentoIds?.length) return null
+  const { data: pagamentos, error } = await supabase
+    .from('pagamento')
+    .select('id, solicitacao_pagamento_id')
+    .in('id', pagamentoIds)
+  if (error) throw error
+
+  const semFicha = (pagamentos ?? []).filter(p => !p.solicitacao_pagamento_id).map(p => p.id)
+  if (!semFicha.length) return null
+
+  return enviarParaPagamento({ pagamentoIds: semFicha, contratoId, orientadorId, ciclo, criadoPor, anoExercicio })
+}
+
 // Lê o numero_fspb já atribuído a um lote de pagamentos (para reimpressão do
 // relatório) — nunca gera um número novo. Se os pagamentos do lote
 // apontarem para fichas diferentes (não deveria acontecer em uso normal),
