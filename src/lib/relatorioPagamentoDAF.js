@@ -19,7 +19,13 @@ function sufixoArquivo(numeroProcesso) {
   return String(numeroProcesso ?? 'sn').replace(/[\\/]/g, '-')
 }
 
-export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
+function fmtCnd(dataValidade) {
+  return dataValidade
+    ? `Válida até ${new Date(dataValidade + 'T12:00:00').toLocaleDateString('pt-BR')}`
+    : 'Não verificada'
+}
+
+export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, numeroFspb) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 20, mR = 20, mT = 26, mB = 20
   const pgW = 210, pgH = 297
@@ -74,21 +80,31 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
   doc.text('SOLICITAÇÃO DE PAGAMENTO DE BOLSAS', pgW / 2, y, { align: 'center' })
   y += 7
   doc.text('PROGRAMA PIBICJR', pgW / 2, y, { align: 'center' })
-  y += 12
+  y += 7
+  if (numeroFspb) {
+    doc.setFontSize(11)
+    doc.text(`Ficha nº ${numeroFspb}`, pgW / 2, y, { align: 'center' })
+    y += 8
+  } else {
+    y += 5
+  }
   doc.setTextColor(0, 0, 0)
 
   const cicloLabel = ciclo ? `Ciclo ${ciclo.numero_ciclo} — ${ciclo.mes_referencia}` : '—'
+  // "FSPB 01/2026" já vem formatado do banco — no parágrafo usamos só o
+  // sequencial/ano para não repetir "FSPB" duas vezes ("FSPB nº FSPB 01/2026").
+  const fspbCurto = numeroFspb ? numeroFspb.replace(/^FSPB\s*/i, '') : null
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(10.5)
-  const texto = `A Secretaria Executiva do FACITEC encaminha à Diretoria Administrativa Financeira - DAF a presente solicitação de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
+  const texto = `A Secretaria Executiva do FACITEC encaminha à Diretoria Administrativa Financeira - DAF a presente solicitação${fspbCurto ? ` (FSPB nº ${fspbCurto})` : ''} de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
   const linhasTexto = doc.splitTextToSize(texto, usableW)
   doc.text(linhasTexto, mL, y)
   y += linhasTexto.length * 5.2 + 8
 
   // ── Tabela de beneficiários liberados ────────────────────────────────
   y = checkPage(y, 14)
-  const colX = { nome: mL + 2, cpf: mL + 70, tipo: mL + 105, valor: pgW - mR - 2 }
+  const colX = { nome: mL + 2, cpf: mL + 56, tipo: mL + 90, cnd: mL + 114, valor: pgW - mR - 2 }
 
   function cabecalhoTabela() {
     doc.setFillColor(...AZUL)
@@ -99,6 +115,7 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
     doc.text('NOME', colX.nome, y + 5.5)
     doc.text('CPF', colX.cpf, y + 5.5)
     doc.text('TIPO', colX.tipo, y + 5.5)
+    doc.text('CND', colX.cnd, y + 5.5)
     doc.text('VALOR', colX.valor, y + 5.5, { align: 'right' })
     doc.setTextColor(0, 0, 0)
     y += 8
@@ -118,9 +135,10 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(9)
     doc.setTextColor(0, 0, 0)
-    doc.text(doc.splitTextToSize(b.nome ?? '—', 66)[0], colX.nome, y + 5)
+    doc.text(doc.splitTextToSize(b.nome ?? '—', 52)[0], colX.nome, y + 5)
     doc.text(b.cpf ?? '—', colX.cpf, y + 5)
     doc.text(b.beneficiario_tipo === 'orientador' ? 'Orientador' : 'Bolsista', colX.tipo, y + 5)
+    doc.text(doc.splitTextToSize(fmtCnd(b.cndValidade), 44)[0], colX.cnd, y + 5)
     doc.text(fmtMoeda(b.valor), colX.valor, y + 5, { align: 'right' })
     y += 7
     total += Number(b.valor ?? 0)
@@ -143,8 +161,7 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados) {
   const reservado = Number(contrato?.valor_global ?? contrato?.saldo?.reservado ?? 0)
   const pagoAntes = Number(contrato?.saldo?.pago ?? 0)
   const pagoAteEsteLote = pagoAntes + total
-  const comprometidoRestante = Number(contrato?.saldo?.comprometido ?? total) - total
-  const saldoRestante = reservado - pagoAteEsteLote - comprometidoRestante
+  const saldoRestante = reservado - pagoAteEsteLote
 
   doc.setFillColor(...CINZA_CLARO)
   doc.roundedRect(mL, y, usableW, 28, 2, 2, 'F')

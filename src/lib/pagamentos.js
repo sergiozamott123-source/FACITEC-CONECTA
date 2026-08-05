@@ -194,15 +194,108 @@ export async function calcularSaldoContrato(contratoId) {
 }
 
 // ── 6/7 — Ações sobre pagamentos ──────────────────────────────────────────
+
+// ── 6a — Numeração institucional FSPB (Ficha de Solicitação de Pagamento de
+// Bolsa) ─────────────────────────────────────────────────────────────────
+// Gerada uma única vez por lote enviado à DAF, via a função de banco
+// gerar_numero_fspb (sequencial atômico por ano_exercicio). Reimpressões do
+// relatório devem reaproveitar o número já gravado em
+// pagamento.solicitacao_pagamento_id — ver buscarNumeroFspbDoLote.
+export async function criarSolicitacaoPagamento({ contratoId, orientadorId, ciclo, criadoPor, anoExercicio }) {
+  const ano = anoExercicio ?? new Date().getFullYear()
+  const { data: numeroData, error: eNum } = await supabase.rpc('gerar_numero_fspb', { p_ano: ano })
+  if (eNum) throw eNum
+  const { sequencial, numero_fspb: numeroFspb } = Array.isArray(numeroData) ? numeroData[0] : numeroData
+
+  const { data: solicitacao, error: eIns } = await supabase
+    .from('solicitacao_pagamento')
+    .insert({
+      numero_sequencial: sequencial,
+      ano_exercicio: ano,
+      numero_fspb: numeroFspb,
+      contrato_id: contratoId ?? null,
+      orientador_id: orientadorId ?? null,
+      ciclo: ciclo ?? null,
+      criado_por: criadoPor ?? null,
+    })
+    .select()
+    .single()
+  if (eIns) throw eIns
+  return solicitacao
+}
+
 // Etapa 1→2: Coordenação envia o processo à DAF/Financeiro. Ainda não é
-// pagamento confirmado — não mexe em data_pagamento.
-export async function enviarParaPagamento(pagamentoIds) {
+// pagamento confirmado — não mexe em data_pagamento. Gera a FSPB do lote e
+// vincula todos os pagamentos enviados a ela.
+export async function enviarParaPagamento({ pagamentoIds, contratoId, orientadorId, ciclo, criadoPor, anoExercicio }) {
   if (!pagamentoIds?.length) return
+  const solicitacao = await criarSolicitacaoPagamento({ contratoId, orientadorId, ciclo, criadoPor, anoExercicio })
   const { error } = await supabase
     .from('pagamento')
-    .update({ status: 'solicitado', solicitado_em: new Date().toISOString() })
+    .update({
+      status: 'solicitado',
+      solicitado_em: new Date().toISOString(),
+      solicitacao_pagamento_id: solicitacao.id,
+    })
     .in('id', pagamentoIds)
   if (error) throw error
+  return solicitacao
+}
+
+// Lê o numero_fspb já atribuído a um lote de pagamentos (para reimpressão do
+// relatório) — nunca gera um número novo. Se os pagamentos do lote
+// apontarem para fichas diferentes (não deveria acontecer em uso normal),
+// assume a mais recente.
+export async function buscarNumeroFspbDoLote(pagamentoIds) {
+  if (!pagamentoIds?.length) return null
+  const { data: pagamentos, error: ePag } = await supabase
+    .from('pagamento')
+    .select('solicitacao_pagamento_id')
+    .in('id', pagamentoIds)
+    .not('solicitacao_pagamento_id', 'is', null)
+  if (ePag) throw ePag
+
+  const fichaIds = [...new Set((pagamentos ?? []).map(p => p.solicitacao_pagamento_id))]
+  if (!fichaIds.length) return null
+
+  const { data: fichas, error: eFicha } = await supabase
+    .from('solicitacao_pagamento')
+    .select('numero_fspb, data_solicitacao')
+    .in('id', fichaIds)
+    .order('data_solicitacao', { ascending: false })
+  if (eFicha) throw eFicha
+
+  return fichas?.[0]?.numero_fspb ?? null
+}
+
+// Data de validade mais recente de CND por beneficiário (não filtra por
+// vigência — o relatório para a DAF mostra o que se sabia na hora, mesmo
+// que já tenha vencido). Retorna um mapa `"tipo:id" -> data_validade`.
+export async function buscarCndMaisRecentePorBeneficiario(beneficiarios) {
+  const orientadorIds = beneficiarios.filter(b => b.beneficiario_tipo === 'orientador').map(b => b.id)
+  const bolsistaIds = beneficiarios.filter(b => b.beneficiario_tipo === 'bolsista').map(b => b.id)
+
+  const [{ data: cndOrientadores, error: e1 }, { data: cndBolsistas, error: e2 }] = await Promise.all([
+    orientadorIds.length
+      ? supabase.from('cnd_documento').select('orientador_id, data_validade').in('orientador_id', orientadorIds)
+      : Promise.resolve({ data: [] }),
+    bolsistaIds.length
+      ? supabase.from('cnd_documento').select('bolsista_id, data_validade').in('bolsista_id', bolsistaIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  if (e1) throw e1
+  if (e2) throw e2
+
+  const mapa = {}
+  for (const doc of cndOrientadores ?? []) {
+    const chave = `orientador:${doc.orientador_id}`
+    if (!mapa[chave] || doc.data_validade > mapa[chave]) mapa[chave] = doc.data_validade
+  }
+  for (const doc of cndBolsistas ?? []) {
+    const chave = `bolsista:${doc.bolsista_id}`
+    if (!mapa[chave] || doc.data_validade > mapa[chave]) mapa[chave] = doc.data_validade
+  }
+  return mapa
 }
 
 // Etapa 2→3: Financeiro confirmou o pagamento (comprovante em mãos) e a
@@ -227,20 +320,53 @@ export async function liberarManualmente(pagamentoId, motivo) {
 // ── 8 — Regra dos 2 ciclos consecutivos de CND irregular ──────────────────
 // O desligamento em si (bolsista/orientador) é automático, mas o dinheiro
 // represado não é — segue a mesma esteira manual (pendente→solicitado→pago):
-// aqui só enviamos o processo à DAF; a confirmação real do pagamento, com a
-// data do comprovante, é feita depois via ConfirmarPagamentoModal.
+// aqui só enviamos o processo à DAF (gerando a própria FSPB do lote, como no
+// envio manual); a confirmação real do pagamento, com a data do
+// comprovante, é feita depois via ConfirmarPagamentoModal.
 export async function aplicarDesligamentoPorCnd(beneficiarioTipo, id, pagamentosIrregulares) {
-  const ids = pagamentosIrregulares.map(p => p.id)
-  const { error: ePag } = await supabase
-    .from('pagamento')
-    .update({
-      status: 'solicitado',
-      solicitado_em: new Date().toISOString(),
-      desligamento_automatico: true,
-      observacoes: 'Liberado automaticamente após 2 ciclos de CND irregular',
+  // Normalmente os pagamentos represados são todos do mesmo contrato (mesmo
+  // vínculo ativo nos ciclos consecutivos), mas agrupamos por contrato_id
+  // por segurança — cada grupo vira sua própria FSPB.
+  const porContrato = new Map()
+  for (const p of pagamentosIrregulares) {
+    const lista = porContrato.get(p.contrato_id) ?? []
+    lista.push(p)
+    porContrato.set(p.contrato_id, lista)
+  }
+
+  const contratoIds = [...porContrato.keys()].filter(Boolean)
+  const { data: contratos, error: eCon } = contratoIds.length
+    ? await supabase.from('contrato').select('id, ano_exercicio').in('id', contratoIds)
+    : { data: [], error: null }
+  if (eCon) throw eCon
+  const anoPorContrato = Object.fromEntries((contratos ?? []).map(c => [c.id, c.ano_exercicio]))
+
+  for (const [contratoId, itens] of porContrato) {
+    const cicloTexto = itens
+      .map(p => (p.ciclo?.numero_ciclo != null ? `Ciclo ${p.ciclo.numero_ciclo}${p.ciclo.mes_referencia ? ` — ${p.ciclo.mes_referencia}` : ''}` : null))
+      .filter(Boolean)
+      .join('; ') || null
+
+    const solicitacao = await criarSolicitacaoPagamento({
+      contratoId,
+      orientadorId: itens[0]?.orientador_id ?? null,
+      ciclo: cicloTexto,
+      criadoPor: 'Sistema (desligamento automático por CND irregular)',
+      anoExercicio: anoPorContrato[contratoId],
     })
-    .in('id', ids)
-  if (ePag) throw ePag
+
+    const { error: ePag } = await supabase
+      .from('pagamento')
+      .update({
+        status: 'solicitado',
+        solicitado_em: new Date().toISOString(),
+        solicitacao_pagamento_id: solicitacao.id,
+        desligamento_automatico: true,
+        observacoes: 'Liberado automaticamente após 2 ciclos de CND irregular',
+      })
+      .in('id', itens.map(p => p.id))
+    if (ePag) throw ePag
+  }
 
   if (beneficiarioTipo === 'bolsista') {
     const { error } = await supabase.from('bolsista').update({ status: 'desligado' }).eq('id', id)
@@ -255,7 +381,7 @@ export async function verificarCndConsecutiva(beneficiarioTipo, id) {
   const idField = beneficiarioTipo === 'orientador' ? 'orientador_id' : 'bolsista_id'
   const { data, error } = await supabase
     .from('pagamento')
-    .select('id, cnd_status, ciclo:ciclo_id(numero_ciclo)')
+    .select('id, cnd_status, contrato_id, orientador_id, ciclo:ciclo_id(numero_ciclo, mes_referencia)')
     .eq('beneficiario_tipo', beneficiarioTipo)
     .eq(idField, id)
     .not('ciclo_id', 'is', null)

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, Textarea, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
 import { useAdmin } from '@/contexts/AdminContext'
+import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { supabase } from '@/lib/supabase'
 import { contratoService } from '@/lib/db'
 import { listarCiclos } from '@/lib/relatorioMensal'
@@ -19,6 +20,8 @@ import {
   liberarManualmente,
   verificarCndConsecutiva,
   buscarCndVigente,
+  buscarNumeroFspbDoLote,
+  buscarCndMaisRecentePorBeneficiario,
 } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve, uploadCnd } from '@/lib/cnd'
 import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
@@ -281,6 +284,10 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
     cpf: l.beneficiario.cpf,
     beneficiario_tipo: l.beneficiario.beneficiario_tipo,
     valor: l.pagamento.valor,
+    // usados só para buscar o nº da FSPB já emitida e a CND mais recente —
+    // não vão para o PDF diretamente.
+    pagamentoId: l.pagamento.id,
+    beneficiarioId: l.beneficiario.id,
   }))
 
   return (
@@ -435,6 +442,8 @@ function ContratoCard({ contrato, saldo, linhas, cicloSelecionado, selecionadosS
 export function Financeiro() {
   const { edicaoSelecionada } = useAdmin()
   const edicaoId = edicaoSelecionada?.id
+  const { session } = useSecretaria()
+  const criadoPor = session?.user?.email ?? null
 
   const [loading, setLoading] = useState(true)
   const [loadingCiclo, setLoadingCiclo] = useState(false)
@@ -622,6 +631,7 @@ export function Financeiro() {
   }, [contratos, beneficiarios, pagamentos, elegibilidades])
 
   const cicloSelecionado = ciclos.find(c => c.id === cicloId) ?? null
+  const cicloLabel = cicloSelecionado ? `Ciclo ${cicloSelecionado.numero_ciclo} — ${cicloSelecionado.mes_referencia}` : null
 
   // ── Ações ─────────────────────────────────────────────────────────────
   async function handleGerarPagamentos() {
@@ -666,8 +676,17 @@ export function Financeiro() {
   }
 
   async function handleEnviarUm(pagamentoId) {
+    const pag = pagamentos.find(p => p.id === pagamentoId)
+    const contrato = contratos.find(c => c.id === pag?.contrato_id)
     try {
-      await enviarParaPagamento([pagamentoId])
+      await enviarParaPagamento({
+        pagamentoIds: [pagamentoId],
+        contratoId: pag?.contrato_id ?? null,
+        orientadorId: pag?.orientador_id ?? null,
+        ciclo: cicloLabel,
+        criadoPor,
+        anoExercicio: contrato?.ano_exercicio,
+      })
       removerDaSelecao([pagamentoId])
       showToast('Pagamento enviado para o Financeiro.', 'ok')
       await carregarDadosCiclo()
@@ -678,8 +697,16 @@ export function Financeiro() {
 
   async function handleEnviarSelecionados(contratoId, ids) {
     if (!ids.length) return
+    const contrato = contratos.find(c => c.id === contratoId)
     try {
-      await enviarParaPagamento(ids)
+      await enviarParaPagamento({
+        pagamentoIds: ids,
+        contratoId,
+        orientadorId: contrato?.orientador_id ?? null,
+        ciclo: cicloLabel,
+        criadoPor,
+        anoExercicio: contrato?.ano_exercicio,
+      })
       removerDaSelecao(ids)
       showToast(`${ids.length} pagamento(s) enviado(s) para pagamento.`, 'ok')
       await carregarDadosCiclo()
@@ -760,10 +787,23 @@ export function Financeiro() {
     }
   }
 
-  function handleEmitirDAF(contrato, ciclo, liberados) {
-    if (!liberados.length || !ciclo) return
-    const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
-    exportarRelatorioDAF({ ...contrato, saldo }, ciclo, liberados)
+  async function handleEmitirDAF(contrato, ciclo, beneficiarios) {
+    if (!beneficiarios.length || !ciclo) return
+    try {
+      const pagamentoIds = beneficiarios.map(b => b.pagamentoId).filter(Boolean)
+      const [numeroFspb, cndPorBeneficiario] = await Promise.all([
+        buscarNumeroFspbDoLote(pagamentoIds),
+        buscarCndMaisRecentePorBeneficiario(beneficiarios.map(b => ({ beneficiario_tipo: b.beneficiario_tipo, id: b.beneficiarioId }))),
+      ])
+      const beneficiariosComCnd = beneficiarios.map(b => ({
+        ...b,
+        cndValidade: cndPorBeneficiario[`${b.beneficiario_tipo}:${b.beneficiarioId}`] ?? null,
+      }))
+      const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
+      exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb)
+    } catch (e) {
+      showToast(e.message ?? 'Erro ao emitir relatório para DAF.', 'err')
+    }
   }
 
   const totalPagamentos = pagamentos.length
