@@ -87,6 +87,11 @@ export const PROGRAMAS = [
     cor: "#854F0B",
     corBg: "#FAEEDA",
     ativo: false,
+    // Ocultado do card grid da Home Admin a pedido da Secretaria (18/08) —
+    // programa segue cadastrado e acessível via Acervo, só não aparece na
+    // tela de seleção de programas por enquanto. Voltar para `true` (ou
+    // remover a flag) quando quiserem reexibir.
+    visivelNoHub: false,
     codigoPrefixo: "POSGRAD",
     image: posGraduacaoImg,
   },
@@ -103,6 +108,9 @@ export const PROGRAMAS = [
     // inscrição próprio) — por isso ativo:false, mesmo padrão de
     // PROFICJOVEM/POSGRADUACAO antes de irem ao ar.
     ativo: false,
+    // Ocultado do card grid da Home Admin a pedido da Secretaria (18/08) —
+    // mesmo motivo/critério do Pós-Graduação acima.
+    visivelNoHub: false,
     codigoPrefixo: "PROJPESQ",
     // TODO: trocar por uma imagem própria quando houver — reaproveitando a
     // de Pós-Graduação como placeholder por ora (categoria inativa, não
