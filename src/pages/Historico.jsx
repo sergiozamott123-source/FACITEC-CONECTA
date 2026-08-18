@@ -15,7 +15,8 @@ import { listarCiclos, statusRelatorioNoCiclo } from '@/lib/relatorioMensal'
 import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
 import { computarRanking, CONSENSO_VARIANT } from '@/lib/classificacaoRanking'
 import {
-  CATEGORIAS_COLUNAS, buscarDadosRelatorioPersonalizado,
+  CATEGORIAS_COLUNAS, CATEGORIAS_COLUNAS_RELACAO,
+  buscarDadosRelatorioPersonalizado, buscarDadosRelatorioPorPessoa,
   exportarPDFPersonalizado, exportarExcelPersonalizado, exportarWordPersonalizado,
 } from '@/lib/relatorioPersonalizado'
 
@@ -442,23 +443,45 @@ function AvaliacaoBody({ edicaoId, statusTallyInicial }) {
 }
 
 // ── Card 5 — Relatório Personalizado ─────────────────────────────────────────
+
+function defaultSelecionadas(categorias) {
+  const s = new Set()
+  categorias.forEach(cat => cat.campos.forEach(c => { if (c.default) s.add(c.key) }))
+  return s
+}
+
 function RelatorioPersonalizadoBody({ ano }) {
-  const [linhas, setLinhas] = useState(null)
+  // 'orientador' → 1 linha por orientador · 'pessoa' → relação do grupo
+  // (orientador + titulares + voluntários), 1 linha por pessoa, com CPF de todos.
+  const [modo, setModo] = useState('orientador')
+  const [linhasOrientador, setLinhasOrientador] = useState(null)
+  const [linhasPessoa, setLinhasPessoa] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [exportando, setExportando] = useState(null)
-  const [selecionadas, setSelecionadas] = useState(() => {
-    const s = new Set()
-    CATEGORIAS_COLUNAS.forEach(cat => cat.campos.forEach(c => { if (c.default) s.add(c.key) }))
-    return s
-  })
+  const [selecionadas, setSelecionadas] = useState(() => defaultSelecionadas(CATEGORIAS_COLUNAS))
 
   useEffect(() => {
-    buscarDadosRelatorioPersonalizado()
-      .then(setLinhas)
+    Promise.all([
+      buscarDadosRelatorioPersonalizado(),
+      buscarDadosRelatorioPorPessoa(),
+    ])
+      .then(([porOrientador, porPessoa]) => {
+        setLinhasOrientador(porOrientador)
+        setLinhasPessoa(porPessoa)
+      })
       .catch(() => setErro('Não foi possível carregar os dados do relatório.'))
       .finally(() => setLoading(false))
   }, [])
+
+  const categorias = modo === 'pessoa' ? CATEGORIAS_COLUNAS_RELACAO : CATEGORIAS_COLUNAS
+  const linhas = modo === 'pessoa' ? linhasPessoa : linhasOrientador
+
+  function trocarModo(novoModo) {
+    if (novoModo === modo) return
+    setModo(novoModo)
+    setSelecionadas(defaultSelecionadas(novoModo === 'pessoa' ? CATEGORIAS_COLUNAS_RELACAO : CATEGORIAS_COLUNAS))
+  }
 
   function toggleCampo(key) {
     setSelecionadas(prev => {
@@ -470,8 +493,8 @@ function RelatorioPersonalizadoBody({ ano }) {
   }
 
   const colunasSelecionadas = useMemo(
-    () => CATEGORIAS_COLUNAS.flatMap(cat => cat.campos).filter(c => selecionadas.has(c.key)),
-    [selecionadas],
+    () => categorias.flatMap(cat => cat.campos).filter(c => selecionadas.has(c.key)),
+    [categorias, selecionadas],
   )
 
   async function handleExportar(formato) {
@@ -494,8 +517,26 @@ function RelatorioPersonalizadoBody({ ano }) {
   return (
     <>
       <ErroInline msg={erro} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={modo === 'orientador' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => trocarModo('orientador')}
+        >
+          Por orientador
+        </Button>
+        <Button
+          type="button"
+          variant={modo === 'pessoa' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => trocarModo('pessoa')}
+        >
+          Relação de bolsistas (por grupo)
+        </Button>
+      </div>
       <div className="space-y-3">
-        {CATEGORIAS_COLUNAS.map(cat => (
+        {categorias.map(cat => (
           <div key={cat.categoria}>
             <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{cat.categoria}</p>
             <div className="flex flex-wrap gap-x-4 gap-y-1.5">
@@ -515,7 +556,7 @@ function RelatorioPersonalizadoBody({ ano }) {
         ))}
       </div>
       <p className="text-xs text-muted-foreground">
-        Prévia: {colunasSelecionadas.length} coluna{colunasSelecionadas.length === 1 ? '' : 's'} selecionada{colunasSelecionadas.length === 1 ? '' : 's'} · {linhas?.length ?? 0} orientadores
+        Prévia: {colunasSelecionadas.length} coluna{colunasSelecionadas.length === 1 ? '' : 's'} selecionada{colunasSelecionadas.length === 1 ? '' : 's'} · {linhas?.length ?? 0} {modo === 'pessoa' ? 'pessoa(s) na relação' : 'orientador(es)'}
       </p>
       <div className="flex flex-wrap gap-2">
         <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('pdf')}>
