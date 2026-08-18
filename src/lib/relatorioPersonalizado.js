@@ -124,6 +124,98 @@ export async function buscarDadosRelatorioPersonalizado() {
   })
 }
 
+// ── Colunas disponíveis — modo "Relação de bolsistas" (1 linha por pessoa) ──
+//
+// Mesmo critério de "orientador ativo" acima, mas cada linha é uma pessoa
+// (o orientador, depois cada titular, depois cada voluntário), agrupadas
+// pelo campo `grupo_orientador` — útil para listas de assinatura/conferência
+// em que é preciso ver o CPF de todo o grupo (orientador + até 8 titulares
+// + voluntários) de uma vez.
+
+export const CATEGORIAS_COLUNAS_RELACAO = [
+  {
+    categoria: 'Grupo',
+    campos: [
+      { key: 'grupo_orientador', label: 'Orientador (grupo)', default: true },
+      { key: 'codigo_orientador', label: 'Código do orientador', default: false },
+      { key: 'escola', label: 'Nome da escola', default: true },
+      { key: 'projeto_titulo', label: 'Título do projeto', default: false },
+    ],
+  },
+  {
+    categoria: 'Pessoa',
+    campos: [
+      { key: 'papel', label: 'Papel (Orientador/Titular/Voluntário)', default: true },
+      { key: 'nome', label: 'Nome completo', default: true },
+      { key: 'cpf', label: 'CPF', default: true },
+    ],
+  },
+]
+
+export async function buscarDadosRelatorioPorPessoa() {
+  // 1 — orientadores "de verdade" (mesmo critério do relatório por orientador)
+  const { data: orientData, error: e1 } = await supabase
+    .from('orientador')
+    .select('id, nome_completo, codigo_orientador, cpf, escola, contrato_url')
+    .not('codigo_orientador', 'is', null)
+    .order('nome_completo', { ascending: true })
+  if (e1) throw e1
+  if (!orientData?.length) return []
+
+  const orientIds = orientData.map(o => o.id)
+
+  // 2 — projeto selecionado de cada orientador
+  const { data: projData, error: e2 } = await supabase
+    .from('projeto')
+    .select('id, titulo, orientador_id')
+    .in('orientador_id', orientIds)
+    .eq('status', 'selecionado')
+  if (e2) throw e2
+
+  const projetoPorOrientador = Object.fromEntries((projData ?? []).map(p => [p.orientador_id, p]))
+  const orientadoresAtivos = orientData.filter(o => projetoPorOrientador[o.id])
+  if (!orientadoresAtivos.length) return []
+
+  const idsAtivos = orientadoresAtivos.map(o => o.id)
+
+  // 3 — bolsistas ativos, agrupados por orientador_id
+  const { data: bolsistaData, error: e3 } = await supabase
+    .from('bolsista')
+    .select('id, nome_completo, cpf, tipo, orientador_id')
+    .in('orientador_id', idsAtivos)
+    .eq('status', 'ativo')
+    .order('nome_completo', { ascending: true })
+  if (e3) throw e3
+
+  const bolsistasPorOrientador = {}
+  ;(bolsistaData ?? []).forEach(b => {
+    if (!bolsistasPorOrientador[b.orientador_id]) bolsistasPorOrientador[b.orientador_id] = []
+    bolsistasPorOrientador[b.orientador_id].push(b)
+  })
+
+  // 4 — monta o grupo: 1 linha para o orientador + 1 linha por bolsista
+  const linhas = []
+  orientadoresAtivos.forEach(o => {
+    const projeto = projetoPorOrientador[o.id]
+    const bolsistas = bolsistasPorOrientador[o.id] ?? []
+    const titulares = bolsistas.filter(b => b.tipo !== 'voluntario')
+    const voluntarios = bolsistas.filter(b => b.tipo === 'voluntario')
+
+    const base = {
+      grupo_orientador: o.nome_completo || '',
+      codigo_orientador: o.codigo_orientador || '',
+      escola: o.escola || '',
+      projeto_titulo: projeto?.titulo || '',
+    }
+
+    linhas.push({ ...base, papel: 'Orientador', nome: o.nome_completo || '', cpf: o.cpf || '' })
+    titulares.forEach(b => linhas.push({ ...base, papel: 'Titular', nome: b.nome_completo || '', cpf: b.cpf || '' }))
+    voluntarios.forEach(b => linhas.push({ ...base, papel: 'Voluntário', nome: b.nome_completo || '', cpf: b.cpf || '' }))
+  })
+
+  return linhas
+}
+
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
