@@ -9,7 +9,10 @@ const ICONS = { PIBICJR: Microscope, PROFICJR: School, PROFICJOVEM: Lightbulb, P
 const BORDERS = { PIBICJR: '#C5C1F5', PROFICJR: '#99F6E4', PROFICJOVEM: '#FDC5B0', POSGRADUACAO: '#FDE68A' }
 
 // Deriva do registro único (src/lib/programas.js), só decorando com ícone/borda/badge locais.
-const PROGRAMAS_CONFIG = PROGRAMAS.map((p) => ({
+// `visivelNoHub === false` oculta o card apenas nesta tela (Pós-Graduação e Projeto de
+// Pesquisa, a pedido da Secretaria) — o programa continua cadastrado e acessível em
+// outras telas (Acervo, rotas diretas etc.), só não aparece nesta grade por enquanto.
+const PROGRAMAS_CONFIG = PROGRAMAS.filter((p) => p.visivelNoHub !== false).map((p) => ({
   id: p.programaId,
   slug: p.slug,
   nome: p.nome,
