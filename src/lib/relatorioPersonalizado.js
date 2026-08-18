@@ -11,6 +11,13 @@ import * as XLSX from 'xlsx'
 import { Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun, WidthType, AlignmentType, ShadingType, PageOrientation } from 'docx'
 import { supabase } from '@/lib/supabase'
 
+// ── CPF só com dígitos (sem pontos/traço) ────────────────────────────────
+// Os sistemas de CND da PMV exigem o CPF "limpo" para emissão de certidão,
+// então todo CPF que sai deste relatório já vem sem máscara.
+function soDigitos(valor) {
+  return (valor || '').replace(/\D/g, '')
+}
+
 // ── Colunas disponíveis, por categoria ──────────────────────────────────────
 
 export const CATEGORIAS_COLUNAS = [
@@ -101,15 +108,15 @@ export async function buscarDadosRelatorioPersonalizado() {
     const voluntariosList = bolsistas.filter(b => b.tipo === 'voluntario')
     const titulares = titularesList.map(b => b.nome_completo).filter(Boolean)
     const voluntarios = voluntariosList.map(b => b.nome_completo).filter(Boolean)
-    const titularesCpfs = titularesList.map(b => b.cpf).filter(Boolean)
-    const voluntariosCpfs = voluntariosList.map(b => b.cpf).filter(Boolean)
+    const titularesCpfs = titularesList.map(b => soDigitos(b.cpf)).filter(Boolean)
+    const voluntariosCpfs = voluntariosList.map(b => soDigitos(b.cpf)).filter(Boolean)
 
     return {
       nome_completo: o.nome_completo || '',
       email: o.email || '',
       telefone: o.telefone || '',
       codigo_orientador: o.codigo_orientador || '',
-      cpf: o.cpf || '',
+      cpf: soDigitos(o.cpf),
       projeto_titulo: projeto?.titulo || '',
       area_conhecimento: projeto?.area_conhecimento || '',
       projeto_status: projeto?.status || '',
@@ -208,9 +215,9 @@ export async function buscarDadosRelatorioPorPessoa() {
       projeto_titulo: projeto?.titulo || '',
     }
 
-    linhas.push({ ...base, papel: 'Orientador', nome: o.nome_completo || '', cpf: o.cpf || '' })
-    titulares.forEach(b => linhas.push({ ...base, papel: 'Titular', nome: b.nome_completo || '', cpf: b.cpf || '' }))
-    voluntarios.forEach(b => linhas.push({ ...base, papel: 'Voluntário', nome: b.nome_completo || '', cpf: b.cpf || '' }))
+    linhas.push({ ...base, papel: 'Orientador', nome: o.nome_completo || '', cpf: soDigitos(o.cpf) })
+    titulares.forEach(b => linhas.push({ ...base, papel: 'Titular', nome: b.nome_completo || '', cpf: soDigitos(b.cpf) }))
+    voluntarios.forEach(b => linhas.push({ ...base, papel: 'Voluntário', nome: b.nome_completo || '', cpf: soDigitos(b.cpf) }))
   })
 
   return linhas
