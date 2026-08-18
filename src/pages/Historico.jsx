@@ -451,15 +451,17 @@ function defaultSelecionadas(categorias) {
 }
 
 function RelatorioPersonalizadoBody({ ano }) {
-  // 'orientador' → 1 linha por orientador · 'pessoa' → relação do grupo
-  // (orientador + titulares + voluntários), 1 linha por pessoa, com CPF de todos.
-  const [modo, setModo] = useState('orientador')
+  // 'pessoa' (padrão) → relação do grupo (orientador + titulares + voluntários),
+  // 1 linha por pessoa com CPF ao lado do nome — pronta para uso em CND na PMV.
+  // 'orientador' → 1 linha por orientador, com nomes/CPFs dos bolsistas agrupados
+  // numa mesma célula (útil para outras planilhas, não para consulta de CND).
+  const [modo, setModo] = useState('pessoa')
   const [linhasOrientador, setLinhasOrientador] = useState(null)
   const [linhasPessoa, setLinhasPessoa] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [exportando, setExportando] = useState(null)
-  const [selecionadas, setSelecionadas] = useState(() => defaultSelecionadas(CATEGORIAS_COLUNAS))
+  const [selecionadas, setSelecionadas] = useState(() => defaultSelecionadas(CATEGORIAS_COLUNAS_RELACAO))
 
   useEffect(() => {
     Promise.all([
@@ -520,21 +522,26 @@ function RelatorioPersonalizadoBody({ ano }) {
       <div className="flex flex-wrap gap-2">
         <Button
           type="button"
-          variant={modo === 'orientador' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => trocarModo('orientador')}
-        >
-          Por orientador
-        </Button>
-        <Button
-          type="button"
           variant={modo === 'pessoa' ? 'default' : 'outline'}
           size="sm"
           onClick={() => trocarModo('pessoa')}
         >
           Relação de bolsistas (por grupo)
         </Button>
+        <Button
+          type="button"
+          variant={modo === 'orientador' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => trocarModo('orientador')}
+        >
+          Por orientador
+        </Button>
       </div>
+      {modo === 'pessoa' && (
+        <p className="text-[11px] text-muted-foreground -mt-1">
+          Uma linha por pessoa (orientador + bolsistas do grupo) com o CPF já sem pontos/traço — pronto para colar no sistema de CND da PMV.
+        </p>
+      )}
       <div className="space-y-3">
         {categorias.map(cat => (
           <div key={cat.categoria}>
