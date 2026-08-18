@@ -21,6 +21,7 @@ export const CATEGORIAS_COLUNAS = [
       { key: 'email', label: 'E-mail', default: false },
       { key: 'telefone', label: 'Telefone', default: false },
       { key: 'codigo_orientador', label: 'Código do orientador', default: false },
+      { key: 'cpf', label: 'CPF', default: false },
     ],
   },
   {
@@ -41,7 +42,9 @@ export const CATEGORIAS_COLUNAS = [
     categoria: 'Bolsistas',
     campos: [
       { key: 'titulares_nomes', label: 'Nomes (titulares)', default: false },
+      { key: 'titulares_cpfs', label: 'CPF (titulares)', default: false },
       { key: 'voluntarios_nomes', label: 'Nomes (voluntários)', default: false },
+      { key: 'voluntarios_cpfs', label: 'CPF (voluntários)', default: false },
       { key: 'total_bolsistas', label: 'Total de bolsistas', default: false },
       { key: 'status_contrato', label: 'Status do contrato', default: false },
     ],
@@ -54,7 +57,7 @@ export async function buscarDadosRelatorioPersonalizado() {
   // 1 — orientadores "de verdade" (selecionados na edição, não meros inscritos)
   const { data: orientData, error: e1 } = await supabase
     .from('orientador')
-    .select('id, nome_completo, email, telefone, codigo_orientador, escola, contrato_url')
+    .select('id, nome_completo, email, telefone, codigo_orientador, cpf, escola, contrato_url')
     .not('codigo_orientador', 'is', null)
     .order('nome_completo', { ascending: true })
   if (e1) throw e1
@@ -79,7 +82,7 @@ export async function buscarDadosRelatorioPersonalizado() {
   // 3 — bolsistas ativos, agrupados por orientador_id
   const { data: bolsistaData, error: e3 } = await supabase
     .from('bolsista')
-    .select('id, nome_completo, tipo, orientador_id')
+    .select('id, nome_completo, cpf, tipo, orientador_id')
     .in('orientador_id', idsAtivos)
     .eq('status', 'ativo')
   if (e3) throw e3
@@ -94,20 +97,27 @@ export async function buscarDadosRelatorioPersonalizado() {
   return orientadoresAtivos.map(o => {
     const projeto = projetoPorOrientador[o.id]
     const bolsistas = bolsistasPorOrientador[o.id] ?? []
-    const titulares = bolsistas.filter(b => b.tipo !== 'voluntario').map(b => b.nome_completo).filter(Boolean)
-    const voluntarios = bolsistas.filter(b => b.tipo === 'voluntario').map(b => b.nome_completo).filter(Boolean)
+    const titularesList = bolsistas.filter(b => b.tipo !== 'voluntario')
+    const voluntariosList = bolsistas.filter(b => b.tipo === 'voluntario')
+    const titulares = titularesList.map(b => b.nome_completo).filter(Boolean)
+    const voluntarios = voluntariosList.map(b => b.nome_completo).filter(Boolean)
+    const titularesCpfs = titularesList.map(b => b.cpf).filter(Boolean)
+    const voluntariosCpfs = voluntariosList.map(b => b.cpf).filter(Boolean)
 
     return {
       nome_completo: o.nome_completo || '',
       email: o.email || '',
       telefone: o.telefone || '',
       codigo_orientador: o.codigo_orientador || '',
+      cpf: o.cpf || '',
       projeto_titulo: projeto?.titulo || '',
       area_conhecimento: projeto?.area_conhecimento || '',
       projeto_status: projeto?.status || '',
       escola: o.escola || '',
       titulares_nomes: titulares.join(', '),
+      titulares_cpfs: titularesCpfs.join(', '),
       voluntarios_nomes: voluntarios.join(', '),
+      voluntarios_cpfs: voluntariosCpfs.join(', '),
       total_bolsistas: bolsistas.length,
       status_contrato: o.contrato_url ? 'Emitido' : 'Pendente',
     }
