@@ -107,6 +107,35 @@ function NotaBar({ label, nota, max }) {
   );
 }
 
+// ── ORDENAÇÃO DA LISTA DE PROJETOS ───────────────────────────────────
+const ORDENACAO_OPCOES = [
+  { key: "codigo_facitec",       label: "Código"       },
+  { key: "titulo",               label: "Título"        },
+  { key: "orientador",           label: "Orientador"    },
+  { key: "ordem_classificacao",  label: "Classificação" },
+  { key: "status",               label: "Status"        },
+];
+
+// Compara duas linhas de projeto pelo campo escolhido. Texto usa localeCompare
+// pt-BR (acentos/maiúsculas corretos); classificação numérica manda quem não
+// tem nota (null) sempre para o fim, em ambos os sentidos de ordenação.
+function compararProjetos(a, b, campo) {
+  if (campo === "ordem_classificacao") {
+    const va = a.ordem_classificacao;
+    const vb = b.ordem_classificacao;
+    if (va == null && vb == null) return 0;
+    if (va == null) return 1;
+    if (vb == null) return -1;
+    return va - vb;
+  }
+  const textoDe = (p) => {
+    if (campo === "orientador") return p.orientador?.nome_completo || "";
+    if (campo === "status") return STATUS_PROJETO[p.status]?.label || p.status || "";
+    return p[campo] || "";
+  };
+  return textoDe(a).toLowerCase().localeCompare(textoDe(b).toLowerCase(), "pt-BR");
+}
+
 // ── TELA: LISTA DE PROJETOS ──────────────────────────────────────────
 function ListaProjetos({ onSelect, edicaoId }) {
   const programaNome = useProgramaAtual();
@@ -114,8 +143,20 @@ function ListaProjetos({ onSelect, edicaoId }) {
   const [loading, setLoading] = useState(true);
   const [busca, setBusca] = useState("");
   const [filtroStatus, setFiltroStatus] = useState("todos");
+  const [ordenarPor, setOrdenarPor] = useState("codigo_facitec");
+  const [ordemAsc, setOrdemAsc] = useState(true);
   const [pagina, setPagina] = useState(1);
   const POR_PAGINA = 10;
+
+  function handleOrdenarPor(campo) {
+    if (campo === ordenarPor) {
+      setOrdemAsc((asc) => !asc);
+    } else {
+      setOrdenarPor(campo);
+      setOrdemAsc(true);
+    }
+    setPagina(1);
+  }
 
   useEffect(() => {
     if (!edicaoId) return;
@@ -147,8 +188,13 @@ function ListaProjetos({ onSelect, edicaoId }) {
     return matchBusca && matchStatus;
   });
 
-  const totalPaginas = Math.ceil(filtrados.length / POR_PAGINA);
-  const paginados = filtrados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
+  const ordenados = [...filtrados].sort((a, b) => {
+    const cmp = compararProjetos(a, b, ordenarPor);
+    return ordemAsc ? cmp : -cmp;
+  });
+
+  const totalPaginas = Math.ceil(ordenados.length / POR_PAGINA);
+  const paginados = ordenados.slice((pagina - 1) * POR_PAGINA, pagina * POR_PAGINA);
 
   // contagem por status
   const contagem = projetos.reduce((acc, p) => {
@@ -208,6 +254,25 @@ function ListaProjetos({ onSelect, edicaoId }) {
         style={{ width:"100%", padding:"10px 14px", borderRadius:8, border:`0.5px solid ${C.border}`,
                  fontSize:13, color:C.dark, outline:"none" }}
       />
+
+      {/* Ordenação — clique de novo no mesmo botão inverte crescente/decrescente */}
+      <div style={{ display:"flex", alignItems:"center", gap:8, flexWrap:"wrap" }}>
+        <span style={{ fontSize:11, color:C.gray, fontWeight:500 }}>Ordenar por:</span>
+        {ORDENACAO_OPCOES.map(op => {
+          const ativo = ordenarPor === op.key;
+          return (
+            <button key={op.key} onClick={() => handleOrdenarPor(op.key)}
+              style={{ display:"flex", alignItems:"center", gap:4, padding:"5px 11px",
+                       borderRadius:20, border:`0.5px solid ${ativo ? C.accent : C.border}`,
+                       background: ativo ? C.accent : C.white,
+                       color: ativo ? "#fff" : C.gray,
+                       fontSize:11, fontWeight:500, cursor:"pointer", transition:"all 0.15s" }}>
+              {op.label}
+              {ativo && <span style={{ fontSize:11 }}>{ordemAsc ? "↑" : "↓"}</span>}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Tabela */}
       <Card style={{ padding:0, overflow:"hidden" }}>
@@ -272,8 +337,7 @@ function ListaProjetos({ onSelect, edicaoId }) {
           <button onClick={() => setPagina(p => Math.max(1, p - 1))} disabled={pagina === 1}
             style={{ padding:"6px 12px", borderRadius:6, border:`0.5px solid ${C.border}`,
                      background:C.white, cursor:"pointer", fontSize:12, color:C.gray }}>
-            ← Anterior
-          </button>
+            ← Anterior          </button>
           {Array.from({ length: totalPaginas }, (_, i) => i + 1).map(n => (
             <button key={n} onClick={() => setPagina(n)}
               style={{ padding:"6px 10px", borderRadius:6, border:`0.5px solid ${n === pagina ? C.accent : C.border}`,
@@ -612,8 +676,7 @@ function FluxoRecursos({ onVoltar, edicaoId }) {
       setLoading(true);
       const { data } = await supabase
         .from("projeto")
-        .select(`
-          id, codigo_facitec, titulo, status,
+        .select(`          id, codigo_facitec, titulo, status,
           orientador:orientador_id ( nome_completo, email )
         `)
         .eq("status", "recurso")
