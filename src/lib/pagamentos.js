@@ -178,17 +178,30 @@ export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoCo
 // "Pago" = já confirmado pelo Financeiro. "Comprometido" = processo enviado
 // à DAF ('solicitado') mas ainda não confirmado. Pagamentos ainda
 // 'pendente' (nem sequer enviados) não reservam saldo — ver Prompt 03.
-export async function calcularSaldoContrato(contratoId) {
+//
+// `excluirPagamentoIds` (opcional) tira do cálculo os pagamentos do próprio
+// lote que está sendo emitido/reimpresso agora. É necessário porque, ao
+// (re)emitir a ficha de um lote que já foi enviado à DAF antes (portanto já
+// está com status 'solicitado' no banco), o próprio lote passaria a contar
+// dentro de "comprometido" — e a ficha soma esse valor de novo por fora (o
+// total do lote impresso na tabela), contando-o em dobro. Excluindo os IDs
+// do próprio lote, o saldo retornado representa sempre "o que o contrato já
+// tinha comprometido/pago antes deste lote", não importa se este lote é
+// inédito ou uma reimpressão.
+export async function calcularSaldoContrato(contratoId, excluirPagamentoIds = []) {
   const [{ data: contrato, error: eCon }, { data: pagamentos, error: ePag }] = await Promise.all([
     supabase.from('contrato').select('valor_global').eq('id', contratoId).single(),
-    supabase.from('pagamento').select('valor, status').eq('contrato_id', contratoId).in('status', ['solicitado', 'pago']),
+    supabase.from('pagamento').select('id, valor, status').eq('contrato_id', contratoId).in('status', ['solicitado', 'pago']),
   ])
   if (eCon) throw eCon
   if (ePag) throw ePag
 
+  const excluirSet = new Set(excluirPagamentoIds ?? [])
+  const considerados = (pagamentos ?? []).filter(p => !excluirSet.has(p.id))
+
   const reservado = Number(contrato?.valor_global ?? 0)
-  const pago = (pagamentos ?? []).filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
-  const comprometido = (pagamentos ?? []).filter(p => p.status === 'solicitado').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const pago = considerados.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const comprometido = considerados.filter(p => p.status === 'solicitado').reduce((s, p) => s + Number(p.valor ?? 0), 0)
 
   return { reservado, pago, comprometido, disponivel: reservado - pago - comprometido }
 }
