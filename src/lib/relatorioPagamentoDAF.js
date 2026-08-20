@@ -160,9 +160,15 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   // ── Situação do contrato ──────────────────────────────────────────────
   y = checkPage(y, 34)
   const reservado = Number(contrato?.valor_global ?? contrato?.saldo?.reservado ?? 0)
-  const pagoAntes = Number(contrato?.saldo?.pago ?? 0)
-  const pagoAteEsteLote = pagoAntes + total
-  const saldoRestante = reservado - pagoAteEsteLote
+  // Soma "pago" (já confirmado pela Financeira) + "comprometido" (lotes
+  // anteriores já enviados à DAF via FSPB, mas ainda sem confirmação de
+  // pagamento) — não só "pago". Sem isso, um Ciclo cuja confirmação de
+  // pagamento está atrasada some do cálculo, e a ficha do ciclo seguinte
+  // é emitida com o saldo do contrato desatualizado (repete o valor do
+  // ciclo anterior em vez de abatê-lo).
+  const comprometidoAntes = Number(contrato?.saldo?.pago ?? 0) + Number(contrato?.saldo?.comprometido ?? 0)
+  const comprometidoAteEsteLote = comprometidoAntes + total
+  const saldoRestante = reservado - comprometidoAteEsteLote
 
   doc.setFillColor(...CINZA_CLARO)
   doc.roundedRect(mL, y, usableW, 28, 2, 2, 'F')
@@ -174,7 +180,7 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   doc.setFontSize(9)
   doc.setTextColor(0, 0, 0)
   doc.text(`Reservado: ${fmtMoeda(reservado)}`, mL + 4, y + 14)
-  doc.text(`Pago até este lote (incluindo-o): ${fmtMoeda(pagoAteEsteLote)}`, mL + 4, y + 20)
+  doc.text(`Comprometido até este lote (incluindo-o): ${fmtMoeda(comprometidoAteEsteLote)}`, mL + 4, y + 20)
   doc.text(`Saldo restante após este pagamento: ${fmtMoeda(saldoRestante)}`, mL + 4, y + 26)
   doc.setTextColor(0, 0, 0)
   y += 28 + 20
