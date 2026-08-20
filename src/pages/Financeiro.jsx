@@ -813,7 +813,11 @@ export function Financeiro() {
         ...b,
         cndValidade: cndPorBeneficiario[`${b.beneficiario_tipo}:${b.beneficiarioId}`] ?? null,
       }))
-      const saldo = saldos[contrato.id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
+            // Busca o saldo direto do banco excluindo os pagamentos deste próprio
+      // lote — não usa o `saldos` do estado, que pode estar desatualizado
+      // (lote inédito) ou já incluir este lote (reimpressão de FSPB já
+      // enviada), causando saldo errado ou contagem em dobro na ficha.
+      const saldo = await calcularSaldoContrato(contrato.id, pagamentoIds)
       exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb)
 
       if (novaFicha) {
