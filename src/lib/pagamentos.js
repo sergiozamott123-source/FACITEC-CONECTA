@@ -180,32 +180,37 @@ export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoCo
 // 'pendente' (nem sequer enviados) não reservam saldo — ver Prompt 03.
 //
 // `excluirPagamentoIds` (opcional) tira do cálculo os pagamentos do próprio
-// lote que está sendo emitido/reimpresso agora. É necessário porque, ao
-// (re)emitir a ficha de um lote que já foi enviado à DAF antes (portanto já
-// está com status 'solicitado' no banco), o próprio lote passaria a contar
-// dentro de "comprometido" — e a ficha soma esse valor de novo por fora (o
-// total do lote impresso na tabela), contando-o em dobro. Excluindo os IDs
-// do próprio lote, o saldo retornado representa sempre "o que o contrato já
-// tinha comprometido/pago antes deste lote", não importa se este lote é
-// inédito ou uma reimpressão.
-export async function calcularSaldoContrato(contratoId, excluirPagamentoIds = []) {
+// lote que está sendo emitido/reimpresso agora — evita que, ao reimprimir
+// uma FSPB já enviada (portanto já 'solicitado' no banco), o próprio lote
+// seja contado dentro de "comprometido" E de novo por fora (o total impresso
+// na ficha), duplicando o valor.
+//
+// `antesDoNumeroCiclo` (opcional) restringe a soma a pagamentos de ciclos
+// com numero_ciclo MENOR que o informado. Sem isso, a ficha de um ciclo
+// anterior (ex.: Ciclo 1) reimpressa depois que um ciclo seguinte (Ciclo 2)
+// já foi enviado à DAF passaria a contar o Ciclo 2 como "já comprometido" —
+// olhando pra frente na linha do tempo, o que não faz sentido para o
+// "saldo até este ciclo" de uma ficha mais antiga. Com o filtro, cada ficha
+// só soma o que veio estritamente antes dela mesma.
+export async function calcularSaldoContrato(contratoId, excluirPagamentoIds = [], antesDoNumeroCiclo = null) {
   const [{ data: contrato, error: eCon }, { data: pagamentos, error: ePag }] = await Promise.all([
     supabase.from('contrato').select('valor_global').eq('id', contratoId).single(),
-    supabase.from('pagamento').select('id, valor, status').eq('contrato_id', contratoId).in('status', ['solicitado', 'pago']),
+    supabase
+      .from('pagamento')
+      .select('id, valor, status, ciclo:ciclo_id(numero_ciclo)')
+      .eq('contrato_id', contratoId)
+      .in('status', ['solicitado', 'pago']),
   ])
   if (eCon) throw eCon
   if (ePag) throw ePag
 
   const excluirSet = new Set(excluirPagamentoIds ?? [])
-  const considerados = (pagamentos ?? []).filter(p => !excluirSet.has(p.id))
+  const considerados = (pagamentos ?? [])
+    .filter(p => !excluirSet.has(p.id))
+    .filter(p => antesDoNumeroCiclo == null || (p.ciclo?.numero_ciclo ?? Infinity) < antesDoNumeroCiclo)
 
   const reservado = Number(contrato?.valor_global ?? 0)
   const pago = considerados.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
-  const comprometido = considerados.filter(p => p.status === 'solicitado').reduce((s, p) => s + Number(p.valor ?? 0), 0)
-
-  return { reservado, pago, comprometido, disponivel: reservado - pago - comprometido }
-}
-
 // ── 6/7 — Ações sobre pagamentos ──────────────────────────────────────────
 
 // ── 6a — Numeração institucional FSPB (Ficha de Solicitação de Pagamento de
