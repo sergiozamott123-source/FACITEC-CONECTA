@@ -6,7 +6,7 @@
 // cores AZUL/CINZA) usado em src/lib/relatorioFinanceiro.js.
 
 import { jsPDF } from 'jspdf'
-
+import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
 const AZUL = [26, 39, 68]
 const CINZA_CLARO = [244, 246, 249]
 const CINZA_TEXTO = [90, 96, 110]
@@ -33,13 +33,8 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
 
   let pagina = 1
 
-  function cabecalho() {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text('FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC', pgW / 2, 12, { align: 'center' })
-    doc.setFont('helvetica', 'normal')
-    doc.text('Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV', pgW / 2, 16.5, { align: 'center' })
+   function cabecalho() {
+    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
     doc.setDrawColor(...AZUL)
     doc.setLineWidth(0.6)
     doc.line(mL, 19.5, pgW - mR, 19.5)
