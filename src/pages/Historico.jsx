@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import {
   ChevronDown, DollarSign, FileCheck2, FileSignature, ClipboardCheck, Settings2,
-  CheckCircle2, Clock, AlertTriangle, Download, Loader2, ExternalLink,
+  CheckCircle2, Clock, AlertTriangle, Download, Loader2, ExternalLink, IdCard,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -11,6 +11,7 @@ import { supabase } from '@/lib/supabase'
 import { useAdmin } from '@/contexts/AdminContext'
 import { pagamentoService } from '@/lib/db'
 import { buscarDadosRelatorioFinanceiro, exportarPDFFinanceiro, exportarExcelFinanceiro } from '@/lib/relatorioFinanceiro'
+import { exportarFichaCadastralPDF } from '@/lib/fichaCadastralPdf'
 import { listarCiclos, statusRelatorioNoCiclo } from '@/lib/relatorioMensal'
 import { gerarPDFRelatorioMensal } from '@/lib/relatorioMensalPdf'
 import { computarRanking, CONSENSO_VARIANT } from '@/lib/classificacaoRanking'
