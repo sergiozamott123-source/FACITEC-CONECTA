@@ -334,4 +334,445 @@ function RelatorioMensalBody({ edicaoId, ciclosIniciais }) {
       <VerTelaCompleta to="/admin/relatorios-mensais">Abrir tela completa</VerTelaCompleta>
     </>
   )
+}// ── Card 3 — Contratos ───────────────────────────────────────────────────────
+function ContratosBody({ orientadores, ano }) {
+  if (!orientadores) return <LoadingInline />
+  return (
+    <>
+      <div className="border border-border rounded-lg overflow-hidden divide-y divide-border">
+        {orientadores.length === 0 && <p className="px-3 py-4 text-sm text-muted-foreground text-center">Nenhum orientador ativo nesta edição.</p>}
+        {orientadores.map(o => (
+          <div key={o.id} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
+            <span className="truncate">{o.nome_completo}</span>
+            {o.contrato_url ? (
+              <span className="inline-flex items-center gap-1.5 text-xs text-green-700 shrink-0">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Emitido
+              </span>
+            ) : (
+              <span className="text-xs text-muted-foreground shrink-0">Pendente</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <VerTelaCompleta to={`/admin/pibic-jr/${ano}/m2/contratos`}>Abrir painel de contratos</VerTelaCompleta>
+    </>
+  )
+}
+
+// ── Card 4 — Avaliação ───────────────────────────────────────────────────────
+function AvaliacaoBody({ edicaoId, statusTallyInicial }) {
+  const [statusTally, setStatusTally] = useState(statusTallyInicial ?? null)
+  const [ranking, setRanking] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+
+  useEffect(() => {
+    if (!edicaoId) return
+    async function carregar() {
+      setLoading(true)
+      setErro(null)
+      try {
+        const { data: projetos, error: ep } = await supabase
+          .from('projeto').select('id, titulo, area_conhecimento').eq('edicao_id', edicaoId)
+        if (ep) throw ep
+        const projetoIds = (projetos ?? []).map(p => p.id)
+
+        if (!statusTally) {
+          const { data: avals, error: ea } = await supabase.from('avaliacao').select('status').in('projeto_id', projetoIds.length ? projetoIds : [-1])
+          if (ea) throw ea
+          const tally = { pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }
+          ;(avals ?? []).forEach(a => { if (tally[a.status] !== undefined) tally[a.status]++ })
+          setStatusTally(tally)
+        }
+
+        if (!projetoIds.length) { setRanking([]); return }
+
+        const { data: criterios, error: ec } = await supabase
+          .from('criterio_avaliacao').select('id, codigo, nome, nota_maxima, ordem').eq('edicao_id', edicaoId).order('ordem', { ascending: true })
+        if (ec) throw ec
+
+        const { data: avaliacoesConcluidas, error: eac } = await supabase
+          .from('avaliacao')
+          .select(`id, recomendacao_final, projeto_id, notas_criterio:avaliacao_criterio ( nota, criterio:criterio_id ( id, codigo ) )`)
+          .eq('status', 'concluida')
+          .in('projeto_id', projetoIds)
+        if (eac) throw eac
+
+        setRanking(avaliacoesConcluidas?.length ? computarRanking(projetos, avaliacoesConcluidas, criterios ?? []) : [])
+      } catch {
+        setErro('Erro ao carregar o resumo de avaliação.')
+      } finally {
+        setLoading(false)
+      }
+    }
+    carregar()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [edicaoId])
+
+  if (!edicaoId || loading || !statusTally || ranking === null) return <LoadingInline />
+
+  const porConsenso = ranking.reduce((acc, r) => { acc[r.consenso] = (acc[r.consenso] ?? 0) + 1; return acc }, {})
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="grid grid-cols-4 gap-3">
+        <MiniStat label="Pendentes" value={statusTally.pendente} />
+        <MiniStat label="Em andamento" value={statusTally.em_andamento} />
+        <MiniStat icon={CheckCircle2} label="Concluídas" value={statusTally.concluida} tone="green" />
+        <MiniStat icon={AlertTriangle} label="Em recurso" value={statusTally.recurso} tone="red" />
+      </div>
+      <div className="space-y-1.5">
+        <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+          Classificação — {ranking.length} projeto(s) avaliado(s)
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {Object.entries(porConsenso).map(([consenso, n]) => (
+            <Badge key={consenso} variant={CONSENSO_VARIANT[consenso] ?? 'secondary'} className="text-xs">{n} {consenso}</Badge>
+          ))}
+          {ranking.length === 0 && <span className="text-xs text-muted-foreground">Nenhuma avaliação concluída ainda.</span>}
+        </div>
+      </div>
+      <div className="flex gap-4">
+        <VerTelaCompleta to="/avaliacoes">Abrir Avaliações</VerTelaCompleta>
+        <VerTelaCompleta to="/classificacao">Abrir Classificação</VerTelaCompleta>
+      </div>
+    </>
+  )
+}
+
+// ── Card 5 — Relatório Personalizado ─────────────────────────────────────────
+
+function defaultSelecionadas(categorias) {
+  const s = new Set()
+  categorias.forEach(cat => cat.campos.forEach(c => { if (c.default) s.add(c.key) }))
+  return s
+}
+
+function RelatorioPersonalizadoBody({ ano }) {
+  // 'pessoa' (padrão) → relação do grupo (orientador + titulares + voluntários),
+  // 1 linha por pessoa com CPF ao lado do nome — pronta para uso em CND na PMV.
+  // 'orientador' → 1 linha por orientador, com nomes/CPFs dos bolsistas agrupados
+  // numa mesma célula (útil para outras planilhas, não para consulta de CND).
+  const [modo, setModo] = useState('pessoa')
+  const [linhasOrientador, setLinhasOrientador] = useState(null)
+  const [linhasPessoa, setLinhasPessoa] = useState(null)
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [exportando, setExportando] = useState(null)
+  const [selecionadas, setSelecionadas] = useState(() => defaultSelecionadas(CATEGORIAS_COLUNAS_RELACAO))
+
+  useEffect(() => {
+    Promise.all([
+      buscarDadosRelatorioPersonalizado(),
+      buscarDadosRelatorioPorPessoa(),
+    ])
+      .then(([porOrientador, porPessoa]) => {
+        setLinhasOrientador(porOrientador)
+        setLinhasPessoa(porPessoa)
+      })
+      .catch(() => setErro('Não foi possível carregar os dados do relatório.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  const categorias = modo === 'pessoa' ? CATEGORIAS_COLUNAS_RELACAO : CATEGORIAS_COLUNAS
+  const linhas = modo === 'pessoa' ? linhasPessoa : linhasOrientador
+
+  function trocarModo(novoModo) {
+    if (novoModo === modo) return
+    setModo(novoModo)
+    setSelecionadas(defaultSelecionadas(novoModo === 'pessoa' ? CATEGORIAS_COLUNAS_RELACAO : CATEGORIAS_COLUNAS))
+  }
+
+  function toggleCampo(key) {
+    setSelecionadas(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+  }
+
+  const colunasSelecionadas = useMemo(
+    () => categorias.flatMap(cat => cat.campos).filter(c => selecionadas.has(c.key)),
+    [categorias, selecionadas],
+  )
+
+  async function handleExportar(formato) {
+    if (!linhas || !colunasSelecionadas.length) return
+    setExportando(formato)
+    setErro(null)
+    try {
+      if (formato === 'pdf') exportarPDFPersonalizado(linhas, colunasSelecionadas, ano)
+      else if (formato === 'excel') exportarExcelPersonalizado(linhas, colunasSelecionadas, ano)
+      else await exportarWordPersonalizado(linhas, colunasSelecionadas, ano)
+    } catch {
+      setErro('Não foi possível gerar o relatório personalizado.')
+    } finally {
+      setExportando(null)
+    }
+  }
+
+  if (loading) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="flex flex-wrap gap-2">
+        <Button
+          type="button"
+          variant={modo === 'pessoa' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => trocarModo('pessoa')}
+        >
+          Relação de bolsistas (por grupo)
+        </Button>
+        <Button
+          type="button"
+          variant={modo === 'orientador' ? 'default' : 'outline'}
+          size="sm"
+          onClick={() => trocarModo('orientador')}
+        >
+          Por orientador
+        </Button>
+      </div>
+      {modo === 'pessoa' && (
+        <p className="text-[11px] text-muted-foreground -mt-1">
+          Uma linha por pessoa (orientador + bolsistas do grupo) com o CPF já sem pontos/traço — pronto para colar no sistema de CND da PMV.
+        </p>
+      )}
+      <div className="space-y-3">
+        {categorias.map(cat => (
+          <div key={cat.categoria}>
+            <p className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide mb-1.5">{cat.categoria}</p>
+            <div className="flex flex-wrap gap-x-4 gap-y-1.5">
+              {cat.campos.map(c => (
+                <label key={c.key} className="flex items-center gap-1.5 text-sm cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={selecionadas.has(c.key)}
+                    onChange={() => toggleCampo(c.key)}
+                    className="rounded border-border"
+                  />
+                  {c.label}
+                </label>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        Prévia: {colunasSelecionadas.length} coluna{colunasSelecionadas.length === 1 ? '' : 's'} selecionada{colunasSelecionadas.length === 1 ? '' : 's'} · {linhas?.length ?? 0} {modo === 'pessoa' ? 'pessoa(s) na relação' : 'orientador(es)'}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('pdf')}>
+          {exportando === 'pdf' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar PDF
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('excel')}>
+          {exportando === 'excel' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Excel
+        </Button>
+        <Button variant="outline" size="sm" disabled={!!exportando || !colunasSelecionadas.length} onClick={() => handleExportar('word')}>
+          {exportando === 'word' ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Exportar Word
+        </Button>
+      </div>
+    </>
+  )
+}// ── Card 6 — Ficha Cadastral Individual (Bolsistas) ──────────────────────────
+// Um único PDF, uma página completa por bolsista do grupo selecionado
+// (titulares + voluntários), pronto para destacar e anexar ao processo
+// físico enviado à Gerência Financeira (abertura de conta/cadastramento).
+function FichaCadastralBody({ ano }) {
+  const [orientadores, setOrientadores] = useState([])
+  const [orientadorId, setOrientadorId] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [erro, setErro] = useState(null)
+  const [exportando, setExportando] = useState(false)
+
+  useEffect(() => {
+    supabase
+      .from('orientador')
+      .select('id, nome_completo')
+      .not('codigo_orientador', 'is', null)
+      .order('nome_completo')
+      .then(({ data }) => setOrientadores(data ?? []))
+      .catch(() => setErro('Não foi possível carregar os orientadores.'))
+      .finally(() => setLoading(false))
+  }, [])
+
+  async function handleExportar() {
+    if (!orientadorId) return
+    setExportando(true)
+    setErro(null)
+    try {
+      const linhas = await buscarDadosRelatorioFinanceiro(ano, [orientadorId])
+      if (!linhas.length) { setErro('Nenhum bolsista ativo encontrado para este orientador.'); return }
+      exportarFichaCadastralPDF(linhas, ano)
+    } catch {
+      setErro('Não foi possível gerar a ficha cadastral.')
+    } finally {
+      setExportando(false)
+    }
+  }
+
+  if (loading) return <LoadingInline />
+
+  return (
+    <>
+      <ErroInline msg={erro} />
+      <div className="flex flex-wrap items-end gap-3">
+        <select
+          value={orientadorId}
+          onChange={e => setOrientadorId(e.target.value)}
+          className="border border-border rounded-md px-3 py-1.5 text-sm bg-background"
+        >
+          <option value="">Selecione um orientador/grupo</option>
+          {orientadores.map(o => <option key={o.id} value={o.id}>{o.nome_completo}</option>)}
+        </select>
+        <Button variant="outline" size="sm" disabled={!orientadorId || exportando} onClick={handleExportar}>
+          {exportando ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <Download className="w-3.5 h-3.5 mr-1.5" />}
+          Gerar PDF (ficha por bolsista)
+        </Button>
+      </div>
+      <p className="text-[11px] text-muted-foreground">
+        Gera um único PDF com uma página completa por bolsista do grupo selecionado (titulares e voluntários) — nome, CPF, RG, data de nascimento, endereço, contato e dados do responsável. Sem dados bancários. Pronto para destacar e inserir no processo enviado à Gerência Financeira.
+      </p>
+    </>
+  )
+}
+
+// ── Hub — Central de relatórios ──────────────────────────────────────────────
+// Mantém o nome "Historico" porque é o componente já roteado em /historico
+// (App.jsx) — trocar o nome exigiria tocar o roteamento sem necessidade.
+export function Historico() {
+  const { edicaoSelecionada } = useAdmin()
+  const edicaoId = edicaoSelecionada?.id ?? null
+  const ano = edicaoSelecionada?.data_inicio ? new Date(edicaoSelecionada.data_inicio).getFullYear() : '2026'
+
+  const [expanded, setExpanded] = useState(() => new Set())
+  const [loaded, setLoaded] = useState(() => new Set())
+
+  const toggle = useCallback((key) => {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key)
+      else next.add(key)
+      return next
+    })
+    setLoaded(prev => (prev.has(key) ? prev : new Set(prev).add(key)))
+  }, [])
+
+  // Resumos leves para os cabeçalhos dos cards (carregados no mount, não no expand).
+  const [ciclos, setCiclos] = useState(null)
+  const [contratos, setContratos] = useState(null)
+  const [statusTally, setStatusTally] = useState(null)
+
+  useEffect(() => {
+    if (!edicaoId) return
+    listarCiclos(edicaoId).then(setCiclos).catch(() => setCiclos([]))
+  }, [edicaoId])
+
+  useEffect(() => {
+    supabase
+      .from('orientador')
+      .select('id, nome_completo, contrato_url')
+      .not('codigo_orientador', 'is', null)
+      .order('nome_completo')
+      .then(({ data }) => setContratos(data ?? []))
+  }, [])
+
+  useEffect(() => {
+    if (!edicaoId) return
+    supabase.from('projeto').select('id').eq('edicao_id', edicaoId).then(({ data: projetos }) => {
+      const ids = (projetos ?? []).map(p => p.id)
+      if (!ids.length) { setStatusTally({ pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }); return }
+      supabase.from('avaliacao').select('status').in('projeto_id', ids).then(({ data }) => {
+        const tally = { pendente: 0, em_andamento: 0, concluida: 0, recurso: 0 }
+        ;(data ?? []).forEach(a => { if (tally[a.status] !== undefined) tally[a.status]++ })
+        setStatusTally(tally)
+      })
+    })
+  }, [edicaoId])
+
+  const emitidos = contratos?.filter(o => o.contrato_url).length ?? 0
+  const totalOrientadores = contratos?.length ?? 0
+
+  const totalAval = statusTally ? Object.values(statusTally).reduce((s, n) => s + n, 0) : 0
+  const statusAvaliacaoLabel = !statusTally
+    ? '...'
+    : totalAval === 0
+      ? 'Sem avaliações'
+      : statusTally.concluida === totalAval
+        ? 'Concluída'
+        : 'Em andamento'
+  const statusAvaliacaoVariant = statusAvaliacaoLabel === 'Concluída' ? 'success' : statusAvaliacaoLabel === 'Em andamento' ? 'default' : 'secondary'
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold text-foreground">Central de relatórios</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Financeiro, obrigações dos orientadores, contratos e avaliação em um só lugar.
+        </p>
+      </div>
+
+      <div className="space-y-3">
+        <RelatorioCard
+          icon={DollarSign} iconBg="bg-emerald-100" iconColor="text-emerald-600"
+          title="Financeiro"
+          headerRight={<Badge variant="secondary" className="text-xs">Por orientador</Badge>}
+          expanded={expanded.has('financeiro')} onToggle={() => toggle('financeiro')}
+        >
+          {loaded.has('financeiro') ? <FinanceiroBody ano={ano} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={FileCheck2} iconBg="bg-blue-100" iconColor="text-blue-600"
+          title="Relatório Mensal · Obrigações do Orientador"
+          headerRight={<Badge variant="secondary" className="text-xs">{ciclos ? `${ciclos.length} ciclos` : '...'}</Badge>}
+          expanded={expanded.has('mensal')} onToggle={() => toggle('mensal')}
+        >
+          {loaded.has('mensal') ? <RelatorioMensalBody edicaoId={edicaoId} ciclosIniciais={ciclos} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={FileSignature} iconBg="bg-violet-100" iconColor="text-violet-600"
+          title="Contratos"
+          headerRight={<Badge variant="secondary" className="text-xs">{contratos ? `${emitidos}/${totalOrientadores} emitidos` : '...'}</Badge>}
+          expanded={expanded.has('contratos')} onToggle={() => toggle('contratos')}
+        >
+          {loaded.has('contratos') ? <ContratosBody orientadores={contratos} ano={ano} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={ClipboardCheck} iconBg="bg-amber-100" iconColor="text-amber-600"
+          title="Avaliação"
+          headerRight={<Badge variant={statusAvaliacaoVariant} className="text-xs">{statusAvaliacaoLabel}</Badge>}
+          expanded={expanded.has('avaliacao')} onToggle={() => toggle('avaliacao')}
+        >
+          {loaded.has('avaliacao') ? <AvaliacaoBody edicaoId={edicaoId} statusTallyInicial={statusTally} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={Settings2} iconBg="bg-slate-100" iconColor="text-slate-600"
+          title="Relatório Personalizado"
+          headerRight={<Badge variant="secondary" className="text-xs">Monte sua própria planilha</Badge>}
+          expanded={expanded.has('personalizado')} onToggle={() => toggle('personalizado')}
+        >
+          {loaded.has('personalizado') ? <RelatorioPersonalizadoBody ano={ano} /> : null}
+        </RelatorioCard>
+
+        <RelatorioCard
+          icon={IdCard} iconBg="bg-cyan-100" iconColor="text-cyan-600"
+          title="Ficha Cadastral Individual (Bolsistas)"
+          headerRight={<Badge variant="secondary" className="text-xs">Por orientador/grupo</Badge>}
+          expanded={expanded.has('ficha-cadastral')} onToggle={() => toggle('ficha-cadastral')}
+        >
+          {loaded.has('ficha-cadastral') ? <FichaCadastralBody ano={ano} /> : null}
+        </RelatorioCard>
+      </div>
+    </div>
+  )
 }
