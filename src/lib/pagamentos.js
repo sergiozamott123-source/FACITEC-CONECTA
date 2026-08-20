@@ -211,6 +211,11 @@ export async function calcularSaldoContrato(contratoId, excluirPagamentoIds = []
 
   const reservado = Number(contrato?.valor_global ?? 0)
   const pago = considerados.filter(p => p.status === 'pago').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+  const comprometido = considerados.filter(p => p.status === 'solicitado').reduce((s, p) => s + Number(p.valor ?? 0), 0)
+
+  return { reservado, pago, comprometido, disponivel: reservado - pago - comprometido }
+}
+
 // ── 6/7 — Ações sobre pagamentos ──────────────────────────────────────────
 
 // ── 6a — Numeração institucional FSPB (Ficha de Solicitação de Pagamento de
