@@ -641,7 +641,7 @@ export default function BolsistaDetalhe() {
                 ? new Date(bolsista.data_nascimento + 'T12:00:00').toLocaleDateString('pt-BR')
                 : null}
             />
-            <Field label="Ano / série" value={bolsista.ano_escolar} />
+            <Field label="Ano / série" value={bolsista.ano_serie} />
             <Field label="Escola" value={bolsista.escola_origem} />
             <Field label="Telefone" value={bolsista.telefone} />
             <Field label="E-mail" value={bolsista.email} />

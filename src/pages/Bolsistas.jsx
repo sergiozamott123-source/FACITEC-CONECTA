@@ -1,6 +1,6 @@
 import { useState, useCallback, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { Plus, Pencil, Trash2, GraduationCap, User, Search, ChevronDown, FolderKanban } from 'lucide-react'
+import { Plus, Pencil, Trash2, GraduationCap, User, Search, ChevronDown, FolderKanban, ArrowLeftRight } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -22,8 +22,12 @@ const MODAL_OPTS = [
   { value: 'maior_idade', label: 'Maior de idade' },
   { value: 'menor_idade', label: 'Menor de idade' },
 ]
-const STATUS_OPTS = ['ativo', 'inativo', 'suspenso', 'encerrado']
-const STATUS_VARIANT = { ativo: 'success', inativo: 'secondary', suspenso: 'warning', encerrado: 'secondary' }
+const STATUS_OPTS = ['ativo', 'inativo', 'suspenso', 'encerrado', 'substituido']
+// 'substituido': o bolsista saiu da equipe por uma troca (não por exclusão
+// nem desligamento) — fica com um selo próprio para diferenciar dos outros
+// motivos de saída, e continua aparecendo na lista (nunca é escondido) pra
+// ficar transparente pra Secretaria quem trocou com quem.
+const STATUS_VARIANT = { ativo: 'success', inativo: 'secondary', suspenso: 'warning', encerrado: 'secondary', substituido: 'warning' }
 
 const EMPTY_B = { nome_completo: '', email: '', cpf: '', telefone: '', rg: '', tipo: 'bolsista', modalidade: 'regular', status: 'ativo', projeto_id: '', orientador_id: '' }
 const EMPTY_O = { nome_completo: '', email: '', cpf: '', telefone: '', instituicao: '' }
@@ -172,6 +176,12 @@ function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete, onVe
                     <Badge variant={STATUS_VARIANT[b.status] ?? 'secondary'} className="text-xs">{b.status}</Badge>
                   </div>
                   <p className="text-xs text-muted-foreground">{b.email ?? ''} {b.cpf ? `· CPF: ${b.cpf}` : ''}</p>
+                  {b.status === 'substituido' && b.substituto && (
+                    <p className="text-xs text-amber-700 flex items-center gap-1">
+                      <ArrowLeftRight className="w-3 h-3 shrink-0" />
+                      Substituído por <span className="font-medium">{b.substituto.nome_completo}</span>
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="flex gap-1 shrink-0">

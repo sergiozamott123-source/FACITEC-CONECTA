@@ -893,7 +893,7 @@ export default function ContratoDetalhe() {
                       <div style={{ fontSize: 13, fontWeight: 600, color: C.dark }}>{b.nome_completo}</div>
                       <div style={{ fontSize: 11, color: C.grayL, marginTop: 2 }}>
                         {b.cpf && <span style={{ fontFamily: "monospace" }}>{b.cpf}</span>}
-                        {b.ano_escolar && <span style={{ marginLeft: b.cpf ? 8 : 0 }}>{b.ano_escolar}</span>}
+                        {b.ano_serie && <span style={{ marginLeft: b.cpf ? 8 : 0 }}>{b.ano_serie}</span>}
                       </div>
                     </div>
                     <div style={{ fontSize: 12, color: C.gray }}>
