@@ -9,6 +9,17 @@ const BUCKET = 'inscricoes'
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ACEITOS = '.pdf,.jpg,.jpeg,.png'
 
+// Prazo definido pelo Coordenador da CCAD (30/08/2026): substituições de
+// bolsista só são permitidas até o fim do ciclo de setembro/2026. Depois
+// dessa data, novas trocas passam a depender de avaliação caso a caso da
+// Secretaria Executiva — o botão "Substituir" fica desabilitado na tela, e
+// o banco de dados também recusa a operação (função substituir_bolsista),
+// então o prazo vale mesmo que alguém tente contornar a tela.
+const PRAZO_SUBSTITUICAO_FIM = new Date('2026-09-30T23:59:59-03:00')
+function substituicaoPermitida() {
+  return new Date() <= PRAZO_SUBSTITUICAO_FIM
+}
+
 function maskCpf(v) {
   return v.replace(/\D/g, '').slice(0, 11)
     .replace(/(\d{3})(\d)/, '$1.$2')
@@ -168,8 +179,9 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
   const [form, setForm] = useState({
     nome_completo: bolsista.nome_completo ?? '',
     cpf: bolsista.cpf ?? '',
+    rg: bolsista.rg ?? '',
     data_nascimento: bolsista.data_nascimento ?? '',
-    ano_escolar: bolsista.ano_escolar ?? '',
+    ano_serie: bolsista.ano_serie ?? '',
     escola: bolsista.escola ?? '',
     telefone: bolsista.telefone ?? '',
     email: bolsista.email ?? '',
@@ -239,7 +251,7 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">{form.nome_completo}</p>
           <p className="text-xs text-gray-400">
-            {form.ano_escolar || '—'}{form.data_nascimento && ` · ${calcIdade(form.data_nascimento)} anos`}
+            {form.ano_serie || '—'}{form.data_nascimento && ` · ${calcIdade(form.data_nascimento)} anos`}
           </p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
@@ -273,12 +285,16 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
                 <input name="cpf" value={form.cpf} onChange={handleChange} onBlur={handleBlur} placeholder="000.000.000-00" className={inputCls} />
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">RG</label>
+                <input name="rg" value={form.rg} onChange={handleChange} onBlur={handleBlur} placeholder="000.000.000" className={inputCls} />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
                 <input name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar</label>
-                <input name="ano_escolar" value={form.ano_escolar} onChange={handleChange} onBlur={handleBlur} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
+                <input name="ano_serie" value={form.ano_serie} onChange={handleChange} onBlur={handleBlur} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
               </div>
             </div>
             {form.data_nascimento && (
@@ -405,10 +421,14 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
           </div>
 
           <div className="pt-1 border-t border-gray-100 flex items-center gap-4">
-            <button onClick={onSubstituir}
-              className="flex items-center gap-1.5 text-xs text-blue-500 hover:text-blue-700 transition-colors">
+            <button
+              onClick={onSubstituir}
+              disabled={!substituicaoPermitida()}
+              title={substituicaoPermitida() ? undefined : 'Prazo para substituição encerrado em 30/09/2026 — solicite à Secretaria Executiva.'}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
+            >
               <ArrowLeftRight className="w-3.5 h-3.5" />
-              Substituir
+              Substituir bolsista
             </button>
             <button onClick={handleDelete} disabled={deleting}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50">
@@ -424,7 +444,7 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
 
 // Card temporário para novo bolsista — INSERT só acontece ao preencher o nome
 function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
-  const [form, setForm] = useState({ nome_completo: '', cpf: '', data_nascimento: '', ano_escolar: '', tipo: 'bolsista' })
+  const [form, setForm] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', ano_serie: '', tipo: 'bolsista' })
   const [saving, setSaving] = useState(false)
   const [insertError, setInsertError] = useState(null)
   const [uploading, setUploading] = useState({})
@@ -551,12 +571,17 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
                 placeholder="000.000.000-00" className={inputCls} />
             </div>
             <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1">RG</label>
+              <input name="rg" value={form.rg} onChange={handleChange} onBlur={handleBlur}
+                placeholder="000.000.000" className={inputCls} />
+            </div>
+            <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
               <input name="data_nascimento" type="date" value={form.data_nascimento} onChange={handleChange} onBlur={handleBlur} className={inputCls} />
             </div>
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar</label>
-              <input name="ano_escolar" value={form.ano_escolar} onChange={handleChange} onBlur={handleBlur}
+              <input name="ano_serie" value={form.ano_serie} onChange={handleChange} onBlur={handleBlur}
                 placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
             </div>
           </div>
@@ -611,8 +636,9 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
   const [novoForm, setNovoForm] = useState({
     nome_completo: '',
     cpf: '',
+    rg: '',
     data_nascimento: '',
-    ano_escolar: '',
+    ano_serie: '',
     nome_responsavel: '',
     cpf_responsavel: '',
     rg_responsavel: '',
@@ -655,7 +681,8 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
             <p>
               O bolsista <span className="font-semibold">{bolsista.nome_completo}</span> será marcado como substituído.
-              Esta ação ficará registrada e visível para a Secretaria.
+              Esta ação ficará registrada e visível para a Secretaria. Na próxima etapa você vai enviar os documentos
+              do novo bolsista. Prazo final para substituições: <span className="font-semibold">30/09/2026</span>.
             </p>
           </div>
 
@@ -684,12 +711,16 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
                 <input name="cpf" value={novoForm.cpf} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
               </div>
               <div>
+                <label className="block text-xs font-medium text-gray-700 mb-1">RG</label>
+                <input name="rg" value={novoForm.rg} onChange={handleChange} placeholder="000.000.000" className={inputCls} />
+              </div>
+              <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
                 <input name="data_nascimento" type="date" value={novoForm.data_nascimento} onChange={handleChange} className={inputCls} />
               </div>
               <div className="col-span-2">
                 <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar / Escola</label>
-                <input name="ano_escolar" value={novoForm.ano_escolar} onChange={handleChange} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
+                <input name="ano_serie" value={novoForm.ano_serie} onChange={handleChange} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
               </div>
             </div>
             {novoForm.data_nascimento && (
@@ -754,6 +785,93 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
             <ArrowLeftRight className="w-4 h-4" />
             {saving ? 'Confirmando...' : 'Confirmar substituição'}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Etapa 2 da substituição: depois que o novo bolsista já foi criado no banco
+// (via a função substituir_bolsista), pede os mesmos documentos exigidos no
+// cadastro normal — para que o cadastro do substituto fique tão completo
+// quanto o de qualquer outro bolsista perante a Secretaria. Não bloqueia:
+// o orientador pode fechar e completar depois pelo card do bolsista, do
+// mesmo jeito que já é tolerado em qualquer cadastro novo.
+function SubstituicaoDocsModal({ bolsista, projeto, onClose }) {
+  const [docs, setDocs] = useState(bolsista)
+  const [uploading, setUploading] = useState({})
+  const [erro, setErro] = useState(null)
+  const menor = isMenor(docs.data_nascimento)
+  const status = calcStatus(docs)
+
+  async function handleUpload(fieldKey, file) {
+    setUploading(prev => ({ ...prev, [fieldKey]: true }))
+    setErro(null)
+    try {
+      const url = await uploadArquivo(file, projeto.id, docs.id, fieldKey)
+      const { error: err } = await supabase.from('bolsista').update({ [fieldKey]: url }).eq('id', docs.id)
+      if (err) throw new Error(err.message)
+      setDocs(prev => ({ ...prev, [fieldKey]: url }))
+    } catch (err) {
+      setErro(err.message ?? 'Erro ao enviar arquivo.')
+    } finally {
+      setUploading(prev => ({ ...prev, [fieldKey]: false }))
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+      <div className="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 sticky top-0 bg-white z-10">
+          <div>
+            <h2 className="text-base font-bold text-gray-900">Substituição confirmada</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Agora envie os documentos de {docs.nome_completo}.</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="px-5 py-4 space-y-4">
+          <div className="rounded-lg bg-green-50 border border-green-200 px-4 py-3 flex items-start gap-2.5 text-sm text-green-800">
+            <CheckCircle className="w-4 h-4 shrink-0 mt-0.5 text-green-600" />
+            <p>
+              O bolsista anterior foi marcado como substituído e {docs.nome_completo} já está ativo na equipe, na mesma vaga.
+              Falta só a documentação — se preferir, você pode enviar depois, abrindo o card dele na lista.
+            </p>
+          </div>
+
+          {erro && (
+            <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">{erro}</div>
+          )}
+
+          <div className="space-y-2">
+            {DOCS_BASE.map(d => (
+              <DocUploadField key={d.key} label={d.label} reference={d.ref} fieldKey={d.key}
+                currentUrl={docs[d.key]} onUpload={handleUpload} uploading={uploading[d.key]} />
+            ))}
+            {menor && (
+              <>
+                <div className="pt-1 pb-0.5">
+                  <p className="text-[10px] font-semibold text-amber-700 uppercase tracking-wide flex items-center gap-1">
+                    <AlertTriangle className="w-3 h-3" /> Documentos do responsável
+                  </p>
+                </div>
+                {DOCS_MENOR.map(d => (
+                  <DocUploadField key={d.key} label={d.label} reference={d.ref} fieldKey={d.key}
+                    currentUrl={docs[d.key]} onUpload={handleUpload} uploading={uploading[d.key]} />
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
+          <StatusBadge bolsista={docs} />
+          <button onClick={onClose}
+            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+            {status === 'completo' ? 'Concluir' : 'Concluir e enviar depois'}
           </button>
         </div>
       </div>
@@ -869,6 +987,7 @@ export function OrientadorBolsistas() {
   const [substituirTarget, setSubstituirTarget] = useState(null)
   const [substituindo, setSubstituindo] = useState(false)
   const [substituirError, setSubstituirError] = useState(null)
+  const [novoAposSubstituicao, setNovoAposSubstituicao] = useState(null)
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
@@ -912,51 +1031,24 @@ export function OrientadorBolsistas() {
     if (expanded === id) setExpanded(null)
   }
 
+  // A troca inteira (marcar o antigo como substituído + criar o novo na
+  // mesma vaga + gravar a auditoria) acontece numa função só do banco
+  // (substituir_bolsista), numa única transação — assim não existe risco de
+  // sucesso parcial (ex: novo criado mas sem registro de troca), e o prazo
+  // final (30/09/2026) é garantido no banco, não só escondendo o botão aqui.
   async function handleConfirmarSubstituicao(motivo, novoForm) {
     setSubstituindo(true)
     setSubstituirError(null)
-    const antigo = substituirTarget
-    const now = new Date().toISOString()
     try {
-      const { error: errAntigo } = await supabase
-        .from('bolsista')
-        .update({ status_bolsista: 'substituido', motivo_substituicao: motivo, data_substituicao: now })
-        .eq('id', antigo.id)
-      if (errAntigo) throw new Error(errAntigo.message)
-
-      const { data: novoData, error: errNovo } = await supabase
-        .from('bolsista')
-        .insert({
-          orientador_id: antigo.orientador_id,
-          projeto_id: antigo.projeto_id,
-          tipo: antigo.tipo,
-          codigo_bolsista: antigo.codigo_bolsista,
-          status: 'ativo',
-          nome_completo: novoForm.nome_completo,
-          cpf: novoForm.cpf || null,
-          data_nascimento: novoForm.data_nascimento,
-          ano_escolar: novoForm.ano_escolar || null,
-          nome_responsavel: novoForm.nome_responsavel || null,
-          cpf_responsavel: novoForm.cpf_responsavel || null,
-          rg_responsavel: novoForm.rg_responsavel || null,
-          vinculo_responsavel: novoForm.vinculo_responsavel || null,
-          telefone_responsavel: novoForm.telefone_responsavel || null,
-          email_responsavel: novoForm.email_responsavel || null,
-        })
-        .select()
-        .single()
-      if (errNovo) throw new Error(errNovo.message)
-
-      await supabase.from('substituicao_bolsista').insert({
-        bolsista_saindo_id: antigo.id,
-        bolsista_entrando_id: novoData.id,
-        motivo,
-        data_substituicao: now,
-        projeto_id: antigo.projeto_id,
-        orientador_id: antigo.orientador_id,
+      const { data: novoBolsista, error: errRpc } = await supabase.rpc('substituir_bolsista', {
+        p_bolsista_saiu_id: substituirTarget.id,
+        p_motivo: motivo,
+        p_novo: novoForm,
       })
+      if (errRpc) throw new Error(errRpc.message)
 
       setSubstituirTarget(null)
+      setNovoAposSubstituicao(novoBolsista)
       fetchBolsistas()
     } catch (err) {
       setSubstituirError(err.message ?? 'Erro ao realizar substituição.')
@@ -1001,6 +1093,32 @@ export function OrientadorBolsistas() {
               </p>
             </div>
           </div>
+        )}
+
+        {!loading && projeto && (
+          substituicaoPermitida() ? (
+            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-start gap-3">
+              <ArrowLeftRight className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-blue-900">Precisa trocar um bolsista da equipe?</p>
+                <p className="text-xs text-blue-700 mt-0.5">
+                  Abra o card do bolsista que vai sair e clique em "Substituir bolsista". Prazo final para novas
+                  substituições: <span className="font-semibold">30/09/2026</span>.
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-gray-800">Prazo de substituição encerrado</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  O prazo para substituir bolsistas terminou em 30/09/2026. Novas trocas dependem de avaliação da
+                  Secretaria Executiva — entre em contato diretamente com ela.
+                </p>
+              </div>
+            </div>
+          )
         )}
 
         {error && (
@@ -1082,6 +1200,14 @@ export function OrientadorBolsistas() {
           onClose={() => { setSubstituirTarget(null); setSubstituirError(null) }}
           saving={substituindo}
           backendError={substituirError}
+        />
+      )}
+
+      {novoAposSubstituicao && (
+        <SubstituicaoDocsModal
+          bolsista={novoAposSubstituicao}
+          projeto={projeto}
+          onClose={() => { setNovoAposSubstituicao(null); fetchBolsistas() }}
         />
       )}
     </div>
