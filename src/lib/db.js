@@ -131,7 +131,10 @@ export const orientadorService = {
 
 export const bolsistaService = {
   list: async (edicaoId) => {
-    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo)'
+    // `substituto` traz o nome de quem substituiu este bolsista (quando
+    // status='substituido'), pra Secretaria ver a troca sem precisar abrir
+    // outra tela — usa a coluna `substituido_por`, que já aponta pro novo.
+    const select = '*, projeto:projeto_id(id, titulo), orientador:orientador_id(id, nome_completo), substituto:substituido_por(id, nome_completo, codigo_bolsista)'
     if (!edicaoId) return db.list('bolsista', { select })
     const ids = await projetoIdsDaEdicao(edicaoId)
     if (ids.length === 0) return EMPTY_LIST
