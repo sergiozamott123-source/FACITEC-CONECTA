@@ -109,13 +109,20 @@ function UploadField({ label, fieldKey, preview, onUpload, uploading }) {
 }
 
 function TipoBadge({ tipo }) {
+  // 'voluntario' é o único valor que realmente significa "voluntário" — o
+  // resto (o valor mais comum no banco é 'titular', mas esta tela grava
+  // 'bolsista' com o mesmo significado) conta como titular. Checar por
+  // 'voluntario' em vez de por 'bolsista' evita que bolsistas titulares
+  // cadastrados por outra tela (com tipo = 'titular') apareçam aqui como
+  // "Voluntário" por engano.
+  const voluntario = tipo === 'voluntario'
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
-      tipo === 'bolsista'
-        ? 'bg-blue-50 text-blue-700 border-blue-200'
-        : 'bg-purple-50 text-purple-700 border-purple-200'
+      voluntario
+        ? 'bg-purple-50 text-purple-700 border-purple-200'
+        : 'bg-blue-50 text-blue-700 border-blue-200'
     }`}>
-      {tipo === 'bolsista' ? 'Bolsista' : 'Voluntário'}
+      {voluntario ? 'Voluntário' : 'Titular'}
     </span>
   )
 }
