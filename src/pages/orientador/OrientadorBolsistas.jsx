@@ -9,6 +9,10 @@ const BUCKET = 'inscricoes'
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 const ACEITOS = '.pdf,.jpg,.jpeg,.png'
 
+// Modelo oficial do ofício de substituição, definido pela Secretaria
+// Executiva — hospedado no mesmo bucket público usado por todo o sistema.
+const OFICIO_MODELO_URL = 'https://gastofrxtkkjpcgthrru.supabase.co/storage/v1/object/public/inscricoes/modelos/oficio-substituicao-bolsista.pdf'
+
 // Prazo definido pelo Coordenador da CCAD (30/08/2026): substituições de
 // bolsista só são permitidas até o fim do ciclo de setembro/2026. Depois
 // dessa data, novas trocas passam a depender de avaliação caso a caso da
@@ -735,9 +739,19 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-gray-700 mb-1.5">
-              Ofício de substituição, assinado <span className="text-red-500">*</span>
-            </label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="block text-xs font-medium text-gray-700">
+                Ofício de substituição, assinado <span className="text-red-500">*</span>
+              </label>
+              <a
+                href={OFICIO_MODELO_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-medium text-blue-600 hover:underline shrink-0"
+              >
+                Baixar modelo do ofício
+              </a>
+            </div>
             {oficioFile ? (
               <div className="flex items-center gap-2 border border-green-300 bg-green-50 rounded-md px-3 py-2.5 text-sm">
                 <FileText className="w-4 h-4 text-green-600 shrink-0" />
