@@ -117,6 +117,20 @@ async function uploadArquivo(file, projetoId, bolsistaId, fieldKey) {
   return publicUrl
 }
 
+// Ofício de substituição anexado pelo orientador no ato do pedido — ainda
+// não existe um bolsista_id novo neste momento (só é criado quando a
+// Secretaria aprova), então o arquivo fica guardado por orientador +
+// bolsista que está saindo, não por bolsista que vai entrar.
+async function uploadOficio(file, orientadorId, bolsistaSaiuId) {
+  if (file.size > MAX_FILE_SIZE) throw new Error('Arquivo muito grande. Máximo: 5MB.')
+  const ext = file.name.split('.').pop()
+  const path = `solicitacoes-substituicao/${orientadorId}/${bolsistaSaiuId}-${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert: true })
+  if (error) throw error
+  const { data: { publicUrl } } = supabase.storage.from(BUCKET).getPublicUrl(path)
+  return publicUrl
+}
+
 function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uploading, disabled }) {
   const ref = useRef()
   const hasFile = !!currentUrl
@@ -175,7 +189,7 @@ function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uplo
 }
 
 // Card para bolsistas já salvos no banco — auto-save no blur
-function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelete, onSubstituir }) {
+function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelete, onSubstituir, solicitacao }) {
   const [form, setForm] = useState({
     nome_completo: bolsista.nome_completo ?? '',
     cpf: bolsista.cpf ?? '',
@@ -420,15 +434,33 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
             </div>
           </div>
 
+          {solicitacao?.status === 'pendente' && (
+            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2 text-xs text-blue-800">
+              <ArrowLeftRight className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <p>Substituição solicitada — aguardando aprovação da Secretaria Executiva.</p>
+            </div>
+          )}
+
+          {solicitacao?.status === 'recusada' && (
+            <div className="rounded-lg bg-red-50 border border-red-200 px-3 py-2 flex items-start gap-2 text-xs text-red-800">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <p><span className="font-semibold">Pedido de substituição recusado</span> — motivo: {solicitacao.motivo_recusa}. Você pode enviar um novo pedido.</p>
+            </div>
+          )}
+
           <div className="pt-1 border-t border-gray-100 flex items-center gap-4">
             <button
               onClick={onSubstituir}
-              disabled={!substituicaoPermitida()}
-              title={substituicaoPermitida() ? undefined : 'Prazo para substituição encerrado em 30/09/2026 — solicite à Secretaria Executiva.'}
+              disabled={!substituicaoPermitida() || solicitacao?.status === 'pendente'}
+              title={
+                !substituicaoPermitida() ? 'Prazo para substituição encerrado em 30/09/2026 — solicite à Secretaria Executiva.'
+                  : solicitacao?.status === 'pendente' ? 'Já existe um pedido pendente para este bolsista.'
+                  : undefined
+              }
               className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
             >
               <ArrowLeftRight className="w-3.5 h-3.5" />
-              Substituir bolsista
+              {solicitacao?.status === 'pendente' ? 'Aguardando aprovação' : 'Substituir bolsista'}
             </button>
             <button onClick={handleDelete} disabled={deleting}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors disabled:opacity-50">
@@ -633,6 +665,7 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
 
 function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError }) {
   const [motivo, setMotivo] = useState('')
+  const [oficioFile, setOficioFile] = useState(null)
   const [novoForm, setNovoForm] = useState({
     nome_completo: '',
     cpf: '',
@@ -658,10 +691,11 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
 
   function handleConfirm() {
     if (!motivo.trim()) { setErr('Informe o motivo da substituição.'); return }
+    if (!oficioFile) { setErr('Anexe o ofício de substituição.'); return }
     if (!novoForm.nome_completo.trim()) { setErr('Informe o nome do novo bolsista.'); return }
     if (!novoForm.data_nascimento) { setErr('Informe a data de nascimento do novo bolsista.'); return }
     setErr(null)
-    onConfirm(motivo.trim(), novoForm)
+    onConfirm(motivo.trim(), novoForm, oficioFile)
   }
 
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -680,9 +714,10 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
           <div className="rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 flex items-start gap-2.5 text-sm text-amber-800">
             <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
             <p>
-              O bolsista <span className="font-semibold">{bolsista.nome_completo}</span> será marcado como substituído.
-              Esta ação ficará registrada e visível para a Secretaria. Na próxima etapa você vai enviar os documentos
-              do novo bolsista. Prazo final para substituições: <span className="font-semibold">30/09/2026</span>.
+              Este pedido será enviado para aprovação da <span className="font-semibold">Secretaria Executiva</span>.
+              O bolsista <span className="font-semibold">{bolsista.nome_completo}</span> continua ativo normalmente até a
+              decisão. Assim que aprovado, o novo bolsista entra no seu painel e você poderá enviar os documentos dele.
+              Prazo final para novos pedidos de substituição: <span className="font-semibold">30/09/2026</span>.
             </p>
           </div>
 
@@ -697,6 +732,32 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
               rows={3}
               className={inputCls + ' resize-none'}
             />
+          </div>
+
+          <div>
+            <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              Ofício de substituição, assinado <span className="text-red-500">*</span>
+            </label>
+            {oficioFile ? (
+              <div className="flex items-center gap-2 border border-green-300 bg-green-50 rounded-md px-3 py-2.5 text-sm">
+                <FileText className="w-4 h-4 text-green-600 shrink-0" />
+                <span className="flex-1 truncate text-gray-700">{oficioFile.name}</span>
+                <button type="button" onClick={() => setOficioFile(null)} className="text-xs text-red-600 hover:underline shrink-0">
+                  Remover
+                </button>
+              </div>
+            ) : (
+              <label className="flex items-center gap-2 border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors">
+                <Upload className="w-4 h-4 text-gray-400 shrink-0" />
+                <span className="text-gray-400">Anexar ofício (PDF, JPG, PNG — máx. 5MB)</span>
+                <input
+                  type="file"
+                  accept={ACEITOS}
+                  className="hidden"
+                  onChange={e => { const f = e.target.files?.[0]; if (f) setOficioFile(f); e.target.value = '' }}
+                />
+              </label>
+            )}
           </div>
 
           <div className="border-t border-gray-100 pt-4">
@@ -784,7 +845,7 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
           <button onClick={handleConfirm} disabled={saving}
             className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
             <ArrowLeftRight className="w-4 h-4" />
-            {saving ? 'Confirmando...' : 'Confirmar substituição'}
+            {saving ? 'Enviando...' : 'Enviar solicitação'}
           </button>
         </div>
       </div>
@@ -987,12 +1048,33 @@ export function OrientadorBolsistas() {
   const [substituirTarget, setSubstituirTarget] = useState(null)
   const [substituindo, setSubstituindo] = useState(false)
   const [substituirError, setSubstituirError] = useState(null)
-  const [novoAposSubstituicao, setNovoAposSubstituicao] = useState(null)
+  const [solicitacaoEnviada, setSolicitacaoEnviada] = useState(false)
+  const [solicitacoes, setSolicitacoes] = useState([])
 
   useEffect(() => {
     if (!projeto) { setLoading(false); return }
     fetchBolsistas()
   }, [projeto])
+
+  useEffect(() => {
+    if (!orientador) return
+    fetchSolicitacoes()
+  }, [orientador])
+
+  // Pedidos de substituição já feitos por este orientador — usado para
+  // mostrar "aguardando aprovação"/"recusado" no card de cada bolsista.
+  async function fetchSolicitacoes() {
+    const { data, error: err } = await supabase
+      .from('solicitacao_substituicao')
+      .select('*')
+      .eq('orientador_id', orientador.id)
+      .order('created_at', { ascending: false })
+    if (!err) setSolicitacoes(data ?? [])
+  }
+
+  function solicitacaoDoBolsista(bolsistaId) {
+    return solicitacoes.find(s => s.bolsista_saiu_id === bolsistaId)
+  }
 
   async function fetchBolsistas() {
     setLoading(true)
@@ -1031,27 +1113,30 @@ export function OrientadorBolsistas() {
     if (expanded === id) setExpanded(null)
   }
 
-  // A troca inteira (marcar o antigo como substituído + criar o novo na
-  // mesma vaga + gravar a auditoria) acontece numa função só do banco
-  // (substituir_bolsista), numa única transação — assim não existe risco de
-  // sucesso parcial (ex: novo criado mas sem registro de troca), e o prazo
-  // final (30/09/2026) é garantido no banco, não só escondendo o botão aqui.
-  async function handleConfirmarSubstituicao(motivo, novoForm) {
+  // A partir de agora a substituição não acontece mais na hora: o pedido
+  // (motivo + dados do novo bolsista + ofício anexado) fica registrado como
+  // pendente (função solicitar_substituicao) e só vira uma troca de verdade
+  // quando a Secretaria Executiva aprova, no painel dela. O bolsista que
+  // está saindo continua ativo normalmente enquanto isso.
+  async function handleConfirmarSubstituicao(motivo, novoForm, oficioFile) {
     setSubstituindo(true)
     setSubstituirError(null)
     try {
-      const { data: novoBolsista, error: errRpc } = await supabase.rpc('substituir_bolsista', {
+      const oficioUrl = await uploadOficio(oficioFile, orientador.id, substituirTarget.id)
+      const { error: errRpc } = await supabase.rpc('solicitar_substituicao', {
         p_bolsista_saiu_id: substituirTarget.id,
         p_motivo: motivo,
         p_novo: novoForm,
+        p_oficio_url: oficioUrl,
+        p_oficio_nome_arquivo: oficioFile.name,
       })
       if (errRpc) throw new Error(errRpc.message)
 
       setSubstituirTarget(null)
-      setNovoAposSubstituicao(novoBolsista)
-      fetchBolsistas()
+      setSolicitacaoEnviada(true)
+      fetchSolicitacoes()
     } catch (err) {
-      setSubstituirError(err.message ?? 'Erro ao realizar substituição.')
+      setSubstituirError(err.message ?? 'Erro ao enviar solicitação de substituição.')
     } finally {
       setSubstituindo(false)
     }
@@ -1156,6 +1241,7 @@ export function OrientadorBolsistas() {
                 onUpdate={handleUpdate}
                 onDelete={handleDelete}
                 onSubstituir={() => { setSubstituirError(null); setSubstituirTarget(b) }}
+                solicitacao={solicitacaoDoBolsista(b.id)}
               />
             ))}
 
@@ -1203,12 +1289,23 @@ export function OrientadorBolsistas() {
         />
       )}
 
-      {novoAposSubstituicao && (
-        <SubstituicaoDocsModal
-          bolsista={novoAposSubstituicao}
-          projeto={projeto}
-          onClose={() => { setNovoAposSubstituicao(null); fetchBolsistas() }}
-        />
+      {solicitacaoEnviada && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-sm p-6 text-center space-y-3">
+            <CheckCircle className="w-10 h-10 text-green-500 mx-auto" />
+            <h2 className="text-base font-bold text-gray-900">Solicitação enviada!</h2>
+            <p className="text-sm text-gray-600">
+              Assim que a Secretaria Executiva aprovar, o novo bolsista aparece automaticamente aqui na sua lista e você
+              poderá enviar os documentos dele.
+            </p>
+            <button
+              onClick={() => setSolicitacaoEnviada(false)}
+              className="w-full py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+            >
+              Entendi
+            </button>
+          </div>
+        </div>
       )}
     </div>
   )

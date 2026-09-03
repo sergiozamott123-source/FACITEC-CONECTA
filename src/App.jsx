@@ -24,6 +24,7 @@ import { HomeAdmin } from '@/pages/admin/HomeAdmin'
 import { ConvocacaoRecurso } from '@/pages/admin/ConvocacaoRecurso'
 import { PainelConsolidadoRecurso } from '@/pages/admin/PainelConsolidadoRecurso'
 import { DecisaoFinalRecurso } from '@/pages/admin/DecisaoFinalRecurso'
+import { SubstituicoesPainel } from '@/pages/admin/SubstituicoesPainel'
 import { Importacao } from '@/pages/Importacao'
 import { LoginInscricao } from '@/pages/inscricao/LoginInscricao'
 import { FormularioInscricao } from '@/pages/inscricao/FormularioInscricao'
@@ -225,6 +226,7 @@ function App() {
                     <Route path="/admin/:programa/:ano/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
                     <Route path="/admin/:programa/:ano/recursos/:recursoId/decisao" element={<DecisaoFinalRecurso />} />
                     <Route path="/admin/:programa/:ano/bolsistas" element={<Bolsistas />} />
+                    <Route path="/admin/:programa/:ano/substituicoes" element={<SubstituicoesPainel />} />
                     <Route path="/admin/:programa/:ano/financeiro" element={<Financeiro />} />
                     <Route path="/admin/:programa/:ano/historico" element={<Historico />} />
                     <Route path="/admin/:programa/:ano/m2" element={<SuperpainelM2 />} />

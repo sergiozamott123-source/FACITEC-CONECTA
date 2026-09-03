@@ -3,6 +3,7 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom'
 import {
   Archive,
   ArrowLeft,
+  ArrowLeftRight,
   BarChart2,
   BookOpen,
   Building2,
@@ -35,6 +36,7 @@ import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { edicaoService } from '@/lib/db'
 import { contarPagamentosEmAtencao } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve } from '@/lib/cnd'
+import { contarSolicitacoesSubstituicaoPendentes } from '@/lib/substituicoes'
 import { PROGRAMAS as PROGRAMAS_REGISTRO, getProgramaByProgramaId } from '@/lib/programas'
 
 // URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
@@ -104,7 +106,7 @@ function buildCategoriasAcervoEdicao(edicaoId) {
 }
 
 // ── Menu — nível Programa/Edição ─────────────────────────────────────────────
-function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge) {
+function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge, substituicoesBadge) {
   return [
     {
       titulo: 'Visão geral',
@@ -133,6 +135,7 @@ function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge) {
         { label: 'Orientadores', href: `/admin/${slug}/${ano}/orientadores`, icon: Users },
         { label: 'Bolsistas', href: `/admin/${slug}/${ano}/bolsistas`, icon: GraduationCap },
         { label: 'Organização (M2)', href: `/admin/${slug}/${ano}/m2`, icon: Network },
+        { label: 'Substituições', href: `/admin/${slug}/${ano}/substituicoes`, icon: ArrowLeftRight, badge: substituicoesBadge > 0 ? substituicoesBadge : undefined },
         { label: 'Contratos', href: `/admin/${slug}/${ano}/m2/contratos`, icon: FileSignature },
         { label: 'Obrigações do orientador', href: `/admin/${slug}/${ano}/relatorios-mensais`, icon: FileCheck2 },
       ],
@@ -358,6 +361,20 @@ export function Sidebar() {
     return () => { ativo = false }
   }, [edicaoSelecionadaId])
 
+  // Pedidos de substituição de bolsista pendentes — não depende da edição
+  // selecionada (são poucos e urgentes, não vale esconder atrás do filtro).
+  const [substituicoesPendentes, setSubstituicoesPendentes] = useState(0)
+
+  useEffect(() => {
+    let ativo = true
+    function carregar() {
+      contarSolicitacoesSubstituicaoPendentes().then((n) => { if (ativo) setSubstituicoesPendentes(n) }).catch(() => {})
+    }
+    carregar()
+    const intervalo = setInterval(carregar, 60000)
+    return () => { ativo = false; clearInterval(intervalo) }
+  }, [])
+
   const ano = edicaoSelecionada?.ano_referencia ?? '2026'
   const isSistema = isSistemaPath(location.pathname)
   const programaAtual = PROGRAMAS.find((p) => p.id === programaSelecionado)
@@ -366,7 +383,7 @@ export function Sidebar() {
     ? buildCategoriasAcervoEdicao(edicaoIdAcervo)
     : isSistema
       ? buildCategoriasSistema()
-      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa', financeiroAlertas)
+      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa', financeiroAlertas, substituicoesPendentes)
 
   return (
     <aside
