@@ -561,7 +561,7 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de bolsa <span className="text-red-500">*</span></label>
               <select name="tipo" value={form.tipo} onChange={handleChange} className={inputCls}>
-                <option value="bolsista">Bolsista (BT)</option>
+                <option value="bolsista">Titular (BT)</option>
                 <option value="voluntario">Voluntário (BV)</option>
               </select>
             </div>
