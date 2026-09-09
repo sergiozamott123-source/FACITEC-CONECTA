@@ -13,10 +13,15 @@ import {
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
+// A anuência da direção (Anexo V) é documento de PROJETO — autoriza o
+// projeto a "rodar" na escola, enviado uma única vez no início do processo
+// de envio de documentação — não é exigida de novo a cada substituição de
+// bolsista, por isso não entra nesta lista (que é usada só para bolsistas
+// substitutos). Ver DOCS_BASE em OrientadorBolsistas.jsx para o cadastro
+// original, onde ela continua exigida.
 const DOCS_BASE = [
   { key: 'doc_identidade_aluno',     label: 'Identidade com foto e CPF do aluno' },
   { key: 'doc_declaracao_matricula', label: 'Comprovante de matrícula' },
-  { key: 'doc_anuencia_direcao',     label: 'Declaração de anuência da direção' },
   { key: 'doc_autorizacao_imagem',   label: 'Autorização de uso de imagem' },
 ]
 const DOCS_MENOR = [
