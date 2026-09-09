@@ -27,10 +27,14 @@ function isMenor(dataNasc) {
   return idade !== null && idade < 18
 }
 
-// Mesma lista de documentos exigidos usada em SubstituicoesPainel.jsx e em
-// OrientadorBolsistas.jsx — mantidas em cada arquivo para simplicidade, mas
-// precisam ficar em sincronia (ver Edital 13.5 e-h).
-const DOCS_BASE_KEYS = ['doc_identidade_aluno', 'doc_declaracao_matricula', 'doc_anuencia_direcao', 'doc_autorizacao_imagem']
+// Mesma lista de documentos exigidos usada em SubstituicoesPainel.jsx —
+// mantida em cada arquivo para simplicidade, mas precisa ficar em
+// sincronia (ver Edital 13.5 e-h). doc_anuencia_direcao (Anexo V) fica de
+// fora aqui de propósito: é documento de PROJETO, enviado uma única vez no
+// início do processo de envio de documentação, e não deve ser cobrado de
+// novo de um bolsista substituto (todo bolsista contado por esta função
+// veio de `substituicao_bolsista`, ou seja, é sempre um substituto).
+const DOCS_BASE_KEYS = ['doc_identidade_aluno', 'doc_declaracao_matricula', 'doc_autorizacao_imagem']
 const DOCS_MENOR_KEYS = ['doc_autorizacao_responsavel', 'doc_identidade_responsavel']
 
 function documentacaoCompleta(bolsista) {
