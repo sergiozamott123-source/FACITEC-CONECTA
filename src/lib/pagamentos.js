@@ -13,6 +13,39 @@ function hojeISO() {
   return new Date().toISOString().slice(0, 10)
 }
 
+// ── Documentação obrigatória do bolsista (Fase 22) ────────────────────────
+// Mesma lista/regra usada em OrientadorBolsistas.jsx, SubstituicoesPainel.jsx
+// e lib/substituicoes.js — reimplementada aqui em separado por simplicidade
+// (padrão já adotado no projeto), mas as quatro precisam ficar em sincronia
+// (Edital 13.5). Bolsistas substitutos não precisam da anuência da direção
+// (Anexo V) — ver Fase 21 (claude/facitec-conecta-fase21-anexo-v-anexo-iii.md).
+// Usada para bloquear a liberação de pagamento de um bolsista com
+// documentação incompleta — ver Fase 22 (claude/facitec-conecta-fase22-...).
+function calcIdade(dataNasc) {
+  if (!dataNasc) return null
+  const hoje = new Date()
+  const nasc = new Date(dataNasc)
+  let age = hoje.getFullYear() - nasc.getFullYear()
+  const m = hoje.getMonth() - nasc.getMonth()
+  if (m < 0 || (m === 0 && hoje.getDate() < nasc.getDate())) age--
+  return age
+}
+
+function isMenor(dataNasc) {
+  const idade = calcIdade(dataNasc)
+  return idade !== null && idade < 18
+}
+
+const DOCS_BASE_KEYS = ['doc_identidade_aluno', 'doc_declaracao_matricula', 'doc_anuencia_direcao', 'doc_autorizacao_imagem']
+const DOCS_MENOR_KEYS = ['doc_autorizacao_responsavel', 'doc_identidade_responsavel']
+
+function documentacaoCompleta(beneficiario) {
+  if (beneficiario?.beneficiario_tipo !== 'bolsista') return true
+  const base = beneficiario.ehSubstituto ? DOCS_BASE_KEYS.filter(k => k !== 'doc_anuencia_direcao') : DOCS_BASE_KEYS
+  const chaves = isMenor(beneficiario.dataNascimento) ? [...base, ...DOCS_MENOR_KEYS] : base
+  return chaves.every(k => Boolean(beneficiario[k]))
+}
+
 // ── 1 — Beneficiários pagáveis da edição ─────────────────────────────────
 // Orientadores de projetos 'selecionado' + bolsistas ativos de tipo
 // titular/bolsista desses projetos (voluntário nunca é pagável).
@@ -29,16 +62,21 @@ export async function listarBeneficiariosPagaveis(edicaoId) {
   const orientadorIds = [...new Set(projetos.map(p => p.orientador_id).filter(Boolean))]
   const orientadorIdPorProjeto = Object.fromEntries(projetos.map(p => [p.id, p.orientador_id]))
 
-  const [{ data: orientadores, error: eOri }, { data: contratos, error: eCon }, { data: bolsistas, error: eBol }] = await Promise.all([
+  const [{ data: orientadores, error: eOri }, { data: contratos, error: eCon }, { data: bolsistas, error: eBol }, { data: substituicoes, error: eSub }] = await Promise.all([
     supabase.from('orientador').select('id, nome_completo, cpf, codigo_facitec, codigo_orientador').in('id', orientadorIds),
     supabase.from('contrato').select('id, projeto_id, valor_bolsa_orientador, valor_bolsa_estudante').in('projeto_id', projetoIds),
-    supabase.from('bolsista').select('id, nome_completo, cpf, codigo_facitec, codigo_bolsista, projeto_id, tipo, status')
+    supabase.from('bolsista').select(`id, nome_completo, cpf, codigo_facitec, codigo_bolsista, projeto_id, tipo, status,
+      data_nascimento, doc_identidade_aluno, doc_declaracao_matricula, doc_anuencia_direcao,
+      doc_autorizacao_imagem, doc_autorizacao_responsavel, doc_identidade_responsavel`)
       .in('projeto_id', projetoIds).eq('status', 'ativo').in('tipo', ['titular', 'bolsista']),
+    supabase.from('substituicao_bolsista').select('bolsista_entrou_id').in('projeto_id', projetoIds),
   ])
   if (eOri) throw eOri
   if (eCon) throw eCon
   if (eBol) throw eBol
+  if (eSub) throw eSub
 
+  const idsSubstitutos = new Set((substituicoes ?? []).map(s => s.bolsista_entrou_id).filter(Boolean))
   const contratoPorProjeto = Object.fromEntries((contratos ?? []).map(c => [c.projeto_id, c]))
   const orientadorPorId = Object.fromEntries((orientadores ?? []).map(o => [o.id, o]))
 
@@ -71,6 +109,17 @@ export async function listarBeneficiariosPagaveis(edicaoId) {
       orientador_id: orientadorId ?? null,
       contrato_id: contrato?.id ?? null,
       codigo_facitec: bolsista.codigo_facitec ?? bolsista.codigo_bolsista ?? null,
+      codigo_bolsista: bolsista.codigo_bolsista ?? null,
+      // Usados só pelo cálculo de elegibilidade (documentação obrigatória,
+      // Fase 22) — não vão para o PDF diretamente.
+      ehSubstituto: idsSubstitutos.has(bolsista.id),
+      dataNascimento: bolsista.data_nascimento,
+      doc_identidade_aluno: bolsista.doc_identidade_aluno,
+      doc_declaracao_matricula: bolsista.doc_declaracao_matricula,
+      doc_anuencia_direcao: bolsista.doc_anuencia_direcao,
+      doc_autorizacao_imagem: bolsista.doc_autorizacao_imagem,
+      doc_autorizacao_responsavel: bolsista.doc_autorizacao_responsavel,
+      doc_identidade_responsavel: bolsista.doc_identidade_responsavel,
     })
   }
 
@@ -141,7 +190,12 @@ export async function gerarPagamentosDoCiclo(edicaoId, cicloId) {
 }
 
 // ── 3 — Elegibilidade de um pagamento ─────────────────────────────────────
-export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoContrato) {
+// `beneficiario` (opcional, Fase 22) é o item já enriquecido vindo de
+// listarBeneficiariosPagaveis — carrega os campos de documentação e o flag
+// ehSubstituto. Sem ele, a checagem de documentação é simplesmente pulada
+// (comportamento antigo preservado para quem ainda chama sem esse parâmetro,
+// como o contador de badge do Sidebar).
+export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoContrato, beneficiario = null) {
   if (pagamento.status === 'pago') {
     return { estado: 'pago', motivo: null }
   }
@@ -160,6 +214,9 @@ export async function calcularElegibilidade(pagamento, relatorioDoCiclo, saldoCo
     const frequencia = (relatorioDoCiclo.frequencia_bolsistas ?? []).find(f => f.bolsista_id === pagamento.bolsista_id)
     if (!frequencia || frequencia.cumpriu_75_porcento === false) {
       return { estado: 'pendente_requisito', motivo: 'Frequência abaixo de 75%' }
+    }
+    if (beneficiario && !documentacaoCompleta(beneficiario)) {
+      return { estado: 'documentacao_pendente', motivo: 'Documentação obrigatória do bolsista está incompleta — confira na aba Bolsistas do orientador.' }
     }
   }
 
@@ -252,6 +309,34 @@ export async function criarSolicitacaoPagamento({ contratoId, orientadorId, cicl
 // vincula todos os pagamentos enviados a ela.
 export async function enviarParaPagamento({ pagamentoIds, contratoId, orientadorId, ciclo, criadoPor, anoExercicio }) {
   if (!pagamentoIds?.length) return
+
+  // Trava de segurança (Fase 22): nunca permitir o envio de um pagamento
+  // cujo bolsista já foi substituído — mesmo que ele tenha chegado até aqui
+  // por algum caminho fora da tela normal do Financeiro (a tela já esconde
+  // esses pagamentos da lista de seleção, mas essa checagem aqui garante
+  // que a regra vale sempre, e não só quando a UI se comporta como esperado).
+  const { data: pagsChecar, error: eChecar } = await supabase
+    .from('pagamento')
+    .select('id, beneficiario_tipo, bolsista_id')
+    .in('id', pagamentoIds)
+  if (eChecar) throw eChecar
+  const bolsistaIdsChecar = [...new Set((pagsChecar ?? [])
+    .filter(p => p.beneficiario_tipo === 'bolsista')
+    .map(p => p.bolsista_id)
+    .filter(Boolean))]
+  if (bolsistaIdsChecar.length) {
+    const { data: substituidos, error: eSubst } = await supabase
+      .from('bolsista')
+      .select('id, nome_completo')
+      .in('id', bolsistaIdsChecar)
+      .eq('status_bolsista', 'substituido')
+    if (eSubst) throw eSubst
+    if (substituidos?.length) {
+      const nomes = substituidos.map(b => b.nome_completo).join(', ')
+      throw new Error(`Não é possível enviar: ${nomes} já foi substituído(a). Verifique o histórico de substituições antes de prosseguir.`)
+    }
+  }
+
   const solicitacao = await criarSolicitacaoPagamento({ contratoId, orientadorId, ciclo, criadoPor, anoExercicio })
   const { error } = await supabase
     .from('pagamento')
@@ -310,6 +395,159 @@ export async function buscarNumeroFspbDoLote(pagamentoIds) {
   if (eFicha) throw eFicha
 
   return fichas?.[0]?.numero_fspb ?? null
+}
+
+// ── Alertas de substituição no ciclo (Fase 22) ────────────────────────────
+// Depois que um bolsista é substituído, um pagamento dele que ainda não
+// tinha sido enviado (status 'pendente') simplesmente some da tela
+// Financeiro, porque ela só lista beneficiários atualmente ativos — ver
+// claude/facitec-conecta-fase22-seguranca-pagamentos-substituicao.md. Esta
+// função detecta os dois riscos relacionados a uma substituição, para o
+// ciclo selecionado, e devolve avisos explícitos em vez de deixar isso
+// invisível:
+//   1) pagamento pendente ainda em nome do bolsista substituído (não pode
+//      ser enviado — ver a trava em enviarParaPagamento);
+//   2) bolsista substituto sem nenhum pagamento gerado ainda para o ciclo.
+export async function verificarSubstituicoesNoCiclo(edicaoId, cicloId) {
+  if (!edicaoId || !cicloId) return []
+
+  const { data: projetos, error: eProj } = await supabase
+    .from('projeto')
+    .select('id')
+    .eq('edicao_id', edicaoId)
+    .eq('status', 'selecionado')
+  if (eProj) throw eProj
+  const projetoIds = (projetos ?? []).map(p => p.id)
+  if (!projetoIds.length) return []
+
+  const { data: substituicoes, error: eSub } = await supabase
+    .from('substituicao_bolsista')
+    .select('bolsista_saiu_id, bolsista_entrou_id, projeto_id')
+    .in('projeto_id', projetoIds)
+  if (eSub) throw eSub
+  if (!substituicoes?.length) return []
+
+  const idsEnvolvidos = [...new Set(substituicoes.flatMap(s => [s.bolsista_saiu_id, s.bolsista_entrou_id]).filter(Boolean))]
+
+  const [{ data: bolsistas, error: eBol }, { data: pagamentos, error: ePag }] = await Promise.all([
+    supabase.from('bolsista').select('id, nome_completo, codigo_bolsista').in('id', idsEnvolvidos),
+    supabase.from('pagamento').select('id, bolsista_id, status').eq('ciclo_id', cicloId).in('bolsista_id', idsEnvolvidos),
+  ])
+  if (eBol) throw eBol
+  if (ePag) throw ePag
+
+  const bolsistaPorId = Object.fromEntries((bolsistas ?? []).map(b => [b.id, b]))
+  const pagamentoPorBolsista = Object.fromEntries((pagamentos ?? []).map(p => [p.bolsista_id, p]))
+
+  const alertas = []
+  for (const s of substituicoes) {
+    const antigo = bolsistaPorId[s.bolsista_saiu_id]
+    const novo = bolsistaPorId[s.bolsista_entrou_id]
+    const pagAntigo = pagamentoPorBolsista[s.bolsista_saiu_id]
+    const pagNovo = pagamentoPorBolsista[s.bolsista_entrou_id]
+
+    if (pagAntigo && pagAntigo.status === 'pendente') {
+      alertas.push({
+        tipo: 'pagamento_bolsista_substituido',
+        projetoId: s.projeto_id,
+        mensagem: `${antigo?.nome_completo ?? 'Um bolsista'} (${antigo?.codigo_bolsista ?? '—'}) foi substituído(a) por ${novo?.nome_completo ?? '—'}, mas ainda há um pagamento pendente em nome dele(a) neste ciclo. Esse pagamento está bloqueado e não deve ser enviado.`,
+      })
+    }
+    if (!pagNovo) {
+      alertas.push({
+        tipo: 'substituto_sem_pagamento',
+        projetoId: s.projeto_id,
+        mensagem: `${novo?.nome_completo ?? 'O bolsista substituto'} (${novo?.codigo_bolsista ?? '—'}) ainda não tem pagamento gerado para este ciclo. Clique em "Gerar pagamentos do ciclo" para incluí-lo, se já for o caso.`,
+      })
+    }
+  }
+  return alertas
+}
+
+// ── Histórico de pagamentos do contrato, ciclo a ciclo (Fase 22) ─────────
+// Usado para a tabela-resumo extra na FSPB — uma camada adicional de
+// transparência, complementar ao detalhamento do lote atual (não o
+// substitui): mostra o que já foi efetivamente pago/enviado em cada ciclo
+// do contrato, vaga a vaga, sinalizando claramente quando uma vaga trocou
+// de bolsista. Só considera pagamentos já 'solicitado' ou 'pago' — o que
+// ainda está 'pendente' não é histórico, é o próprio lote sendo emitido
+// agora (e por isso só passa a aparecer aqui depois que a FSPB atual for
+// gerada, já que ela mesma muda o status para 'solicitado' antes de montar
+// o PDF — ver garantirSolicitacaoPagamento).
+export async function buscarHistoricoPagamentosContrato(contratoId) {
+  if (!contratoId) return []
+
+  const { data: pagamentos, error: ePag } = await supabase
+    .from('pagamento')
+    .select('id, beneficiario_tipo, orientador_id, bolsista_id, valor, ciclo:ciclo_id(numero_ciclo, mes_referencia)')
+    .eq('contrato_id', contratoId)
+    .in('status', ['solicitado', 'pago'])
+  if (ePag) throw ePag
+  if (!pagamentos?.length) return []
+
+  const orientadorIds = [...new Set(pagamentos.filter(p => p.beneficiario_tipo === 'orientador').map(p => p.orientador_id).filter(Boolean))]
+  const bolsistaIds = [...new Set(pagamentos.filter(p => p.beneficiario_tipo === 'bolsista').map(p => p.bolsista_id).filter(Boolean))]
+
+  const [{ data: orientadores, error: eOri }, { data: bolsistas, error: eBol }] = await Promise.all([
+    orientadorIds.length
+      ? supabase.from('orientador').select('id, nome_completo, codigo_orientador, codigo_facitec').in('id', orientadorIds)
+      : Promise.resolve({ data: [] }),
+    bolsistaIds.length
+      ? supabase.from('bolsista').select('id, nome_completo, codigo_bolsista, projeto_id').in('id', bolsistaIds)
+      : Promise.resolve({ data: [] }),
+  ])
+  if (eOri) throw eOri
+  if (eBol) throw eBol
+
+  const orientadorPorId = Object.fromEntries((orientadores ?? []).map(o => [o.id, o]))
+  const bolsistaPorId = Object.fromEntries((bolsistas ?? []).map(b => [b.id, b]))
+
+  // Etiqueta "(substituído)"/"(substituto)" ao lado do nome em qualquer
+  // ciclo em que a pessoa aparecer — não só no ciclo da troca em si.
+  const projetoIds = [...new Set((bolsistas ?? []).map(b => b.projeto_id).filter(Boolean))]
+  const { data: substituicoes, error: eSub } = projetoIds.length
+    ? await supabase.from('substituicao_bolsista').select('bolsista_saiu_id, bolsista_entrou_id').in('projeto_id', projetoIds)
+    : { data: [] }
+  if (eSub) throw eSub
+  const idsSaiu = new Set((substituicoes ?? []).map(s => s.bolsista_saiu_id))
+  const idsEntrou = new Set((substituicoes ?? []).map(s => s.bolsista_entrou_id))
+
+  const grupos = {}
+  for (const p of pagamentos) {
+    const numeroCiclo = p.ciclo?.numero_ciclo ?? 0
+    const mesReferencia = p.ciclo?.mes_referencia ?? '—'
+    if (!grupos[numeroCiclo]) grupos[numeroCiclo] = { numero_ciclo: numeroCiclo, mes_referencia: mesReferencia, itens: [] }
+
+    if (p.beneficiario_tipo === 'orientador') {
+      const o = orientadorPorId[p.orientador_id]
+      grupos[numeroCiclo].itens.push({
+        codigo: o?.codigo_facitec ?? o?.codigo_orientador ?? '—',
+        nome: o?.nome_completo ?? '—',
+        tipo: 'orientador',
+        valor: Number(p.valor ?? 0),
+        tag: null,
+      })
+    } else {
+      const b = bolsistaPorId[p.bolsista_id]
+      grupos[numeroCiclo].itens.push({
+        codigo: b?.codigo_bolsista ?? '—',
+        nome: b?.nome_completo ?? '—',
+        tipo: 'bolsista',
+        valor: Number(p.valor ?? 0),
+        tag: idsSaiu.has(p.bolsista_id) ? 'substituido' : idsEntrou.has(p.bolsista_id) ? 'substituto' : null,
+      })
+    }
+  }
+
+  return Object.values(grupos)
+    .sort((a, b) => a.numero_ciclo - b.numero_ciclo)
+    .map(g => ({
+      ...g,
+      itens: g.itens.sort((a, b) => {
+        if (a.tipo !== b.tipo) return a.tipo === 'orientador' ? -1 : 1
+        return (a.codigo ?? '').localeCompare(b.codigo ?? '')
+      }),
+    }))
 }
 
 // Data de validade mais recente de CND por beneficiário (não filtra por
