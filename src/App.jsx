@@ -230,7 +230,7 @@ function App() {
                     <Route path="/admin/:programa/:ano/financeiro" element={<Financeiro />} />
                     <Route path="/admin/:programa/:ano/historico" element={<Historico />} />
                     <Route path="/admin/:programa/:ano/m2" element={<SuperpainelM2 />} />
-                    <Route path="/admin/:programa/:ano/m2/bolsista/:codigoBolsista" element={<BolsistaDetalhe />} />
+                    <Route path="/admin/:programa/:ano/m2/bolsista/:bolsistaId" element={<BolsistaDetalhe />} />
                     <Route path="/admin/:programa/:ano/m2/contratos" element={<ContratosPainel />} />
                     <Route path="/admin/:programa/:ano/m2/contratos/:projetoId" element={<ContratoDetalhe />} />
                   </Routes>
