@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowLeftRight, CheckCircle, XCircle, Clock, FileText, AlertTriangle,
-  ExternalLink, ChevronDown, ChevronUp,
+  ExternalLink, ChevronDown, ChevronUp, PenLine,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
@@ -56,6 +56,36 @@ const SELECT_SOLICITACAO = `
   bolsista_saiu:bolsista_saiu_id ( nome_completo, codigo_bolsista ),
   bolsista_entrou:bolsista_entrou_id ( * )
 `
+
+// Mostra a prova de assinatura eletrônica do orientador para este pedido
+// (colunas assinatura_* de solicitacao_substituicao — ver migração
+// assinatura_eletronica_solicitacao_substituicao). Pedidos criados antes
+// dessa funcionalidade não têm assinatura_confirmada_em preenchido; nesse
+// caso avisamos em vez de mostrar dados vazios como se fosse assinado.
+function AssinaturaEletronica({ solicitacao }) {
+  if (!solicitacao.assinatura_confirmada_em) {
+    return (
+      <div className="rounded-md bg-gray-50 border border-gray-200 px-3 py-2 flex items-start gap-2 text-xs text-gray-500">
+        <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        <span>Este pedido não possui assinatura eletrônica registrada (enviado antes desse recurso).</span>
+      </div>
+    )
+  }
+  return (
+    <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2.5 text-xs text-green-900 space-y-1">
+      <p className="flex items-center gap-1.5 font-semibold">
+        <PenLine className="w-3.5 h-3.5 shrink-0" />
+        Assinado eletronicamente por {solicitacao.assinatura_nome || solicitacao.orientador?.nome_completo}
+      </p>
+      <p className="text-green-800">
+        CPF confirmado: {solicitacao.assinatura_cpf || '—'} · em {formatarDataHora(solicitacao.assinatura_confirmada_em)}
+      </p>
+      {solicitacao.assinatura_declaracao && (
+        <p className="text-green-700 italic">"{solicitacao.assinatura_declaracao}"</p>
+      )}
+    </div>
+  )
+}
 
 function RecusarModal({ solicitacao, onConfirm, onClose, saving, erro }) {
   const [motivo, setMotivo] = useState('')
@@ -163,16 +193,19 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
             )}
           </div>
 
-          <a
-            href={solicitacao.oficio_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
-          >
-            <FileText className="w-3.5 h-3.5" />
-            Baixar ofício anexado
-            <ExternalLink className="w-3 h-3" />
-          </a>
+          <div className="space-y-2">
+            <a
+              href={solicitacao.oficio_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+            >
+              <FileText className="w-3.5 h-3.5" />
+              Baixar ofício anexado
+              <ExternalLink className="w-3 h-3" />
+            </a>
+            <AssinaturaEletronica solicitacao={solicitacao} />
+          </div>
 
           <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
             <button
@@ -215,6 +248,11 @@ function HistoricoLinha({ solicitacao }) {
         </p>
         <p className="text-xs text-gray-400">
           {solicitacao.orientador?.nome_completo} · decidido em {formatarDataHora(solicitacao.decidido_em)}
+          {solicitacao.assinatura_confirmada_em && (
+            <span className="inline-flex items-center gap-1 text-green-600 ml-1.5">
+              <PenLine className="w-3 h-3" /> assinado eletronicamente
+            </span>
+          )}
         </p>
         {!aprovada && solicitacao.motivo_recusa && (
           <p className="text-xs text-red-700 mt-1">Motivo da recusa: {solicitacao.motivo_recusa}</p>

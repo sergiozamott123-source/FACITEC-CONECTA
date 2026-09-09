@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Plus, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertTriangle, Trash2, X, ArrowLeftRight } from 'lucide-react'
+import { Plus, ChevronDown, ChevronUp, Upload, FileText, CheckCircle, AlertTriangle, Trash2, X, ArrowLeftRight, PenLine } from 'lucide-react'
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
@@ -23,6 +23,12 @@ const PRAZO_SUBSTITUICAO_FIM = new Date('2026-09-30T23:59:59-03:00')
 function substituicaoPermitida() {
   return new Date() <= PRAZO_SUBSTITUICAO_FIM
 }
+
+// Texto da declaração de assinatura eletrônica — precisa refletir, para o
+// orientador, exatamente o que a função solicitar_substituicao() registra
+// no banco (coluna assinatura_declaracao) ao criar o pedido. Ver migração
+// assinatura_eletronica_solicitacao_substituicao.
+const DECLARACAO_ASSINATURA = 'Declaro, para os devidos fins, que esta solicitação de substituição de bolsista reflete minha decisão como orientador(a) responsável pelo projeto, e assino eletronicamente este documento nos termos da Medida Provisória nº 2.200-2/2001.'
 
 function maskCpf(v) {
   return v.replace(/\D/g, '').slice(0, 11)
@@ -682,9 +688,11 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
   )
 }
 
-function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError }) {
+function SubstituirModal({ bolsista, orientador, onConfirm, onClose, saving, backendError }) {
   const [motivo, setMotivo] = useState('')
   const [oficioFile, setOficioFile] = useState(null)
+  const [assinaturaCpf, setAssinaturaCpf] = useState('')
+  const [assinaturaConfirmada, setAssinaturaConfirmada] = useState(false)
   const [novoForm, setNovoForm] = useState({
     nome_completo: '',
     cpf: '',
@@ -713,8 +721,10 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
     if (!oficioFile) { setErr('Anexe o ofício de substituição.'); return }
     if (!novoForm.nome_completo.trim()) { setErr('Informe o nome do novo bolsista.'); return }
     if (!novoForm.data_nascimento) { setErr('Informe a data de nascimento do novo bolsista.'); return }
+    if (assinaturaCpf.replace(/\D/g, '').length !== 11) { setErr('Confirme seu CPF para assinar eletronicamente a solicitação.'); return }
+    if (!assinaturaConfirmada) { setErr('Confirme a declaração para assinar eletronicamente a solicitação.'); return }
     setErr(null)
-    onConfirm(motivo.trim(), novoForm, oficioFile)
+    onConfirm(motivo.trim(), novoForm, oficioFile, { nome: orientador?.nome_completo ?? '', cpf: assinaturaCpf })
   }
 
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -860,6 +870,52 @@ function SubstituirModal({ bolsista, onConfirm, onClose, saving, backendError })
               </div>
             </div>
           )}
+
+          <div className="border-t border-gray-100 pt-4">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+              <PenLine className="w-3.5 h-3.5" />
+              Assinatura eletrônica
+            </p>
+            <div className="rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 space-y-3">
+              <p className="text-xs text-gray-600 leading-relaxed">{DECLARACAO_ASSINATURA}</p>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">Orientador(a)</label>
+                  <div className={inputCls + ' bg-gray-100 text-gray-500'}>
+                    {orientador?.nome_completo || '—'}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">
+                    Confirme seu CPF <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    value={assinaturaCpf}
+                    onChange={e => setAssinaturaCpf(maskCpf(e.target.value))}
+                    placeholder="000.000.000-00"
+                    className={inputCls}
+                  />
+                </div>
+              </div>
+
+              <label className="flex items-start gap-2 text-xs text-gray-700 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={assinaturaConfirmada}
+                  onChange={e => setAssinaturaConfirmada(e.target.checked)}
+                  className="mt-0.5 shrink-0"
+                />
+                <span>
+                  Li e confirmo a declaração acima, e assino eletronicamente esta solicitação de substituição.
+                  <span className="text-red-500"> *</span>
+                </span>
+              </label>
+            </div>
+            <p className="text-[11px] text-gray-400 mt-2">
+              Esta assinatura eletrônica é adicional ao ofício assinado anexado acima — não o substitui.
+            </p>
+          </div>
 
           {(err || backendError) && (
             <div className="rounded-md bg-red-50 border border-red-200 px-3 py-2 text-xs text-red-800">{err || backendError}</div>
@@ -1155,7 +1211,7 @@ export function OrientadorBolsistas() {
   // pendente (função solicitar_substituicao) e só vira uma troca de verdade
   // quando a Secretaria Executiva aprova, no painel dela. O bolsista que
   // está saindo continua ativo normalmente enquanto isso.
-  async function handleConfirmarSubstituicao(motivo, novoForm, oficioFile) {
+  async function handleConfirmarSubstituicao(motivo, novoForm, oficioFile, assinatura) {
     setSubstituindo(true)
     setSubstituirError(null)
     try {
@@ -1166,6 +1222,8 @@ export function OrientadorBolsistas() {
         p_novo: novoForm,
         p_oficio_url: oficioUrl,
         p_oficio_nome_arquivo: oficioFile.name,
+        p_assinatura_nome: assinatura?.nome,
+        p_assinatura_cpf: assinatura?.cpf,
       })
       if (errRpc) throw new Error(errRpc.message)
 
@@ -1319,6 +1377,7 @@ export function OrientadorBolsistas() {
       {substituirTarget && (
         <SubstituirModal
           bolsista={substituirTarget}
+          orientador={orientador}
           onConfirm={handleConfirmarSubstituicao}
           onClose={() => { setSubstituirTarget(null); setSubstituirError(null) }}
           saving={substituindo}
