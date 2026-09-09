@@ -224,7 +224,7 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
               return (
                 <div
                   key={b.id}
-                  onClick={() => clicavel && navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.codigo_bolsista}`)}
+                  onClick={() => clicavel && navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.id}`)}
                   className={`border border-gray-100 rounded-lg p-2.5 bg-gray-50 space-y-1 transition-colors ${
                     clicavel ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-200' : ''
                   }`}
