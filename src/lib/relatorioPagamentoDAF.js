@@ -25,7 +25,7 @@ function fmtCnd(dataValidade) {
     : 'Não verificada'
 }
 
-export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, numeroFspb) {
+export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, numeroFspb, historico = []) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 20, mR = 20, mT = 26, mB = 20
   const pgW = 210, pgH = 297
@@ -205,5 +205,151 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   doc.setTextColor(0, 0, 0)
 
   rodape()
+
+  // ── Página extra (paisagem) — histórico de pagamentos do contrato ───────
+  // Camada adicional de transparência pedida pelo Sérgio: não substitui o
+  // detalhamento do lote atual acima, apenas complementa — mostra o que já
+  // foi efetivamente pago em cada ciclo do contrato, vaga a vaga, com
+  // etiqueta clara sempre que uma vaga trocou de bolsista. Paisagem porque o
+  // número de colunas (uma por vaga) varia de contrato para contrato. Ver
+  // claude/facitec-conecta-fase22-seguranca-pagamentos-substituicao.md.
+  if (historico?.length) {
+    doc.addPage('a4', 'landscape')
+    pagina++
+    const pgWL = 297, pgHL = 210
+    const mLL = 16, mRL = 16, mTL = 26, mBL = 18
+    const usableWL = pgWL - mLL - mRL
+
+    function cabecalhoLandscape() {
+      desenharCabecalhoLogos(doc, { pgW: pgWL, centroY: 10.5, altura: 10 })
+      doc.setDrawColor(...AZUL)
+      doc.setLineWidth(0.6)
+      doc.line(mLL, 19.5, pgWL - mRL, 19.5)
+      doc.setTextColor(0, 0, 0)
+    }
+
+    function rodapeLandscape() {
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7.5)
+      doc.setTextColor(...CINZA_TEXTO)
+      doc.text(
+        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
+        mLL, pgHL - 10,
+      )
+      doc.text(`Página ${pagina}`, pgWL - mRL, pgHL - 10, { align: 'right' })
+      doc.setTextColor(0, 0, 0)
+    }
+
+    cabecalhoLandscape()
+    let yL = mTL
+
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(13)
+    doc.setTextColor(...AZUL)
+    doc.text('HISTÓRICO DE PAGAMENTOS DO CONTRATO', pgWL / 2, yL, { align: 'center' })
+    yL += 6
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(9)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text(
+      `Contrato nº ${contrato?.numero_contrato ?? '—'} — todos os ciclos já pagos ou enviados à DAF até esta ficha. Informação complementar; não substitui o detalhamento do lote atual.`,
+      pgWL / 2, yL, { align: 'center', maxWidth: usableWL }
+    )
+    doc.setTextColor(0, 0, 0)
+    yL += 11
+
+    // Colunas: uma por "vaga" (código do beneficiário sem o prefixo do
+    // contrato — ex.: "BT06", "OR"), na ordem em que aparecem no histórico
+    // (orientador primeiro, depois bolsistas por código).
+    const codigosOrdenados = []
+    const vistos = new Set()
+    for (const grupo of historico) {
+      for (const item of grupo.itens) {
+        const rotulo = item.codigo?.split('-').pop() || item.codigo || '—'
+        if (!vistos.has(rotulo)) { vistos.add(rotulo); codigosOrdenados.push(rotulo) }
+      }
+    }
+
+    const colCiclo = 30
+    const colVaga = (usableWL - colCiclo) / Math.max(codigosOrdenados.length, 1)
+    const colX = codigosOrdenados.map((_, i) => mLL + colCiclo + colVaga * i)
+
+    function cabecalhoTabelaHistorico() {
+      doc.setFillColor(...AZUL)
+      doc.rect(mLL, yL, usableWL, 9, 'F')
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(255, 255, 255)
+      doc.text('CICLO', mLL + 2, yL + 6)
+      codigosOrdenados.forEach((cod, i) => {
+        doc.text(cod, colX[i] + colVaga / 2, yL + 6, { align: 'center' })
+      })
+      doc.setTextColor(0, 0, 0)
+      yL += 9
+    }
+
+    cabecalhoTabelaHistorico()
+
+    const alturaLinha = 15
+    const corSubstituido = [180, 60, 40]
+    const corSubstituto = [30, 110, 60]
+
+    historico.forEach((grupo, idx) => {
+      if (yL + alturaLinha > pgHL - mBL) {
+        rodapeLandscape()
+        doc.addPage('a4', 'landscape')
+        pagina++
+        cabecalhoLandscape()
+        yL = mTL
+        cabecalhoTabelaHistorico()
+      }
+
+      if (idx % 2 === 1) {
+        doc.setFillColor(...CINZA_CLARO)
+        doc.rect(mLL, yL, usableWL, alturaLinha, 'F')
+      }
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(8)
+      doc.setTextColor(0, 0, 0)
+      doc.text(`Ciclo ${grupo.numero_ciclo}`, mLL + 2, yL + 5.5)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(...CINZA_TEXTO)
+      doc.text(grupo.mes_referencia ?? '—', mLL + 2, yL + 10.5)
+      doc.setTextColor(0, 0, 0)
+
+      codigosOrdenados.forEach((cod, i) => {
+        const item = grupo.itens.find(it => (it.codigo?.split('-').pop() || it.codigo) === cod)
+        const cx = colX[i] + colVaga / 2
+        if (!item) {
+          doc.setFont('helvetica', 'normal')
+          doc.setFontSize(7.5)
+          doc.setTextColor(...CINZA_TEXTO)
+          doc.text('—', cx, yL + 8, { align: 'center' })
+          doc.setTextColor(0, 0, 0)
+          return
+        }
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(7.2)
+        doc.setTextColor(0, 0, 0)
+        const nomeCurto = doc.splitTextToSize(item.nome ?? '—', colVaga - 2)[0]
+        doc.text(nomeCurto, cx, yL + 5, { align: 'center' })
+        doc.text(fmtMoeda(item.valor), cx, yL + 9.5, { align: 'center' })
+        if (item.tag) {
+          doc.setFont('helvetica', 'italic')
+          doc.setFontSize(6.3)
+          doc.setTextColor(...(item.tag === 'substituido' ? corSubstituido : corSubstituto))
+          doc.text(item.tag === 'substituido' ? '(substituído)' : '(substituto)', cx, yL + 13, { align: 'center' })
+          doc.setTextColor(0, 0, 0)
+        }
+      })
+
+      yL += alturaLinha
+    })
+
+    rodapeLandscape()
+  }
+
   doc.save(`Solicitacao_Pagamento_${sufixoArquivo(contrato?.numero_processo)}_Ciclo${ciclo?.numero_ciclo ?? ''}.pdf`)
 }

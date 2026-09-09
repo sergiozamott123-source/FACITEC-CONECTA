@@ -23,6 +23,8 @@ import {
   garantirSolicitacaoPagamento,
   buscarNumeroFspbDoLote,
   buscarCndMaisRecentePorBeneficiario,
+  verificarSubstituicoesNoCiclo,
+  buscarHistoricoPagamentosContrato,
 } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve, uploadCnd } from '@/lib/cnd'
 import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
@@ -30,6 +32,7 @@ import { exportarRelatorioDAF } from '@/lib/relatorioPagamentoDAF'
 const ESTADO_LABEL = {
   liberado: 'Liberado',
   pendente_requisito: 'Pendente',
+  documentacao_pendente: 'Documentação pendente',
   retido_cnd: 'CND retida',
   bloqueado_saldo: 'Saldo insuficiente',
   solicitado: 'Aguardando confirmação',
@@ -40,6 +43,7 @@ const ESTADO_LABEL = {
 const BADGE_VARIANT = {
   liberado: 'success',
   pendente_requisito: 'secondary',
+  documentacao_pendente: 'warning',
   retido_cnd: 'destructive',
   bloqueado_saldo: 'warning',
   solicitado: 'info',
@@ -462,6 +466,7 @@ export function Financeiro() {
   const [relatorios, setRelatorios] = useState([])
   const [saldos, setSaldos] = useState({})
   const [elegibilidades, setElegibilidades] = useState({})
+  const [substituicaoAlertas, setSubstituicaoAlertas] = useState([])
 
   const [gerando, setGerando] = useState(false)
   const [selecionados, setSelecionados] = useState({})
@@ -574,15 +579,16 @@ export function Financeiro() {
   // ── Dados do ciclo selecionado (pagamentos, relatórios, saldos) ─────────
   const carregarDadosCiclo = useCallback(async () => {
     if (!edicaoId || !cicloId || !contratos.length) {
-      setPagamentos([]); setRelatorios([]); setSaldos({})
+      setPagamentos([]); setRelatorios([]); setSaldos({}); setSubstituicaoAlertas([])
       return
     }
     setLoadingCiclo(true)
     try {
-      const [{ data: pagamentosData, error: ePag }, { data: relatoriosData, error: eRel }, saldosArr] = await Promise.all([
+      const [{ data: pagamentosData, error: ePag }, { data: relatoriosData, error: eRel }, saldosArr, alertasSubstituicao] = await Promise.all([
         supabase.from('pagamento').select('*').eq('edicao_id', edicaoId).eq('ciclo_id', cicloId),
         supabase.from('relatorio_mensal').select('*').eq('ciclo_id', cicloId),
         Promise.all(contratos.map(c => calcularSaldoContrato(c.id))),
+        verificarSubstituicoesNoCiclo(edicaoId, cicloId),
       ])
       if (ePag) throw ePag
       if (eRel) throw eRel
@@ -590,6 +596,7 @@ export function Financeiro() {
       setPagamentos(pagamentosData ?? [])
       setRelatorios(relatoriosData ?? [])
       setSaldos(Object.fromEntries(contratos.map((c, i) => [c.id, saldosArr[i]])))
+      setSubstituicaoAlertas(alertasSubstituicao ?? [])
     } catch (e) {
       setErro(e.message ?? 'Erro ao carregar pagamentos do ciclo.')
     } finally {
@@ -607,13 +614,17 @@ export function Financeiro() {
       for (const p of pagamentos) {
         const relatorio = relatorios.find(r => r.orientador_id === p.orientador_id) ?? null
         const saldo = saldos[p.contrato_id] ?? { reservado: 0, pago: 0, comprometido: 0, disponivel: 0 }
-        map[p.id] = await calcularElegibilidade(p, relatorio, saldo)
+        const beneficiario = beneficiarios.find(b =>
+          b.beneficiario_tipo === p.beneficiario_tipo &&
+          (p.beneficiario_tipo === 'orientador' ? b.id === p.orientador_id : b.id === p.bolsista_id)
+        ) ?? null
+        map[p.id] = await calcularElegibilidade(p, relatorio, saldo, beneficiario)
       }
       if (!cancelado) setElegibilidades(map)
     }
     calcular()
     return () => { cancelado = true }
-  }, [pagamentos, relatorios, saldos])
+  }, [pagamentos, relatorios, saldos, beneficiarios])
 
   const linhasPorContrato = useMemo(() => {
     const map = {}
@@ -819,7 +830,12 @@ export function Financeiro() {
       // depois de um ciclo seguinte já ter sido enviado, "veja" esse ciclo
       // seguinte como se já estivesse comprometido antes dele).
       const saldo = await calcularSaldoContrato(contrato.id, pagamentoIds, ciclo?.numero_ciclo ?? null)
-      exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb)
+      // Histórico completo do contrato (Fase 22) — camada extra na FSPB,
+      // não substitui o detalhamento do lote atual acima. Como
+      // garantirSolicitacaoPagamento já rodou, o próprio lote deste ciclo já
+      // está 'solicitado' neste ponto e por isso já aparece no histórico.
+      const historico = await buscarHistoricoPagamentosContrato(contrato.id)
+      exportarRelatorioDAF({ ...contrato, saldo }, ciclo, beneficiariosComCnd, numeroFspb, historico)
 
       if (novaFicha) {
         showToast(`Processo enviado ao Financeiro e relatório emitido — ${novaFicha.numero_fspb}.`, 'ok')
@@ -838,6 +854,20 @@ export function Financeiro() {
 
   return (
     <div className="space-y-6">
+      {substituicaoAlertas.length > 0 && (
+        <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+          <div className="text-sm text-red-800">
+            <p className="font-semibold">Atenção — substituição de bolsista neste ciclo</p>
+            <ul className="mt-1 space-y-1">
+              {substituicaoAlertas.map((a, i) => (
+                <li key={i}>{a.mensagem}</li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      )}
+
       {cndAlertas.length > 0 && (
         <div className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
           <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
