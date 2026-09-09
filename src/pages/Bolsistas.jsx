@@ -309,7 +309,7 @@ export function Bolsistas() {
                   onToggle={() => toggleGrupo(grupo.key)}
                   onEdit={(b) => openEdit('bolsista', b)}
                   onDelete={(id) => setConfirm({ type: 'bolsista', id })}
-                  onVerDetalhe={(b) => navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.codigo_bolsista}`)}
+                  onVerDetalhe={(b) => navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.id}`)}
                 />
               ))}
             </div>
