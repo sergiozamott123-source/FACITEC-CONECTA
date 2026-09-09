@@ -4,6 +4,7 @@ import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
 import { getPrograma } from '@/lib/programas'
 import { documentoAcervoService } from '@/lib/db'
+import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
 import { arquivarTermoAdesao, jaArquivado } from '@/lib/acervoArquivamento'
 import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
 import {
@@ -311,6 +312,12 @@ export default function BolsistaDetalhe() {
       }
 
       // ── Cabeçalho FACITEC / CDTIV ─────────────────────────────────────
+      // Mesmas logos usadas em todo documento PDF do sistema (relatório
+      // financeiro, FSPB, ficha cadastral etc.) — ver identidadeVisual.js.
+      // Coube no espaço já reservado acima do texto (mT = 30) sem mexer em
+      // mT nem na paginação do restante do documento.
+      desenharCabecalhoLogos(doc, { pgW, centroY: 7, altura: 8 })
+
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(9)
       doc.text(
