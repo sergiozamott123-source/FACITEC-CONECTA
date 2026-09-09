@@ -147,7 +147,7 @@ function DocRow({ label, reference, url, filename }) {
 
 // ── MAIN ──────────────────────────────────────────────────────────────────────
 export default function BolsistaDetalhe() {
-  const { ano = '2026', programa: slug = 'pibic-jr', codigoBolsista } = useParams()
+  const { ano = '2026', programa: slug = 'pibic-jr', bolsistaId } = useParams()
   const navigate = useNavigate()
 
   const [bolsista,      setBolsista]      = useState(null)
@@ -175,7 +175,7 @@ export default function BolsistaDetalhe() {
   const [docResponsavel,  setDocResponsavel]  = useState('')
   const [nomeEscola,      setNomeEscola]      = useState('')
 
-  useEffect(() => { fetchDados() }, [codigoBolsista])
+  useEffect(() => { fetchDados() }, [bolsistaId])
 
   function showToast(msg, type = 'ok') {
     setToast({ msg, type })
@@ -190,11 +190,16 @@ export default function BolsistaDetalhe() {
     setDados(d => ({ ...d, numero_contrato: '' }))
     setProjeto(null)
     try {
-      // 1 — bolsista pelo código
+      // 1 — bolsista pelo id (identificador único do registro).
+      // Antes buscava por `codigo_bolsista`, mas esse código é reaproveitado
+      // pelo bolsista substituto quando há uma substituição (de propósito,
+      // para manter a mesma vaga de pagamento) — então, depois da primeira
+      // substituição, duas pessoas passam a ter o mesmo código, e a busca
+      // por código sozinho não sabe mais qual delas retornar.
       const { data: b, error: e1 } = await supabase
         .from('bolsista')
         .select('*')
-        .eq('codigo_bolsista', codigoBolsista)
+        .eq('id', bolsistaId)
         .single()
       if (e1) throw new Error(`Bolsista não encontrado: ${e1.message}`)
       setBolsista(b)
@@ -543,7 +548,7 @@ export default function BolsistaDetalhe() {
                  : toast?.type === 'err' ? 'bg-red-50 text-red-800 border-red-200'
                  : 'bg-blue-50 text-blue-800 border-blue-200'
 
-  const colegaIdx  = colegas.findIndex(c => c.codigo_bolsista === codigoBolsista)
+  const colegaIdx  = colegas.findIndex(c => c.id === bolsistaId)
   const prevColega = colegaIdx > 0                   ? colegas[colegaIdx - 1] : null
   const nextColega = colegaIdx < colegas.length - 1  ? colegas[colegaIdx + 1] : null
 
@@ -580,7 +585,7 @@ export default function BolsistaDetalhe() {
         <div className="flex items-center gap-3">
           {/* Seta anterior */}
           <button
-            onClick={() => prevColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${prevColega.codigo_bolsista}`)}
+            onClick={() => prevColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${prevColega.id}`)}
             disabled={!prevColega}
             title={prevColega ? `← ${prevColega.nome_completo}` : 'Primeiro bolsista'}
             className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors"
@@ -615,7 +620,7 @@ export default function BolsistaDetalhe() {
 
           {/* Seta próximo */}
           <button
-            onClick={() => nextColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${nextColega.codigo_bolsista}`)}
+            onClick={() => nextColega && navigate(`/admin/${slug}/${ano}/m2/bolsista/${nextColega.id}`)}
             disabled={!nextColega}
             title={nextColega ? `${nextColega.nome_completo} →` : 'Último bolsista'}
             className="shrink-0 p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 disabled:opacity-20 disabled:cursor-not-allowed transition-colors mr-8 transition-colors"
