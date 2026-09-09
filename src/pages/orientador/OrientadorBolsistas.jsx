@@ -58,8 +58,18 @@ const DOCS_MENOR = [
   { key: 'doc_identidade_responsavel',  label: 'Identidade com foto e CPF do responsável',     ref: 'Edital 13.5-d' },
 ]
 
+// A anuência da direção (Anexo V) é um documento do PROJETO — confirma que a
+// escola autoriza o projeto a "rodar" ali — enviado uma única vez, no início
+// do processo de envio de documentação. Um bolsista substituto não precisa
+// (nem tem como) reenviá-la, então ela sai da lista exigida quando o
+// bolsista em questão entrou por substituição (`b.ehSubstituto`, calculado
+// em fetchBolsistas a partir de `substituicao_bolsista`). Mantém-se exigida
+// normalmente para o cadastro original (NovoBolsistaCard).
+const DOCS_BASE_SUBSTITUTO = DOCS_BASE.filter(d => d.key !== 'doc_anuencia_direcao')
+
 function calcStatus(b) {
-  const baseDocs = DOCS_BASE.map(d => b[d.key])
+  const docsBase = b.ehSubstituto ? DOCS_BASE_SUBSTITUTO : DOCS_BASE
+  const baseDocs = docsBase.map(d => b[d.key])
   const menorDocs = isMenor(b.data_nascimento) ? DOCS_MENOR.map(d => b[d.key]) : []
   const all = [...baseDocs, ...menorDocs]
   if (all.every(Boolean)) return 'completo'
@@ -417,8 +427,13 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
 
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documentos</p>
+            {bolsista.ehSubstituto && (
+              <p className="text-[11px] text-gray-400 mb-2">
+                Bolsista substituto — a anuência da direção (Anexo V) já foi enviada no início do projeto e não precisa ser reenviada aqui.
+              </p>
+            )}
             <div className="space-y-2">
-              {DOCS_BASE.map(d => (
+              {(bolsista.ehSubstituto ? DOCS_BASE_SUBSTITUTO : DOCS_BASE).map(d => (
                 <DocUploadField key={d.key} label={d.label} reference={d.ref} fieldKey={d.key}
                   currentUrl={bolsista[d.key]} onUpload={handleUpload} uploading={uploading[d.key]} />
               ))}
@@ -1092,15 +1107,23 @@ export function OrientadorBolsistas() {
 
   async function fetchBolsistas() {
     setLoading(true)
-    const { data, error: err } = await supabase
-      .from('bolsista')
-      .select('*')
-      .eq('projeto_id', projeto.id)
-      .eq('status', 'ativo')
-      .or('status_bolsista.is.null,status_bolsista.neq.substituido')
-      .order('created_at', { ascending: true })
+    const [{ data, error: err }, { data: subs }] = await Promise.all([
+      supabase
+        .from('bolsista')
+        .select('*')
+        .eq('projeto_id', projeto.id)
+        .eq('status', 'ativo')
+        .or('status_bolsista.is.null,status_bolsista.neq.substituido')
+        .order('created_at', { ascending: true }),
+      // Quais bolsistas ativos entraram por substituição — usado para não
+      // cobrar de novo a anuência da direção (documento de projeto, não de
+      // bolsista). Se essa consulta falhar, seguimos com o comportamento
+      // anterior (exige o documento de todos) em vez de quebrar a tela.
+      supabase.from('substituicao_bolsista').select('bolsista_entrou_id').eq('projeto_id', projeto.id),
+    ])
     if (err) setError(`Erro ao carregar bolsistas: ${err.message}`)
-    setBolsistas(data ?? [])
+    const idsSubstitutos = new Set((subs ?? []).map(s => s.bolsista_entrou_id).filter(Boolean))
+    setBolsistas((data ?? []).map(b => ({ ...b, ehSubstituto: idsSubstitutos.has(b.id) })))
     setLoading(false)
   }
 
