@@ -252,6 +252,7 @@ function DocumentosSubstitutoCard({ bolsista }) {
 export function SubstituicoesPainel() {
   const [pendentes, setPendentes] = useState([])
   const [historico, setHistorico] = useState([])
+  const [substitutos, setSubstitutos] = useState([])
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState(null)
   const [aprovandoId, setAprovandoId] = useState(null)
@@ -264,13 +265,33 @@ export function SubstituicoesPainel() {
   async function carregar() {
     setLoading(true)
     setErro(null)
-    const [{ data: pend, error: e1 }, { data: hist, error: e2 }] = await Promise.all([
+    const [{ data: pend, error: e1 }, { data: hist, error: e2 }, { data: subs, error: e3 }] = await Promise.all([
       supabase.from('solicitacao_substituicao').select(SELECT_SOLICITACAO).eq('status', 'pendente').order('created_at', { ascending: true }),
       supabase.from('solicitacao_substituicao').select(SELECT_SOLICITACAO).in('status', ['aprovada', 'recusada']).order('decidido_em', { ascending: false }).limit(50),
+      // "Documentos dos bolsistas substitutos" precisa cobrir TODA
+      // substituição já feita — inclusive as que aconteceram antes da
+      // aprovação da Secretaria existir (fluxo antigo, direto pelo
+      // orientador, sem passar por solicitacao_substituicao). A tabela
+      // `substituicao_bolsista` é o registro de auditoria único que tem
+      // as duas, então é a fonte certa para não deixar ninguém de fora.
+      supabase.from('substituicao_bolsista').select('bolsista_entrou_id').order('created_at', { ascending: false }),
     ])
-    if (e1 || e2) setErro((e1 || e2).message)
+    if (e1 || e2 || e3) setErro((e1 || e2 || e3).message)
     setPendentes(pend ?? [])
     setHistorico(hist ?? [])
+
+    const idsEntrou = [...new Set((subs ?? []).map(s => s.bolsista_entrou_id).filter(Boolean))]
+    if (idsEntrou.length > 0) {
+      // só os que continuam ativos — um substituto que já foi substituído de
+      // novo não precisa mais aparecer aqui, a checagem de documentos dele
+      // deixou de importar.
+      const { data: entrantes, error: e4 } = await supabase.from('bolsista').select('*').in('id', idsEntrou).eq('status', 'ativo')
+      if (e4) setErro(e4.message)
+      setSubstitutos(entrantes ?? [])
+    } else {
+      setSubstitutos([])
+    }
+
     setLoading(false)
   }
 
@@ -306,10 +327,6 @@ export function SubstituicoesPainel() {
       setRecusando(false)
     }
   }
-
-  const substitutos = historico
-    .filter(s => s.status === 'aprovada' && s.bolsista_entrou)
-    .map(s => s.bolsista_entrou)
 
   return (
     <div className="space-y-6">
