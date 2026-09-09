@@ -49,7 +49,6 @@ import { RedefinirSenhaOrientador } from '@/pages/orientador/RedefinirSenhaOrien
 import { OrientadorDashboard } from '@/pages/orientador/OrientadorDashboard'
 import { OrientadorDados } from '@/pages/orientador/OrientadorDados'
 import { OrientadorMeusDados } from '@/pages/orientador/OrientadorMeusDados'
-import { OrientadorEquipe } from '@/pages/orientador/OrientadorEquipe'
 import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 import { RelatorioMensal } from '@/pages/orientador/RelatorioMensal'
@@ -129,7 +128,11 @@ function App() {
               <Route path="dashboard" element={<RequireAcessoOrientador><OrientadorDashboard /></RequireAcessoOrientador>} />
               <Route path="dados" element={<RequireAcessoOrientador><OrientadorDados /></RequireAcessoOrientador>} />
               <Route path="meus-dados" element={<RequireAcessoOrientador><OrientadorMeusDados /></RequireAcessoOrientador>} />
-              <Route path="equipe" element={<RequireAcessoOrientador><OrientadorEquipe /></RequireAcessoOrientador>} />
+              {/* "equipe" foi desativada em 09/09/2026 — cadastrava bolsista e
+                  documentos num esquema de campos antigo e paralelo, que a
+                  Secretaria não conseguia enxergar. Toda a função dela já
+                  existe, mais completa, em "bolsistas". Link antigo cai no
+                  catch-all abaixo (redireciona pro login), sem quebrar nada. */}
               <Route path="bolsistas" element={<RequireAcessoOrientador><OrientadorBolsistas /></RequireAcessoOrientador>} />
               <Route path="relatorio-mensal" element={<RequireAcessoOrientador><RelatorioMensal /></RequireAcessoOrientador>} />
               <Route path="documentos" element={<RequireAcessoOrientador><OrientadorDocumentos /></RequireAcessoOrientador>} />
