@@ -243,7 +243,7 @@ export function OrientadorDashboard() {
               </p>
             </div>
             <button
-              onClick={() => navigate('/orientador/equipe')}
+              onClick={() => navigate('/orientador/bolsistas')}
               className="ml-auto shrink-0 text-xs font-semibold text-amber-700 hover:text-amber-900 underline underline-offset-2"
             >
               Cadastrar agora
@@ -349,7 +349,7 @@ export function OrientadorDashboard() {
             <div className="flex items-center justify-between mb-3">
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Minha equipe</p>
               <button
-                onClick={() => navigate('/orientador/equipe')}
+                onClick={() => navigate('/orientador/bolsistas')}
                 className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
               >
                 Ver todos <ChevronRight className="w-3 h-3" />
