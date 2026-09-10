@@ -273,6 +273,19 @@ function HistoricoLinha({ solicitacao }) {
           <p className="text-xs text-red-700 mt-1">Motivo da recusa: {solicitacao.motivo_recusa}</p>
         )}
       </div>
+      {solicitacao.oficio_url && (
+        <a
+          href={solicitacao.oficio_url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={solicitacao.oficio_nome_arquivo || 'Baixar ofício anexado'}
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5 hover:bg-blue-100 transition-colors mt-0.5"
+        >
+          <FileText className="w-3.5 h-3.5" />
+          Ofício
+          <ExternalLink className="w-3 h-3" />
+        </a>
+      )}
     </div>
   )
 }
