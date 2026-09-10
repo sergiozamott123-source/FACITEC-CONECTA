@@ -122,34 +122,39 @@ export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
   const colDirX = mL + usableW / 2 + 6
   const colLargura = usableW / 2 - 6
 
-  // Desenha um "quadradinho" com a imagem do documento (ou um aviso, quando
+  // Desenha o retângulo com a imagem do documento (ou um aviso, quando
   // `resultado` é null porque o documento não existe ou não pôde ser
-  // carregado) — usado na seção "Documentos anexados", abaixo.
-  const LADO_DOC = 30
-  const GAP_DOC = 6
+  // carregado) — usado na seção "Documentos anexados", abaixo. O documento
+  // é ampliado ao máximo dentro de DOC_W x DOC_H mantendo sua proporção
+  // original, para ficar grande o bastante para conferência (nome, número,
+  // foto) sem distorcer a imagem.
+  const DOC_W = 78
+  const DOC_H = 95
+  const GAP_DOC_X = 14
+  const GAP_DOC_Y = 14
   function quadradoDocumento(x, y, label, resultado) {
     doc.setDrawColor(...CINZA_CLARO)
     doc.setLineWidth(0.3)
     if (resultado?.canvas) {
-      const escala = Math.min(LADO_DOC / resultado.largura, LADO_DOC / resultado.altura)
+      const escala = Math.min(DOC_W / resultado.largura, DOC_H / resultado.altura)
       const w = resultado.largura * escala
       const h = resultado.altura * escala
-      doc.roundedRect(x, y, LADO_DOC, LADO_DOC, 1.5, 1.5, 'S')
-      doc.addImage(resultado.canvas, 'JPEG', x + (LADO_DOC - w) / 2, y + (LADO_DOC - h) / 2, w, h)
+      doc.roundedRect(x, y, DOC_W, DOC_H, 2, 2, 'S')
+      doc.addImage(resultado.canvas, 'JPEG', x + (DOC_W - w) / 2, y + (DOC_H - h) / 2, w, h)
     } else {
       doc.setFillColor(...CINZA_CLARO)
-      doc.roundedRect(x, y, LADO_DOC, LADO_DOC, 1.5, 1.5, 'FD')
+      doc.roundedRect(x, y, DOC_W, DOC_H, 2, 2, 'FD')
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7)
+      doc.setFontSize(9)
       doc.setTextColor(...CINZA_TEXTO)
-      doc.text('Documento', x + LADO_DOC / 2, y + LADO_DOC / 2 - 2, { align: 'center' })
-      doc.text('não anexado', x + LADO_DOC / 2, y + LADO_DOC / 2 + 2.5, { align: 'center' })
+      doc.text('Documento', x + DOC_W / 2, y + DOC_H / 2 - 3, { align: 'center' })
+      doc.text('não anexado', x + DOC_W / 2, y + DOC_H / 2 + 3, { align: 'center' })
       doc.setTextColor(0, 0, 0)
     }
     doc.setFont('helvetica', 'bold')
-    doc.setFontSize(6.5)
+    doc.setFontSize(8.5)
     doc.setTextColor(...CINZA_TEXTO)
-    doc.text(doc.splitTextToSize(label, LADO_DOC + 4), x, y + LADO_DOC + 3.5)
+    doc.text(label, x + DOC_W / 2, y + DOC_H + 5.5, { align: 'center' })
     doc.setTextColor(0, 0, 0)
   }
 
@@ -258,22 +263,31 @@ export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
     const todosDocumentos = [...documentosAluno, ...documentosResponsavel]
     const resultadosImagens = await Promise.all(todosDocumentos.map(d => converterDocumentoParaImagem(d.url)))
 
-    // Se não sobrar espaço suficiente para o título + os quadradinhos nesta
-    // página, começa uma página nova (ainda para o mesmo bolsista) em vez de
-    // cortar/sobrepor conteúdo no rodapé — casos com responsável (mais
-    // campos) e vários documentos são os que mais se aproximam do limite.
-    const ALTURA_SECAO_DOCUMENTOS = 10 + LADO_DOC + 6
-    if (y + ALTURA_SECAO_DOCUMENTOS > pgH - 20) {
-      rodape()
-      doc.addPage()
-      pagina++
-      cabecalho()
-      y = mT + 10
-    }
+    // Os documentos ganham página própria (em vez de dividir espaço com o
+    // texto): assim cada imagem pode ser exibida bem maior, grande o
+    // suficiente para conferir CPF, RG e foto sem precisar dar zoom.
+    rodape()
+    doc.addPage()
+    pagina++
+    cabecalho()
+    y = mT + 8
 
-    y = tituloSecao(y, 'Documentos anexados')
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(11.5)
+    doc.setTextColor(...AZUL)
+    doc.text(`Documentos de identidade — ${b.nome_completo || '—'}`, mL, y)
+    doc.setTextColor(0, 0, 0)
+    y += 10
+
+    const colunasGrid = 2
+    const larguraGrid = colunasGrid * DOC_W + (colunasGrid - 1) * GAP_DOC_X
+    const inicioGridX = mL + (usableW - larguraGrid) / 2
     todosDocumentos.forEach((docInfo, i) => {
-      quadradoDocumento(colEsqX + i * (LADO_DOC + GAP_DOC), y, docInfo.label, resultadosImagens[i])
+      const col = i % colunasGrid
+      const lin = Math.floor(i / colunasGrid)
+      const x = inicioGridX + col * (DOC_W + GAP_DOC_X)
+      const yLinha = y + lin * (DOC_H + GAP_DOC_Y)
+      quadradoDocumento(x, yLinha, docInfo.label, resultadosImagens[i])
     })
   }
 
