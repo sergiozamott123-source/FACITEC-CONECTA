@@ -9,9 +9,11 @@
 import { useEffect, useState } from 'react'
 import {
   ArrowLeftRight, CheckCircle, XCircle, Clock, FileText, AlertTriangle,
-  ExternalLink, ChevronDown, ChevronUp, PenLine,
+  ExternalLink, ChevronDown, ChevronUp, PenLine, IdCard, Loader2,
 } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
+import { buscarFichaCadastralDeBolsista } from '@/lib/relatorioFinanceiro'
+import { exportarFichaCadastralPDF } from '@/lib/fichaCadastralPdf'
 
 // A anuência da direção (Anexo V) é documento de PROJETO — autoriza o
 // projeto a "rodar" na escola, enviado uma única vez no início do processo
@@ -296,6 +298,26 @@ function DocumentosSubstitutoCard({ bolsista }) {
   const faltando = docs.filter(d => !bolsista[d.key])
   const completo = faltando.length === 0
 
+  // Fase 25: gera a Ficha Cadastral Individual (dados + "quadradinhos" com
+  // a imagem dos documentos de identidade) só deste bolsista substituto —
+  // pedido para encaminhar o processo dele à Diretoria Financeira sem
+  // precisar gerar a ficha do grupo inteiro do orientador.
+  const [gerandoFicha, setGerandoFicha] = useState(false)
+  const [erroFicha, setErroFicha] = useState(null)
+
+  async function handleGerarFicha() {
+    setGerandoFicha(true)
+    setErroFicha(null)
+    try {
+      const linha = await buscarFichaCadastralDeBolsista(bolsista)
+      await exportarFichaCadastralPDF([linha])
+    } catch {
+      setErroFicha('Não foi possível gerar a ficha cadastral deste bolsista.')
+    } finally {
+      setGerandoFicha(false)
+    }
+  }
+
   return (
     <div className={`rounded-lg border px-4 py-3 ${completo ? 'border-green-200 bg-green-50' : 'border-amber-200 bg-amber-50'}`}>
       <div className="flex items-center justify-between gap-2">
@@ -316,6 +338,15 @@ function DocumentosSubstitutoCard({ bolsista }) {
           ))}
         </ul>
       )}
+      <button
+        onClick={handleGerarFicha}
+        disabled={gerandoFicha}
+        className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-white border border-blue-200 rounded-md px-2.5 py-1.5 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+      >
+        {gerandoFicha ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <IdCard className="w-3.5 h-3.5" />}
+        {gerandoFicha ? 'Gerando ficha...' : 'Gerar ficha cadastral'}
+      </button>
+      {erroFicha && <p className="text-xs text-red-700 mt-1.5">{erroFicha}</p>}
     </div>
   )
 }
