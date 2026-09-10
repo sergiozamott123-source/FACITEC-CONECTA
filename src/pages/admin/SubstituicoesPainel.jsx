@@ -159,6 +159,11 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
           </p>
           <p className="text-xs text-gray-500 truncate">
             {solicitacao.orientador?.nome_completo} · {solicitacao.orientador?.codigo_orientador} · pedido em {formatarDataHora(solicitacao.created_at)}
+            {solicitacao.bolsista_voluntario_id && (
+              <span className="ml-1.5 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-50 text-purple-700 border border-purple-200 align-middle">
+                Promoção de voluntário
+              </span>
+            )}
           </p>
         </div>
         <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
@@ -178,6 +183,16 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Projeto</p>
             <p className="text-sm text-gray-700">{solicitacao.projeto?.titulo || '—'}</p>
           </div>
+
+          {solicitacao.bolsista_voluntario_id && (
+            <div className="rounded-md bg-purple-50 border border-purple-200 px-3 py-2 flex items-start gap-2 text-xs text-purple-800">
+              <ArrowLeftRight className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              <span>
+                Este pedido promove um bolsista voluntário já cadastrado no projeto (não é um cadastro novo). Ao aprovar,
+                o próprio registro dele passa a titular — os dados abaixo são o retrato do cadastro no momento do pedido.
+              </span>
+            </div>
+          )}
 
           <div className="space-y-2">
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Comparação</p>
