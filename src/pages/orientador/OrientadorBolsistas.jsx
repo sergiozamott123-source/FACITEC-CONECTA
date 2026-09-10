@@ -500,8 +500,11 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
 }
 
 // Card temporário para novo bolsista — INSERT só acontece ao preencher o nome
-function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
-  const [form, setForm] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', ano_serie: '', tipo: 'bolsista' })
+function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel, titularesNoLimite = false, maxBolsistas }) {
+  // Quando o limite de titulares já foi atingido, o cadastro só pode
+  // continuar como voluntário — por isso o formulário já nasce nesse tipo
+  // e a opção "Titular" fica desabilitada (Fase 25).
+  const [form, setForm] = useState({ nome_completo: '', cpf: '', rg: '', data_nascimento: '', ano_serie: '', tipo: titularesNoLimite ? 'voluntario' : 'bolsista' })
   const [saving, setSaving] = useState(false)
   const [insertError, setInsertError] = useState(null)
   const [uploading, setUploading] = useState({})
@@ -618,9 +621,17 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
             <div className="col-span-2">
               <label className="block text-xs font-medium text-gray-700 mb-1">Tipo de bolsa <span className="text-red-500">*</span></label>
               <select name="tipo" value={form.tipo} onChange={handleChange} className={inputCls}>
-                <option value="bolsista">Titular (BT)</option>
+                <option value="bolsista" disabled={titularesNoLimite}>
+                  Titular (BT){titularesNoLimite ? ' — limite atingido' : ''}
+                </option>
                 <option value="voluntario">Voluntário (BV)</option>
               </select>
+              {titularesNoLimite && (
+                <p className="text-xs text-amber-600 mt-1">
+                  O limite de {maxBolsistas} titulares já foi atingido. Este cadastro só pode ser feito como voluntário
+                  (para virar titular, é preciso usar a substituição de um titular existente).
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
@@ -688,11 +699,17 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel }) {
   )
 }
 
-function SubstituirModal({ bolsista, orientador, onConfirm, onClose, saving, backendError }) {
+function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], onConfirm, onClose, saving, backendError }) {
   const [motivo, setMotivo] = useState('')
   const [oficioFile, setOficioFile] = useState(null)
   const [assinaturaCpf, setAssinaturaCpf] = useState('')
   const [assinaturaConfirmada, setAssinaturaConfirmada] = useState(false)
+  // Fase 25: além de cadastrar um bolsista novo (fluxo original), o
+  // orientador pode escolher promover um voluntário já cadastrado no
+  // projeto — reaproveita nome/CPF/RG/documentos, sem duplicar cadastro.
+  const [modo, setModo] = useState('novo') // 'novo' | 'voluntario'
+  const [voluntarioId, setVoluntarioId] = useState('')
+  const voluntarioEscolhido = voluntariosDisponiveis.find(v => v.id === voluntarioId) ?? null
   const [novoForm, setNovoForm] = useState({
     nome_completo: '',
     cpf: '',
@@ -719,12 +736,23 @@ function SubstituirModal({ bolsista, orientador, onConfirm, onClose, saving, bac
   function handleConfirm() {
     if (!motivo.trim()) { setErr('Informe o motivo da substituição.'); return }
     if (!oficioFile) { setErr('Anexe o ofício de substituição.'); return }
-    if (!novoForm.nome_completo.trim()) { setErr('Informe o nome do novo bolsista.'); return }
-    if (!novoForm.data_nascimento) { setErr('Informe a data de nascimento do novo bolsista.'); return }
+    if (modo === 'voluntario') {
+      if (!voluntarioId) { setErr('Escolha o voluntário que vai assumir a vaga.'); return }
+    } else {
+      if (!novoForm.nome_completo.trim()) { setErr('Informe o nome do novo bolsista.'); return }
+      if (!novoForm.data_nascimento) { setErr('Informe a data de nascimento do novo bolsista.'); return }
+    }
     if (assinaturaCpf.replace(/\D/g, '').length !== 11) { setErr('Confirme seu CPF para assinar eletronicamente a solicitação.'); return }
     if (!assinaturaConfirmada) { setErr('Confirme a declaração para assinar eletronicamente a solicitação.'); return }
     setErr(null)
-    onConfirm(motivo.trim(), novoForm, oficioFile, { nome: orientador?.nome_completo ?? '', cpf: assinaturaCpf })
+    onConfirm({
+      motivo: motivo.trim(),
+      modo,
+      novoForm,
+      voluntarioId,
+      oficioFile,
+      assinatura: { nome: orientador?.nome_completo ?? '', cpf: assinaturaCpf },
+    })
   }
 
   const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
@@ -745,7 +773,9 @@ function SubstituirModal({ bolsista, orientador, onConfirm, onClose, saving, bac
             <p>
               Este pedido será enviado para aprovação da <span className="font-semibold">Secretaria Executiva</span>.
               O bolsista <span className="font-semibold">{bolsista.nome_completo}</span> continua ativo normalmente até a
-              decisão. Assim que aprovado, o novo bolsista entra no seu painel e você poderá enviar os documentos dele.
+              decisão. {modo === 'voluntario'
+                ? 'Assim que aprovado, o voluntário escolhido passa a titular no seu painel, com os documentos que ele(a) já enviou.'
+                : 'Assim que aprovado, o novo bolsista entra no seu painel e você poderá enviar os documentos dele.'}{' '}
               Prazo final para novos pedidos de substituição: <span className="font-semibold">30/09/2026</span>.
             </p>
           </div>
@@ -799,76 +829,133 @@ function SubstituirModal({ bolsista, orientador, onConfirm, onClose, saving, bac
             )}
           </div>
 
-          <div className="border-t border-gray-100 pt-4">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do novo bolsista</p>
-            <div className="grid grid-cols-2 gap-3">
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Nome completo <span className="text-red-500">*</span></label>
-                <input name="nome_completo" value={novoForm.nome_completo} onChange={handleChange} placeholder="Nome completo do bolsista" className={inputCls} />
+          {voluntariosDisponiveis.length > 0 && (
+            <div className="border-t border-gray-100 pt-4">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Quem vai assumir a vaga?</p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setModo('novo')}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border text-left transition-colors ${
+                    modo === 'novo' ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Cadastrar um bolsista novo
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModo('voluntario')}
+                  className={`px-3 py-2 rounded-lg text-xs font-semibold border text-left transition-colors ${
+                    modo === 'voluntario' ? 'bg-purple-50 border-purple-400 text-purple-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  Promover um voluntário já cadastrado
+                </button>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
-                <input name="cpf" value={novoForm.cpf} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">RG</label>
-                <input name="rg" value={novoForm.rg} onChange={handleChange} placeholder="000.000.000" className={inputCls} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
-                <input name="data_nascimento" type="date" value={novoForm.data_nascimento} onChange={handleChange} className={inputCls} />
-              </div>
-              <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar / Escola</label>
-                <input name="ano_serie" value={novoForm.ano_serie} onChange={handleChange} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
-              </div>
+              {modo === 'voluntario' && (
+                <p className="text-[11px] text-gray-400 mt-2">
+                  O cadastro do voluntário escolhido vira o novo titular — nome, CPF, RG e documentos já enviados são
+                  aproveitados, sem precisar recadastrar nada.
+                </p>
+              )}
             </div>
-            {novoForm.data_nascimento && (
-              <div className={`mt-2 text-xs px-2.5 py-1.5 rounded-md flex items-center gap-1.5 ${
-                menor ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-500'
-              }`}>
-                {menor && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
-                {menor
-                  ? `Menor de idade (${calcIdade(novoForm.data_nascimento)} anos) — dados do responsável obrigatórios`
-                  : `Maior de idade (${calcIdade(novoForm.data_nascimento)} anos)`}
-              </div>
-            )}
-          </div>
+          )}
 
-          {menor && (
-            <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do responsável</p>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Nome do responsável</label>
-                  <input name="nome_responsavel" value={novoForm.nome_responsavel} onChange={handleChange} className={inputCls} />
+          {modo === 'voluntario' ? (
+            <div className={voluntariosDisponiveis.length > 0 ? '' : 'border-t border-gray-100 pt-4'}>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Voluntário que vai assumir a vaga</p>
+              <select
+                value={voluntarioId}
+                onChange={e => setVoluntarioId(e.target.value)}
+                className={inputCls}
+              >
+                <option value="">Selecione um voluntário...</option>
+                {voluntariosDisponiveis.map(v => (
+                  <option key={v.id} value={v.id}>
+                    {v.nome_completo} {v.codigo_bolsista ? `(${v.codigo_bolsista})` : ''}
+                  </option>
+                ))}
+              </select>
+              {voluntarioEscolhido && (
+                <div className="mt-2 text-xs px-2.5 py-1.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                  {voluntarioEscolhido.nome_completo} passará a titular, mantendo o mesmo cadastro e documentos.
                 </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">CPF do responsável</label>
-                  <input name="cpf_responsavel" value={novoForm.cpf_responsavel} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">RG do responsável</label>
-                  <input name="rg_responsavel" value={novoForm.rg_responsavel} onChange={handleChange} className={inputCls} />
-                </div>
-                <div className="col-span-2">
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Vínculo</label>
-                  <select name="vinculo_responsavel" value={novoForm.vinculo_responsavel} onChange={handleChange} className={inputCls}>
-                    <option value="pai/mae">Pai/Mãe</option>
-                    <option value="responsavel_legal">Responsável legal</option>
-                    <option value="outro">Outro</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">Telefone do responsável</label>
-                  <input name="telefone_responsavel" value={novoForm.telefone_responsavel} onChange={handleChange} className={inputCls} />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">E-mail do responsável</label>
-                  <input type="email" name="email_responsavel" value={novoForm.email_responsavel} onChange={handleChange} placeholder="email@exemplo.com" className={inputCls} />
-                </div>
-              </div>
+              )}
             </div>
+          ) : (
+            <>
+              <div className="border-t border-gray-100 pt-4">
+                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do novo bolsista</p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Nome completo <span className="text-red-500">*</span></label>
+                    <input name="nome_completo" value={novoForm.nome_completo} onChange={handleChange} placeholder="Nome completo do bolsista" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
+                    <input name="cpf" value={novoForm.cpf} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">RG</label>
+                    <input name="rg" value={novoForm.rg} onChange={handleChange} placeholder="000.000.000" className={inputCls} />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Data de nascimento <span className="text-red-500">*</span></label>
+                    <input name="data_nascimento" type="date" value={novoForm.data_nascimento} onChange={handleChange} className={inputCls} />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Ano escolar / Escola</label>
+                    <input name="ano_serie" value={novoForm.ano_serie} onChange={handleChange} placeholder="Ex: 8º ano do Ensino Médio" className={inputCls} />
+                  </div>
+                </div>
+                {novoForm.data_nascimento && (
+                  <div className={`mt-2 text-xs px-2.5 py-1.5 rounded-md flex items-center gap-1.5 ${
+                    menor ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-500'
+                  }`}>
+                    {menor && <AlertTriangle className="w-3.5 h-3.5 shrink-0" />}
+                    {menor
+                      ? `Menor de idade (${calcIdade(novoForm.data_nascimento)} anos) — dados do responsável obrigatórios`
+                      : `Maior de idade (${calcIdade(novoForm.data_nascimento)} anos)`}
+                  </div>
+                )}
+              </div>
+
+              {menor && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Dados do responsável</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Nome do responsável</label>
+                      <input name="nome_responsavel" value={novoForm.nome_responsavel} onChange={handleChange} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">CPF do responsável</label>
+                      <input name="cpf_responsavel" value={novoForm.cpf_responsavel} onChange={handleChange} placeholder="000.000.000-00" className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">RG do responsável</label>
+                      <input name="rg_responsavel" value={novoForm.rg_responsavel} onChange={handleChange} className={inputCls} />
+                    </div>
+                    <div className="col-span-2">
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Vínculo</label>
+                      <select name="vinculo_responsavel" value={novoForm.vinculo_responsavel} onChange={handleChange} className={inputCls}>
+                        <option value="pai/mae">Pai/Mãe</option>
+                        <option value="responsavel_legal">Responsável legal</option>
+                        <option value="outro">Outro</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">Telefone do responsável</label>
+                      <input name="telefone_responsavel" value={novoForm.telefone_responsavel} onChange={handleChange} className={inputCls} />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-700 mb-1">E-mail do responsável</label>
+                      <input type="email" name="email_responsavel" value={novoForm.email_responsavel} onChange={handleChange} placeholder="email@exemplo.com" className={inputCls} />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="border-t border-gray-100 pt-4">
@@ -1183,9 +1270,21 @@ export function OrientadorBolsistas() {
     setLoading(false)
   }
 
+  // Só bolsistas titulares contam para o limite do Edital — voluntários não
+  // ocupam vaga de titular e podem ser cadastrados sem limite (Fase 25).
+  // 'voluntario' é o único valor que realmente significa "voluntário" (ver
+  // mesmo comentário/checagem em OrientadorDashboard.jsx); o resto conta
+  // como titular, incluindo o valor legado 'bolsista'.
+  const titulares = bolsistas.filter(b => b.tipo !== 'voluntario')
+  const voluntarios = bolsistas.filter(b => b.tipo === 'voluntario')
+  const titularesNoLimite = titulares.length >= MAX_BOLSISTAS
+
   function handleAdicionar() {
     if (!projeto) { setError('Projeto não encontrado. Verifique se seu projeto está com status "selecionado".'); return }
-    if (bolsistas.length >= MAX_BOLSISTAS) return
+    // Sem trava aqui: o limite de 8 vale só para titulares, e isso já é
+    // aplicado dentro do próprio formulário (NovoBolsistaCard), que impede
+    // selecionar "Titular" quando o limite foi atingido — voluntários
+    // continuam liberados para cadastro a qualquer momento.
     setShowNew(true)
     setExpanded(null)
   }
@@ -1211,20 +1310,36 @@ export function OrientadorBolsistas() {
   // pendente (função solicitar_substituicao) e só vira uma troca de verdade
   // quando a Secretaria Executiva aprova, no painel dela. O bolsista que
   // está saindo continua ativo normalmente enquanto isso.
-  async function handleConfirmarSubstituicao(motivo, novoForm, oficioFile, assinatura) {
+  //
+  // Fase 25: o orientador pode escolher, em vez de cadastrar alguém do zero
+  // ("novo"), promover um voluntário já cadastrado no projeto
+  // ("voluntario") — nesse caso vai para a função
+  // solicitar_substituicao_por_voluntario, que reaproveita o cadastro (e os
+  // documentos) do voluntário em vez de duplicar tudo.
+  async function handleConfirmarSubstituicao({ motivo, modo, novoForm, voluntarioId, oficioFile, assinatura }) {
     setSubstituindo(true)
     setSubstituirError(null)
     try {
       const oficioUrl = await uploadOficio(oficioFile, orientador.id, substituirTarget.id)
-      const { error: errRpc } = await supabase.rpc('solicitar_substituicao', {
-        p_bolsista_saiu_id: substituirTarget.id,
-        p_motivo: motivo,
-        p_novo: novoForm,
-        p_oficio_url: oficioUrl,
-        p_oficio_nome_arquivo: oficioFile.name,
-        p_assinatura_nome: assinatura?.nome,
-        p_assinatura_cpf: assinatura?.cpf,
-      })
+      const { error: errRpc } = modo === 'voluntario'
+        ? await supabase.rpc('solicitar_substituicao_por_voluntario', {
+            p_bolsista_saiu_id: substituirTarget.id,
+            p_bolsista_voluntario_id: voluntarioId,
+            p_motivo: motivo,
+            p_oficio_url: oficioUrl,
+            p_oficio_nome_arquivo: oficioFile.name,
+            p_assinatura_nome: assinatura?.nome,
+            p_assinatura_cpf: assinatura?.cpf,
+          })
+        : await supabase.rpc('solicitar_substituicao', {
+            p_bolsista_saiu_id: substituirTarget.id,
+            p_motivo: motivo,
+            p_novo: novoForm,
+            p_oficio_url: oficioUrl,
+            p_oficio_nome_arquivo: oficioFile.name,
+            p_assinatura_nome: assinatura?.nome,
+            p_assinatura_cpf: assinatura?.cpf,
+          })
       if (errRpc) throw new Error(errRpc.message)
 
       setSubstituirTarget(null)
@@ -1250,12 +1365,14 @@ export function OrientadorBolsistas() {
           <div>
             <h1 className="text-xl font-bold text-gray-900">Bolsistas</h1>
             <p className="text-sm text-gray-500 mt-0.5">
-              {loading ? '—' : `${total} de ${MAX_BOLSISTAS} bolsistas cadastrados`}
+              {loading
+                ? '—'
+                : `${titulares.length} de ${MAX_BOLSISTAS} titulares cadastrados${voluntarios.length > 0 ? ` · ${voluntarios.length} voluntário${voluntarios.length > 1 ? 's' : ''}` : ''}`}
             </p>
           </div>
           <button
             onClick={handleAdicionar}
-            disabled={showNew || bolsistas.length >= MAX_BOLSISTAS || loading}
+            disabled={showNew || loading}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
           >
             <Plus className="w-4 h-4" />
@@ -1355,16 +1472,19 @@ export function OrientadorBolsistas() {
                 orientador={orientador}
                 onInserted={handleInserted}
                 onCancel={() => setShowNew(false)}
+                titularesNoLimite={titularesNoLimite}
+                maxBolsistas={MAX_BOLSISTAS}
               />
             )}
           </div>
         )}
 
-        {bolsistas.length >= MAX_BOLSISTAS && (
+        {titularesNoLimite && (
           <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 flex items-start gap-3">
             <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
             <p className="text-sm text-amber-800">
-              Limite de <span className="font-semibold">{MAX_BOLSISTAS} bolsistas</span> atingido conforme o Edital FACITEC 01/2026.
+              Limite de <span className="font-semibold">{MAX_BOLSISTAS} bolsistas titulares</span> atingido conforme o Edital FACITEC 01/2026.
+              Novos titulares só entram pela substituição de um titular existente — mas ainda é possível cadastrar bolsistas voluntários normalmente.
             </p>
           </div>
         )}
@@ -1378,6 +1498,13 @@ export function OrientadorBolsistas() {
         <SubstituirModal
           bolsista={substituirTarget}
           orientador={orientador}
+          // Voluntários do mesmo projeto, ativos, que ainda não estão sendo
+          // usados em outra solicitação de substituição pendente — são os
+          // candidatos a "promover" em vez de cadastrar alguém do zero.
+          voluntariosDisponiveis={voluntarios.filter(v =>
+            v.id !== substituirTarget.id &&
+            !solicitacoes.some(s => s.status === 'pendente' && s.bolsista_voluntario_id === v.id)
+          )}
           onConfirm={handleConfirmarSubstituicao}
           onClose={() => { setSubstituirTarget(null); setSubstituirError(null) }}
           saving={substituindo}
