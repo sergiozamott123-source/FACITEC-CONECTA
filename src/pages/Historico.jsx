@@ -609,7 +609,10 @@ function FichaCadastralBody({ ano }) {
     try {
       const linhas = await buscarDadosRelatorioFinanceiro(ano, [orientadorId])
       if (!linhas.length) { setErro('Nenhum bolsista ativo encontrado para este orientador.'); return }
-      exportarFichaCadastralPDF(linhas, ano)
+      // Agora busca e converte as imagens dos documentos (pode levar alguns
+      // segundos a mais, principalmente quando há documentos em PDF) — por
+      // isso é aguardada, mantendo o botão em "Gerando..." até o fim.
+      await exportarFichaCadastralPDF(linhas, ano)
     } catch {
       setErro('Não foi possível gerar a ficha cadastral.')
     } finally {
