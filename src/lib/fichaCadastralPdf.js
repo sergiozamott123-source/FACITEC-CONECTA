@@ -3,8 +3,9 @@
 // Ficha cadastral individual do bolsista — uma página completa por pessoa,
 // para anexar ao processo físico enviado à Gerência Financeira (abertura de
 // conta / cadastramento em sistemas). Reaproveita os mesmos dados já
-// buscados por buscarDadosRelatorioFinanceiro (src/lib/relatorioFinanceiro.js)
-// — nenhuma consulta nova ao Supabase é feita aqui.
+// buscados por buscarDadosRelatorioFinanceiro/buscarFichaCadastralDeBolsista
+// (src/lib/relatorioFinanceiro.js) — nenhuma consulta nova ao Supabase é
+// feita aqui, além da busca das próprias imagens dos documentos.
 //
 // Diferença para o Relatório Financeiro (exportarPDFFinanceiro): aquele é um
 // relatório compacto, vários bolsistas por página, pensado para leitura
@@ -12,11 +13,41 @@
 // como ficha individual, pensada para ser destacada e inserida no processo
 // de cada um. Sem dados bancários — não fazem parte do que a Financeira
 // pediu para esta ficha (só cadastro/abertura de conta).
+//
+// Fase 25: além dos dados em texto, cada ficha agora mostra um "quadradinho"
+// com a imagem do documento de identidade do bolsista e, quando menor, do
+// responsável — pedido da Financeira para conferência visual rápida junto
+// ao processo físico. O sistema guarda esse documento de duas formas
+// dependendo de quando/como foi enviado: um único arquivo combinando
+// RG/CI + CPF (fluxo atual), ou os dois separados (cadastros mais antigos)
+// — listarDocumentosIdentidade() abaixo escolhe automaticamente o que
+// existe. Quando um documento não foi anexado, o quadradinho mostra um
+// aviso em vez de quebrar a geração da ficha.
 
 import { jsPDF } from 'jspdf'
 import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
+import { converterDocumentoParaImagem } from '@/lib/documentoImagem'
 
-export function exportarFichaCadastralPDF(linhas, ano = '2026') {
+// Decide quais documentos de identidade mostrar para o bolsista (ou, quando
+// `responsavel: true`, para o responsável dele) — prioriza o documento único
+// do fluxo atual; cai para RG/CPF separados quando é isso que existe no
+// cadastro; e devolve um único item "sem URL" (vira aviso na ficha) quando
+// não há nenhum documento de identidade cadastrado.
+function listarDocumentosIdentidade(linha, { responsavel = false } = {}) {
+  const quem = responsavel ? 'responsável' : 'bolsista'
+  const combinado = responsavel ? linha.doc_identidade_responsavel : linha.doc_identidade_aluno
+  if (combinado) {
+    return [{ label: `Identidade (RG/CI + CPF) do ${quem}`, url: combinado }]
+  }
+  const urlRg = responsavel ? linha.responsavel_doc_rg_url : linha.doc_rg_url
+  const urlCpf = responsavel ? linha.responsavel_doc_cpf_url : linha.doc_cpf_url
+  const docs = []
+  if (urlRg) docs.push({ label: `RG do ${quem}`, url: urlRg })
+  if (urlCpf) docs.push({ label: `CPF do ${quem}`, url: urlCpf })
+  return docs.length ? docs : [{ label: `Identidade do ${quem}`, url: null }]
+}
+
+export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
   if (!linhas?.length) return
 
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
@@ -91,7 +122,38 @@ export function exportarFichaCadastralPDF(linhas, ano = '2026') {
   const colDirX = mL + usableW / 2 + 6
   const colLargura = usableW / 2 - 6
 
-  linhas.forEach((b, idx) => {
+  // Desenha um "quadradinho" com a imagem do documento (ou um aviso, quando
+  // `resultado` é null porque o documento não existe ou não pôde ser
+  // carregado) — usado na seção "Documentos anexados", abaixo.
+  const LADO_DOC = 30
+  const GAP_DOC = 6
+  function quadradoDocumento(x, y, label, resultado) {
+    doc.setDrawColor(...CINZA_CLARO)
+    doc.setLineWidth(0.3)
+    if (resultado?.canvas) {
+      const escala = Math.min(LADO_DOC / resultado.largura, LADO_DOC / resultado.altura)
+      const w = resultado.largura * escala
+      const h = resultado.altura * escala
+      doc.roundedRect(x, y, LADO_DOC, LADO_DOC, 1.5, 1.5, 'S')
+      doc.addImage(resultado.canvas, 'JPEG', x + (LADO_DOC - w) / 2, y + (LADO_DOC - h) / 2, w, h)
+    } else {
+      doc.setFillColor(...CINZA_CLARO)
+      doc.roundedRect(x, y, LADO_DOC, LADO_DOC, 1.5, 1.5, 'FD')
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(7)
+      doc.setTextColor(...CINZA_TEXTO)
+      doc.text('Documento', x + LADO_DOC / 2, y + LADO_DOC / 2 - 2, { align: 'center' })
+      doc.text('não anexado', x + LADO_DOC / 2, y + LADO_DOC / 2 + 2.5, { align: 'center' })
+      doc.setTextColor(0, 0, 0)
+    }
+    doc.setFont('helvetica', 'bold')
+    doc.setFontSize(6.5)
+    doc.setTextColor(...CINZA_TEXTO)
+    doc.text(doc.splitTextToSize(label, LADO_DOC + 4), x, y + LADO_DOC + 3.5)
+    doc.setTextColor(0, 0, 0)
+  }
+
+  for (const [idx, b] of linhas.entries()) {
     if (idx > 0) {
       rodape()
       doc.addPage()
@@ -155,19 +217,24 @@ export function exportarFichaCadastralPDF(linhas, ano = '2026') {
     ], 5)
 
     // ── Responsável ─────────────────────────────────────────────────────
-    y = tituloSecao(y, 'Responsável')
-    y = linha(y, [
-      { x: colEsqX, label: 'NOME', valor: b.nome_responsavel, largura: colLargura },
-      { x: colDirX, label: 'VÍNCULO', valor: b.vinculo_responsavel, largura: colLargura },
-    ])
-    y = linha(y, [
-      { x: colEsqX, label: 'CPF', valor: b.cpf_responsavel, largura: colLargura },
-      { x: colDirX, label: 'RG', valor: b.rg_responsavel, largura: colLargura },
-    ])
-    y = linha(y, [
-      { x: colEsqX, label: 'TELEFONE', valor: b.telefone_responsavel, largura: colLargura },
-      { x: colDirX, label: 'E-MAIL', valor: b.email_responsavel, largura: colLargura },
-    ], 5)
+    // Só existe (e só faz sentido mostrar) para bolsistas menores de idade —
+    // para os demais, a seção inteira é omitida, em vez de imprimir um
+    // "Responsável: —" vazio numa ficha que vai para fora da instituição.
+    if (b.menor_idade === 'Sim') {
+      y = tituloSecao(y, 'Responsável')
+      y = linha(y, [
+        { x: colEsqX, label: 'NOME', valor: b.nome_responsavel, largura: colLargura },
+        { x: colDirX, label: 'VÍNCULO', valor: b.vinculo_responsavel, largura: colLargura },
+      ])
+      y = linha(y, [
+        { x: colEsqX, label: 'CPF', valor: b.cpf_responsavel, largura: colLargura },
+        { x: colDirX, label: 'RG', valor: b.rg_responsavel, largura: colLargura },
+      ])
+      y = linha(y, [
+        { x: colEsqX, label: 'TELEFONE', valor: b.telefone_responsavel, largura: colLargura },
+        { x: colDirX, label: 'E-MAIL', valor: b.email_responsavel, largura: colLargura },
+      ], 5)
+    }
 
     // ── Vínculo institucional ───────────────────────────────────────────
     y = tituloSecao(y, 'Vínculo institucional')
@@ -178,10 +245,37 @@ export function exportarFichaCadastralPDF(linhas, ano = '2026') {
     y = linha(y, [
       { x: colEsqX, label: 'PROJETO', valor: b.projeto, largura: usableW },
     ])
-    linha(y, [
+    y = linha(y, [
       { x: colEsqX, label: 'Nº DO CONTRATO', valor: b.numero_contrato, largura: colLargura },
-    ])
-  })
+    ], 5)
+
+    // ── Documentos anexados ──────────────────────────────────────────────
+    // Busca as imagens (ou converte a 1ª página do PDF) em paralelo, para
+    // não deixar o carregamento mais lento do que precisa — cada bolsista
+    // tem no máximo 4 documentos (2 dele + 2 do responsável).
+    const documentosAluno = listarDocumentosIdentidade(b)
+    const documentosResponsavel = b.menor_idade === 'Sim' ? listarDocumentosIdentidade(b, { responsavel: true }) : []
+    const todosDocumentos = [...documentosAluno, ...documentosResponsavel]
+    const resultadosImagens = await Promise.all(todosDocumentos.map(d => converterDocumentoParaImagem(d.url)))
+
+    // Se não sobrar espaço suficiente para o título + os quadradinhos nesta
+    // página, começa uma página nova (ainda para o mesmo bolsista) em vez de
+    // cortar/sobrepor conteúdo no rodapé — casos com responsável (mais
+    // campos) e vários documentos são os que mais se aproximam do limite.
+    const ALTURA_SECAO_DOCUMENTOS = 10 + LADO_DOC + 6
+    if (y + ALTURA_SECAO_DOCUMENTOS > pgH - 20) {
+      rodape()
+      doc.addPage()
+      pagina++
+      cabecalho()
+      y = mT + 10
+    }
+
+    y = tituloSecao(y, 'Documentos anexados')
+    todosDocumentos.forEach((docInfo, i) => {
+      quadradoDocumento(colEsqX + i * (LADO_DOC + GAP_DOC), y, docInfo.label, resultadosImagens[i])
+    })
+  }
 
   rodape()
 
