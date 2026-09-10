@@ -97,36 +97,88 @@ export async function buscarDadosRelatorioFinanceiro(ano = '2026', orientadorIds
     const projeto = projetoMap[b.projeto_id]
     const orientador = projeto ? orientMap[projeto.orientador_id] : null
     const contrato = contratoMap[b.projeto_id]
-    const menor = calcIdade(b.data_nascimento) !== null && calcIdade(b.data_nascimento) < 18
-    return {
-      codigo_bolsista: b.codigo_bolsista || '',
-      nome_completo: b.nome_completo || '',
-      tipo: b.tipo || '',
-      cpf: b.cpf || '',
-      rg: b.rg || '',
-      data_nascimento: formatarData(b.data_nascimento),
-      menor_idade: menor ? 'Sim' : 'Não',
-      escola: b.escola || '',
-      endereco: enderecoCompleto(b),
-      telefone: b.telefone || '',
-      email: b.email || '',
-      nome_responsavel: b.nome_responsavel || '',
-      cpf_responsavel: b.cpf_responsavel || '',
-      rg_responsavel: b.rg_responsavel || '',
-      vinculo_responsavel: b.vinculo_responsavel || '',
-      telefone_responsavel: b.telefone_responsavel || '',
-      email_responsavel: b.email_responsavel || '',
-      banco_responsavel: b.banco_responsavel || '',
-      agencia_responsavel: b.agencia_responsavel || '',
-      conta_responsavel: b.conta_responsavel || '',
-      orientador: orientador?.nome_completo || '',
-      codigo_orientador: orientador?.codigo_orientador || '',
-      projeto: projeto?.titulo || '',
-      numero_contrato: contrato?.numero_contrato || '',
-    }
+    return montarLinhaFicha(b, orientador, projeto, contrato)
   })
 
   return linhas
+}
+
+// Monta uma "linha" (um bolsista, com todos os dados já achatados/formatados
+// para exibição) a partir do registro cru do bolsista + os dados já
+// resolvidos de orientador/projeto/contrato. Extraído para ser reaproveitado
+// tanto pela busca em lote (buscarDadosRelatorioFinanceiro, acima) quanto
+// pela busca de um único bolsista (buscarFichaCadastralDeBolsista, abaixo) —
+// usada quando se quer gerar a Ficha Cadastral de só uma pessoa, sem passar
+// pelo grupo inteiro do orientador (Fase 25).
+function montarLinhaFicha(b, orientador, projeto, contrato) {
+  const menor = calcIdade(b.data_nascimento) !== null && calcIdade(b.data_nascimento) < 18
+  return {
+    codigo_bolsista: b.codigo_bolsista || '',
+    nome_completo: b.nome_completo || '',
+    tipo: b.tipo || '',
+    cpf: b.cpf || '',
+    rg: b.rg || '',
+    data_nascimento: formatarData(b.data_nascimento),
+    menor_idade: menor ? 'Sim' : 'Não',
+    escola: b.escola || '',
+    endereco: enderecoCompleto(b),
+    telefone: b.telefone || '',
+    email: b.email || '',
+    nome_responsavel: b.nome_responsavel || '',
+    cpf_responsavel: b.cpf_responsavel || '',
+    rg_responsavel: b.rg_responsavel || '',
+    vinculo_responsavel: b.vinculo_responsavel || '',
+    telefone_responsavel: b.telefone_responsavel || '',
+    email_responsavel: b.email_responsavel || '',
+    banco_responsavel: b.banco_responsavel || '',
+    agencia_responsavel: b.agencia_responsavel || '',
+    conta_responsavel: b.conta_responsavel || '',
+    orientador: orientador?.nome_completo || '',
+    codigo_orientador: orientador?.codigo_orientador || '',
+    projeto: projeto?.titulo || '',
+    numero_contrato: contrato?.numero_contrato || '',
+    // Documentos "crus" (URLs do Storage) — não entram no Excel nem no
+    // relatório em tabela, só são usados pela Ficha Cadastral em PDF
+    // (fichaCadastralPdf.js) para desenhar os "quadradinhos" com a imagem
+    // do documento de identidade do bolsista e, quando menor, do
+    // responsável (Fase 25). Cada campo pode ser o documento único do
+    // fluxo atual ("identidade" combinando RG/CI + CPF numa imagem só) ou,
+    // em cadastros mais antigos, RG e CPF em arquivos separados.
+    doc_identidade_aluno: b.doc_identidade_aluno || null,
+    doc_rg_url: b.doc_rg_url || null,
+    doc_cpf_url: b.doc_cpf_url || null,
+    doc_identidade_responsavel: b.doc_identidade_responsavel || null,
+    responsavel_doc_rg_url: b.responsavel_doc_rg_url || null,
+    responsavel_doc_cpf_url: b.responsavel_doc_cpf_url || null,
+  }
+}
+
+// Busca os dados de UM bolsista específico, já no mesmo formato de "linha"
+// usado pela Ficha Cadastral — usada pelo botão "Gerar ficha cadastral" no
+// card de cada bolsista substituto (SubstituicoesPainel.jsx), para gerar só
+// a ficha dele em vez do grupo inteiro do orientador. Recebe o registro do
+// bolsista já carregado pela tela (select('*') — evita buscar de novo) e só
+// completa o que falta (orientador/projeto/contrato).
+export async function buscarFichaCadastralDeBolsista(bolsista) {
+  const { data: projeto, error: eProj } = await supabase
+    .from('projeto')
+    .select('id, titulo, orientador_id')
+    .eq('id', bolsista.projeto_id)
+    .maybeSingle()
+  if (eProj) throw eProj
+
+  const [{ data: orientador, error: eOri }, { data: contrato, error: eCon }] = await Promise.all([
+    projeto?.orientador_id
+      ? supabase.from('orientador').select('id, nome_completo, codigo_orientador').eq('id', projeto.orientador_id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+    projeto?.id
+      ? supabase.from('contrato').select('numero_contrato').eq('projeto_id', projeto.id).maybeSingle()
+      : Promise.resolve({ data: null, error: null }),
+  ])
+  if (eOri) throw eOri
+  if (eCon) throw eCon
+
+  return montarLinhaFicha(bolsista, orientador, projeto, contrato)
 }
 
 // ── Exportação em Excel ──────────────────────────────────────────────────
