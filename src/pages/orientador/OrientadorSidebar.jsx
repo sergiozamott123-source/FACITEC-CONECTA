@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, User, FolderOpen, Users, FileText, ClipboardList, LogOut } from 'lucide-react'
+import { LayoutDashboard, User, FolderOpen, Users, FileText, ClipboardList, Video, LogOut } from 'lucide-react'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual } from '@/lib/relatorioMensal'
+import { listarCiclosVideo, listarVideosDoOrientador, statusVideoNoCiclo } from '@/lib/videoAcompanhamento'
 
 const NAV_ITEMS = [
   { label: 'Início',           icon: LayoutDashboard, to: '/orientador/dashboard'        },
@@ -11,6 +12,7 @@ const NAV_ITEMS = [
   { label: 'Meu projeto',      icon: FolderOpen,      to: '/orientador/dados'            },
   { label: 'Bolsistas',        icon: Users,           to: '/orientador/bolsistas'        },
   { label: 'Relatório mensal', icon: ClipboardList,   to: '/orientador/relatorio-mensal' },
+  { label: 'Vídeos',           icon: Video,           to: '/orientador/videos'           },
   { label: 'Documentos',       icon: FileText,        to: '/orientador/documentos'       },
 ]
 
@@ -19,6 +21,7 @@ export function OrientadorSidebar() {
   const location = useLocation()
   const navigate = useNavigate()
   const [pendente, setPendente] = useState(false)
+  const [pendenteVideo, setPendenteVideo] = useState(false)
 
   useEffect(() => {
     if (!orientador?.id || !projeto?.edicao_id) return
@@ -31,6 +34,24 @@ export function OrientadorSidebar() {
       const porCiclo = Object.fromEntries(relatorios.map(r => [r.ciclo_id, r]))
       const info = detectarCicloAtual(ciclos, porCiclo)
       setPendente(!!info.ciclo && info.relatorio?.status !== 'enviado')
+    }).catch(() => {})
+    return () => { ativo = false }
+  }, [orientador?.id, projeto?.edicao_id])
+
+  useEffect(() => {
+    if (!orientador?.id || !projeto?.edicao_id) return
+    let ativo = true
+    Promise.all([
+      listarCiclosVideo(projeto.edicao_id),
+      listarVideosDoOrientador(orientador.id),
+    ]).then(([ciclos, videos]) => {
+      if (!ativo) return
+      const porCiclo = Object.fromEntries(videos.map(v => [v.ciclo_id, v]))
+      const algumPendente = ciclos.some(c => {
+        const status = statusVideoNoCiclo(c, porCiclo[c.id])
+        return status === 'pendente' || status === 'atrasado'
+      })
+      setPendenteVideo(algumPendente)
     }).catch(() => {})
     return () => { ativo = false }
   }, [orientador?.id, projeto?.edicao_id])
@@ -88,6 +109,9 @@ export function OrientadorSidebar() {
               <Icon className="w-4 h-4 shrink-0" />
               <span className="flex-1">{label}</span>
               {to === '/orientador/relatorio-mensal' && pendente && (
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
+              )}
+              {to === '/orientador/videos' && pendenteVideo && (
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 shrink-0" />
               )}
             </Link>

@@ -28,6 +28,7 @@ import {
   Settings2,
   Trophy,
   Users,
+  Video,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Separator } from '@/components/ui/separator'
@@ -138,6 +139,9 @@ function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge, subst
         { label: 'Substituições', href: `/admin/${slug}/${ano}/substituicoes`, icon: ArrowLeftRight, badge: substituicoesBadge > 0 ? substituicoesBadge : undefined },
         { label: 'Contratos', href: `/admin/${slug}/${ano}/m2/contratos`, icon: FileSignature },
         { label: 'Obrigações do orientador', href: `/admin/${slug}/${ano}/relatorios-mensais`, icon: FileCheck2 },
+        // Só faz sentido para o PIBIC Jr por enquanto — o edital do PROFIC Jr
+        // não foi conferido para esta exigência de vídeo (ver video_acompanhamento_setup.sql).
+        ...(slug === 'pibic-jr' ? [{ label: 'Vídeos de acompanhamento', href: `/admin/${slug}/${ano}/videos-acompanhamento`, icon: Video }] : []),
       ],
     },
     {

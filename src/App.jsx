@@ -52,6 +52,7 @@ import { OrientadorMeusDados } from '@/pages/orientador/OrientadorMeusDados'
 import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 import { RelatorioMensal } from '@/pages/orientador/RelatorioMensal'
+import { VideosAcompanhamento } from '@/pages/orientador/VideosAcompanhamento'
 import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
 import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
 import SuperpainelM2 from '@/pages/admin/m2/SuperpainelM2'
@@ -62,6 +63,7 @@ import { RedefinirSenhaSecretaria } from '@/pages/RedefinirSenhaSecretaria'
 import { GerenciarUsuariosOrientadores } from '@/pages/admin/GerenciarUsuariosOrientadores'
 import { Inscritos } from '@/pages/admin/Inscritos'
 import { RelatoriosMensais } from '@/pages/admin/RelatoriosMensais'
+import { VideosAcompanhamento as VideosAcompanhamentoAdmin } from '@/pages/admin/VideosAcompanhamento'
 import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
 import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
 import { RequireAcessoOrientador } from '@/components/RequireAcessoOrientador'
@@ -135,6 +137,7 @@ function App() {
                   catch-all abaixo (redireciona pro login), sem quebrar nada. */}
               <Route path="bolsistas" element={<RequireAcessoOrientador><OrientadorBolsistas /></RequireAcessoOrientador>} />
               <Route path="relatorio-mensal" element={<RequireAcessoOrientador><RelatorioMensal /></RequireAcessoOrientador>} />
+              <Route path="videos" element={<RequireAcessoOrientador><VideosAcompanhamento /></RequireAcessoOrientador>} />
               <Route path="documentos" element={<RequireAcessoOrientador><OrientadorDocumentos /></RequireAcessoOrientador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
@@ -224,6 +227,7 @@ function App() {
                     <Route path="/admin/:programa/:ano/avaliacoes" element={<Avaliacoes />} />
                     <Route path="/admin/:programa/:ano/orientadores" element={<GerenciarUsuariosOrientadores />} />
                     <Route path="/admin/:programa/:ano/relatorios-mensais" element={<RelatoriosMensais />} />
+                    <Route path="/admin/:programa/:ano/videos-acompanhamento" element={<VideosAcompanhamentoAdmin />} />
                     <Route path="/admin/:programa/:ano/classificacao" element={<Classificacao />} />
                     <Route path="/admin/:programa/:ano/recursos" element={<ConvocacaoRecurso />} />
                     <Route path="/admin/:programa/:ano/recursos/:recursoId/painel" element={<PainelConsolidadoRecurso />} />
