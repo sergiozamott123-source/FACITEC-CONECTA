@@ -25,6 +25,7 @@ import {
   LayoutGrid,
   LogOut,
   Network,
+  Send,
   Settings2,
   Trophy,
   Users,
@@ -85,6 +86,12 @@ function buildCategoriasSistema() {
         { label: 'Acervo', href: '/admin/acervo', icon: Archive },
         { label: 'Importação', href: '/importacao', icon: FileUp },
         { label: 'Configurações do sistema', href: '/admin/configuracao-inscricao', icon: Settings2 },
+      ],
+    },
+    {
+      titulo: 'Relatórios',
+      itens: [
+        { label: 'Relatório Atividades NRH', href: '/admin/relatorio-nrh', icon: Send },
       ],
     },
   ]
