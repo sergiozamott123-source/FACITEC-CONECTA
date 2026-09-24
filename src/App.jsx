@@ -63,6 +63,7 @@ import { RedefinirSenhaSecretaria } from '@/pages/RedefinirSenhaSecretaria'
 import { GerenciarUsuariosOrientadores } from '@/pages/admin/GerenciarUsuariosOrientadores'
 import { Inscritos } from '@/pages/admin/Inscritos'
 import { RelatoriosMensais } from '@/pages/admin/RelatoriosMensais'
+import { RelatorioNRH } from '@/pages/admin/RelatorioNRH'
 import { VideosAcompanhamento as VideosAcompanhamentoAdmin } from '@/pages/admin/VideosAcompanhamento'
 import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
 import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
@@ -207,6 +208,7 @@ function App() {
                     <Route path="/admin" element={<HomeAdmin />} />
                     <Route path="/admin/classificacao" element={<ClassificacaoAdmin />} />
                     <Route path="/admin/configuracao-inscricao" element={<ConfiguracaoInscricao />} />
+                    <Route path="/admin/relatorio-nrh" element={<RelatorioNRH />} />
                     {/* Redirects de compatibilidade — URLs antigas linkadas em favoritos/e-mails
                         continuam funcionando, apontando para o programa/edição padrão. */}
                     <Route path="/inscritos" element={<Navigate to="/admin/pibic-jr/2026/inscritos" replace />} />
