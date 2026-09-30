@@ -68,6 +68,9 @@ import { VideosAcompanhamento as VideosAcompanhamentoAdmin } from '@/pages/admin
 import { SecretariaAuthProvider } from '@/contexts/SecretariaAuthContext'
 import { RequireAcessoSecretaria } from '@/components/RequireAcessoSecretaria'
 import { RequireAcessoOrientador } from '@/components/RequireAcessoOrientador'
+import { FormularioPesquisa } from '@/pages/pesquisa-banheiros/FormularioPesquisa'
+import { LoginPesquisa, RedefinirSenhaPesquisa, RequireAcessoPesquisa } from '@/pages/pesquisa-banheiros/AcessoPesquisa'
+import { PainelPesquisa, FichaPesquisa, RelatorioPesquisa } from '@/pages/pesquisa-banheiros/PainelPesquisa'
 
 function ProtectedAvaliador({ children }) {
   const { avaliador, loading } = useAvaliador()
@@ -171,6 +174,14 @@ function App() {
           </SecretariaAuthProvider>
         } />
         <Route path="/login/secretaria/redefinir-senha" element={<RedefinirSenhaSecretaria />} />
+        {/* Pesquisa Banheiros Públicos (CDTIV) — formulário público com código de acesso
+            e painel da equipe (Secretaria ou modulo_acesso 'pesquisa-banheiros') */}
+        <Route path="/pesquisa-banheiros" element={<FormularioPesquisa />} />
+        <Route path="/login/pesquisa-banheiros" element={<LoginPesquisa />} />
+        <Route path="/login/pesquisa-banheiros/redefinir-senha" element={<RedefinirSenhaPesquisa />} />
+        <Route path="/pesquisa-banheiros/painel" element={<RequireAcessoPesquisa><PainelPesquisa /></RequireAcessoPesquisa>} />
+        <Route path="/pesquisa-banheiros/painel/ficha/:id" element={<RequireAcessoPesquisa><FichaPesquisa /></RequireAcessoPesquisa>} />
+        <Route path="/pesquisa-banheiros/painel/relatorio" element={<RequireAcessoPesquisa><RelatorioPesquisa /></RequireAcessoPesquisa>} />
         {/* Hub de programas */}
         <Route path="/hub" element={<HubProgramas />} />
         {/* Programas — visão geral e módulos.

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, Users } from 'lucide-react'
+import { Briefcase, Users, ClipboardList } from 'lucide-react'
 import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 const CARDS = [
@@ -14,6 +14,12 @@ const CARDS = [
     titulo: 'Portal do orientador de projetos',
     subtitulo: 'Acompanhe seus bolsistas e solicitações',
     to: '/login/orientador',
+  },
+  {
+    icon: ClipboardList,
+    titulo: 'Pesquisa Banheiros Públicos',
+    subtitulo: 'Equipe da CDTIV: respostas, fichas e códigos de acesso',
+    to: '/login/pesquisa-banheiros',
   },
 ]
 
@@ -43,7 +49,7 @@ export function PortalEntrada() {
           PLATAFORMA FACITEC CONECTA
         </h1>
 
-        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
+        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
           {CARDS.map(({ icon: Icon, titulo, subtitulo, to }) => (
             <div
               key={to}
