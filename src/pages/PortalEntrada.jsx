@@ -1,7 +1,16 @@
 import { useNavigate } from 'react-router-dom'
-import { Briefcase, Users, ClipboardList } from 'lucide-react'
+import { Briefcase, Users } from 'lucide-react'
 import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
+// Card "Pesquisa Banheiros Públicos" removido da tela de abertura a pedido do
+// Sérgio (06/10/2026) — a funcionalidade continua existindo normalmente no
+// sistema (login, formulário, painel), só deixou de ser anunciada aqui. Quem
+// já tem o link direto (/login/pesquisa-banheiros) continua acessando
+// normalmente. Para reativar o card no futuro, basta devolver este item à
+// lista abaixo (ver histórico do arquivo no git para o texto original):
+// { icon: ClipboardList, titulo: 'Pesquisa Banheiros Públicos',
+//   subtitulo: 'Equipe da CDTIV: respostas, fichas e códigos de acesso',
+//   to: '/login/pesquisa-banheiros' }
 const CARDS = [
   {
     icon: Briefcase,
@@ -14,12 +23,6 @@ const CARDS = [
     titulo: 'Portal do orientador de projetos',
     subtitulo: 'Acompanhe seus bolsistas e solicitações',
     to: '/login/orientador',
-  },
-  {
-    icon: ClipboardList,
-    titulo: 'Pesquisa Banheiros Públicos',
-    subtitulo: 'Equipe da CDTIV: respostas, fichas e códigos de acesso',
-    to: '/login/pesquisa-banheiros',
   },
 ]
 
@@ -49,7 +52,7 @@ export function PortalEntrada() {
           PLATAFORMA FACITEC CONECTA
         </h1>
 
-        <div className="w-full max-w-5xl grid grid-cols-1 md:grid-cols-3 gap-5 sm:gap-6">
+        <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
           {CARDS.map(({ icon: Icon, titulo, subtitulo, to }) => (
             <div
               key={to}
