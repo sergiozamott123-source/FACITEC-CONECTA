@@ -27,6 +27,7 @@ import {
   Network,
   Send,
   Settings2,
+  ShieldCheck,
   Trophy,
   Users,
   Video,
@@ -114,7 +115,7 @@ function buildCategoriasAcervoEdicao(edicaoId) {
 }
 
 // ── Menu — nível Programa/Edição ─────────────────────────────────────────────
-function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge, substituicoesBadge) {
+function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge, substituicoesBadge, cndBadge) {
   return [
     {
       titulo: 'Visão geral',
@@ -156,6 +157,7 @@ function buildCategoriasPrograma(ano, slug, programaNome, financeiroBadge, subst
       itens: [
         { label: 'Central de relatórios', href: `/admin/${slug}/${ano}/historico`, icon: BarChart2 },
         { label: 'Financeiro', href: `/admin/${slug}/${ano}/financeiro`, icon: DollarSign, badge: financeiroBadge > 0 ? financeiroBadge : undefined },
+        { label: 'Gestão de CNDs', href: `/admin/${slug}/${ano}/cnds`, icon: ShieldCheck, badge: cndBadge > 0 ? cndBadge : undefined },
       ],
     },
   ]
@@ -358,16 +360,23 @@ export function Sidebar() {
   }, [edicaoIdAcervo])
 
   const [financeiroAlertas, setFinanceiroAlertas] = useState(0)
+  // Contador próprio do item "Gestão de CNDs" (14/10/2026) — mesma consulta
+  // que já era feita aqui para compor o badge do Financeiro, só que também
+  // guardada à parte, sem mudar em nada o cálculo de financeiroAlertas.
+  const [cndAlertas, setCndAlertas] = useState(0)
   const edicaoSelecionadaId = edicaoSelecionada?.id
 
   useEffect(() => {
-    if (!edicaoSelecionadaId) { setFinanceiroAlertas(0); return }
+    if (!edicaoSelecionadaId) { setFinanceiroAlertas(0); setCndAlertas(0); return }
     let ativo = true
     Promise.all([
       contarPagamentosEmAtencao(edicaoSelecionadaId),
       listarCndVencendoEmBreve(edicaoSelecionadaId, 15),
     ]).then(([countPagamentos, cndVencendo]) => {
-      if (ativo) setFinanceiroAlertas(countPagamentos + cndVencendo.length)
+      if (ativo) {
+        setFinanceiroAlertas(countPagamentos + cndVencendo.length)
+        setCndAlertas(cndVencendo.length)
+      }
     }).catch(() => {})
     return () => { ativo = false }
   }, [edicaoSelecionadaId])
@@ -394,7 +403,7 @@ export function Sidebar() {
     ? buildCategoriasAcervoEdicao(edicaoIdAcervo)
     : isSistema
       ? buildCategoriasSistema()
-      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa', financeiroAlertas, substituicoesPendentes)
+      : buildCategoriasPrograma(ano, programaAtual?.slug ?? 'pibic-jr', programaAtual?.label ?? 'Programa', financeiroAlertas, substituicoesPendentes, cndAlertas)
 
   return (
     <aside

@@ -12,6 +12,7 @@ import { Equipes } from '@/pages/Equipes'
 import { Contratos } from '@/pages/Contratos'
 import { Bolsistas } from '@/pages/Bolsistas'
 import { Financeiro } from '@/pages/Financeiro'
+import { GestaoCnds } from '@/pages/GestaoCnds'
 import { Historico } from '@/pages/Historico'
 import { Acervo } from '@/pages/admin/Acervo'
 import { AcervoProjetos } from '@/pages/admin/acervo/AcervoProjetos'
@@ -248,6 +249,7 @@ function App() {
                     <Route path="/admin/:programa/:ano/bolsistas" element={<Bolsistas />} />
                     <Route path="/admin/:programa/:ano/substituicoes" element={<SubstituicoesPainel />} />
                     <Route path="/admin/:programa/:ano/financeiro" element={<Financeiro />} />
+                    <Route path="/admin/:programa/:ano/cnds" element={<GestaoCnds />} />
                     <Route path="/admin/:programa/:ano/historico" element={<Historico />} />
                     <Route path="/admin/:programa/:ano/m2" element={<SuperpainelM2 />} />
                     <Route path="/admin/:programa/:ano/m2/bolsista/:bolsistaId" element={<BolsistaDetalhe />} />
