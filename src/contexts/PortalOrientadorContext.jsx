@@ -51,12 +51,36 @@ export function PortalOrientadorProvider({ children }) {
 
     if (!orData) { setLoading(false); return }
 
-    const { data: prData } = await supabase
-      .from('projeto')
-      .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
-      .eq('orientador_id', orData.id)
-      .eq('status', 'selecionado')
-      .maybeSingle()
+    let prData = null
+    if (orData.status === 'substituido') {
+      // Orientador já substituído: mantém acesso de consulta ao projeto que
+      // ele orientava, mesmo que projeto.orientador_id já aponte para o
+      // novo orientador — ver aprovar_substituicao_orientador() e o plano
+      // em claude/facitec-conecta-plano-substituicao-orientador.md.
+      const { data: histData } = await supabase
+        .from('substituicao_orientador')
+        .select('projeto_id')
+        .eq('orientador_saiu_id', orData.id)
+        .order('data_substituicao', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (histData?.projeto_id) {
+        const { data: pr } = await supabase
+          .from('projeto')
+          .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
+          .eq('id', histData.projeto_id)
+          .maybeSingle()
+        prData = pr ?? null
+      }
+    } else {
+      const { data: pr } = await supabase
+        .from('projeto')
+        .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
+        .eq('orientador_id', orData.id)
+        .eq('status', 'selecionado')
+        .maybeSingle()
+      prData = pr ?? null
+    }
 
     setOrientador(orData)
     setProjeto(prData ?? null)
@@ -82,8 +106,10 @@ export function PortalOrientadorProvider({ children }) {
     localStorage.removeItem(SESSION_KEY)
   }
 
+  const somenteLeitura = orientador?.status === 'substituido'
+
   return (
-    <PortalOrientadorContext.Provider value={{ orientador, projeto, loading, login, logout, setOrientador }}>
+    <PortalOrientadorContext.Provider value={{ orientador, projeto, loading, login, logout, setOrientador, somenteLeitura }}>
       {children}
     </PortalOrientadorContext.Provider>
   )

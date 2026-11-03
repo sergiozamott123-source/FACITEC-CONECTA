@@ -59,7 +59,7 @@ function TipoBadge({ tipo }) {
 }
 
 export function OrientadorDashboard() {
-  const { orientador, projeto } = usePortalOrientador()
+  const { orientador, projeto, somenteLeitura } = usePortalOrientador()
   const MAX_BOLSISTAS = getMaxBolsistas(projeto?.edicao?.programa_id)
   const navigate = useNavigate()
   const [bolsistas, setBolsistas] = useState([])
@@ -168,8 +168,24 @@ export function OrientadorDashboard() {
           )}
         </div>
 
+        {/* Acesso de consulta — orientador já substituído neste projeto */}
+        {somenteLeitura && (
+          <div className="rounded-xl border border-gray-300 bg-gray-50 p-4 flex items-start gap-3">
+            <AlertTriangle className="w-5 h-5 text-gray-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-gray-700">Você foi substituído(a) neste projeto</p>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Você está vendo o histórico do que já fez aqui, em modo de consulta. Novas alterações passam a ser feitas
+                pelo novo orientador responsável.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Relatório mensal — janela aberta/urgente/atrasada */}
-        <BannerRelatorioMensal banner={bannerRelatorio} onClick={() => navigate('/orientador/relatorio-mensal')} />
+        {!somenteLeitura && (
+          <BannerRelatorioMensal banner={bannerRelatorio} onClick={() => navigate('/orientador/relatorio-mensal')} />
+        )}
 
         {/* Solicitações da Secretaria Executiva */}
         {solicitacoes.length > 0 && (

@@ -54,6 +54,8 @@ import { OrientadorBolsistas } from '@/pages/orientador/OrientadorBolsistas'
 import { OrientadorDocumentos } from '@/pages/orientador/OrientadorDocumentos'
 import { RelatorioMensal } from '@/pages/orientador/RelatorioMensal'
 import { VideosAcompanhamento } from '@/pages/orientador/VideosAcompanhamento'
+import { OrientadorSubstituicao } from '@/pages/orientador/OrientadorSubstituicao'
+import { ConviteSubstituicaoOrientador } from '@/pages/convite-substituicao-orientador/ConviteSubstituicaoOrientador'
 import ContratosPainel from '@/pages/admin/m2/ContratosPainel'
 import ContratoDetalhe from '@/pages/admin/m2/ContratoDetalhe'
 import SuperpainelM2 from '@/pages/admin/m2/SuperpainelM2'
@@ -109,6 +111,10 @@ function App() {
         {/* redirect de URL antiga — apontava direto para a inscrição do PIBIC Jr */}
         <Route path="/inscricao" element={<Navigate to="/pibic-jr/inscricao" replace />} />
         <Route path="/redefinir-senha" element={<RedefinirSenha />} />
+        {/* Convite público de substituição de orientador — o substituto cria
+            login próprio e preenche seus dados aqui, sem precisar de acesso
+            prévio ao sistema (ver OrientadorSubstituicao.jsx, que gera o link). */}
+        <Route path="/convite-substituicao-orientador/:token" element={<ConviteSubstituicaoOrientador />} />
         {/* Fluxo legado de inscrição */}
         <Route path="/inscricao/login" element={<LoginInscricao />} />
         <Route path="/inscricao/formulario" element={<FormularioInscricao />} />
@@ -144,6 +150,7 @@ function App() {
               <Route path="relatorio-mensal" element={<RequireAcessoOrientador><RelatorioMensal /></RequireAcessoOrientador>} />
               <Route path="videos" element={<RequireAcessoOrientador><VideosAcompanhamento /></RequireAcessoOrientador>} />
               <Route path="documentos" element={<RequireAcessoOrientador><OrientadorDocumentos /></RequireAcessoOrientador>} />
+              <Route path="substituicao" element={<RequireAcessoOrientador><OrientadorSubstituicao /></RequireAcessoOrientador>} />
               <Route path="*" element={<Navigate to="login" replace />} />
             </Routes>
           </PortalOrientadorProvider>

@@ -40,6 +40,7 @@ import { edicaoService } from '@/lib/db'
 import { contarPagamentosEmAtencao } from '@/lib/pagamentos'
 import { listarCndVencendoEmBreve } from '@/lib/cnd'
 import { contarSolicitacoesSubstituicaoPendentes } from '@/lib/substituicoes'
+import { contarSolicitacoesSubstituicaoOrientadorPendentes } from '@/lib/substituicoesOrientador'
 import { PROGRAMAS as PROGRAMAS_REGISTRO, getProgramaByProgramaId } from '@/lib/programas'
 
 // URL do site público institucional do FACITEC — configurada via VITE_URL_PORTAL_PUBLICO (.env).
@@ -381,14 +382,19 @@ export function Sidebar() {
     return () => { ativo = false }
   }, [edicaoSelecionadaId])
 
-  // Pedidos de substituição de bolsista pendentes — não depende da edição
-  // selecionada (são poucos e urgentes, não vale esconder atrás do filtro).
-  const [substituicoesPendentes, setSubstituicoesPendentes] = useState(0)
+  // Pedidos de substituição (bolsista + orientador) pendentes — não depende
+  // da edição selecionada (são poucos e urgentes, não vale esconder atrás
+  // do filtro). O badge soma os dois tipos num único número, mesmo padrão
+  // já usado para bolsista — ver claude/facitec-conecta-plano-substituicao-orientador.md.
+  const [substituicoesBolsistaPendentes, setSubstituicoesBolsistaPendentes] = useState(0)
+  const [substituicoesOrientadorPendentes, setSubstituicoesOrientadorPendentes] = useState(0)
+  const substituicoesPendentes = substituicoesBolsistaPendentes + substituicoesOrientadorPendentes
 
   useEffect(() => {
     let ativo = true
     function carregar() {
-      contarSolicitacoesSubstituicaoPendentes().then((n) => { if (ativo) setSubstituicoesPendentes(n) }).catch(() => {})
+      contarSolicitacoesSubstituicaoPendentes().then((n) => { if (ativo) setSubstituicoesBolsistaPendentes(n) }).catch(() => {})
+      contarSolicitacoesSubstituicaoOrientadorPendentes().then((n) => { if (ativo) setSubstituicoesOrientadorPendentes(n) }).catch(() => {})
     }
     carregar()
     const intervalo = setInterval(carregar, 60000)

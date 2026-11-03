@@ -14,6 +14,7 @@ import {
 import { supabase } from '@/lib/supabase'
 import { buscarFichaCadastralDeBolsista } from '@/lib/relatorioFinanceiro'
 import { exportarFichaCadastralPDF } from '@/lib/fichaCadastralPdf'
+import { SubstituicoesOrientadorPainel } from './SubstituicoesOrientadorPainel'
 
 // A anuência da direção (Anexo V) é documento de PROJETO — autoriza o
 // projeto a "rodar" na escola, enviado uma única vez no início do processo
@@ -502,6 +503,10 @@ export function SubstituicoesPainel() {
           erro={erroRecusa}
         />
       )}
+
+      <div className="pt-6 border-t border-gray-200">
+        <SubstituicoesOrientadorPainel />
+      </div>
     </div>
   )
 }
