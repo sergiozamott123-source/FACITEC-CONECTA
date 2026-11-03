@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, User, FolderOpen, Users, FileText, ClipboardList, Video, LogOut } from 'lucide-react'
+import { LayoutDashboard, User, FolderOpen, Users, FileText, ClipboardList, Video, LogOut, ArrowLeftRight } from 'lucide-react'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual } from '@/lib/relatorioMensal'
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: 'Relatório mensal', icon: ClipboardList,   to: '/orientador/relatorio-mensal' },
   { label: 'Vídeos',           icon: Video,           to: '/orientador/videos'           },
   { label: 'Documentos',       icon: FileText,        to: '/orientador/documentos'       },
+  { label: 'Minha substituição', icon: ArrowLeftRight, to: '/orientador/substituicao'    },
 ]
 
 export function OrientadorSidebar() {
