@@ -10,7 +10,7 @@
 // src/pages/admin/SubstituicoesOrientadorPainel.jsx.
 
 import { useEffect, useRef, useState } from 'react'
-import { ArrowLeftRight, Upload, FileText, Copy, Check, Clock, AlertTriangle, CheckCircle, XCircle } from 'lucide-react'
+import { ArrowLeftRight, Upload, FileText, Copy, Check, Clock, AlertTriangle, CheckCircle, XCircle, Download } from 'lucide-react'
 import { OrientadorSidebar } from './OrientadorSidebar'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import {
@@ -18,6 +18,7 @@ import {
   listarSolicitacoesSubstituicaoOrientadorDoOrientador,
   uploadDocAnuenciaSubstituicao,
 } from '@/lib/substituicoesOrientador'
+import { baixarSolicitacaoDesligamento, baixarDeclaracaoAnuencia } from '@/lib/documentosSubstituicaoOrientador'
 
 function formatarDataHora(iso) {
   if (!iso) return '—'
@@ -114,6 +115,25 @@ export function OrientadorSubstituicao() {
     }
   }
 
+  function handleBaixarDesligamento() {
+    baixarSolicitacaoDesligamento({
+      orientador,
+      projeto,
+      numeroEdital: projeto?.edicao?.numero_edital,
+      nomeSubstituto,
+      motivo,
+    })
+  }
+
+  function handleBaixarAnuencia() {
+    baixarDeclaracaoAnuencia({
+      orientador,
+      projeto,
+      numeroEdital: projeto?.edicao?.numero_edital,
+      nomeSubstituto,
+    })
+  }
+
   function copiarLink(token) {
     const link = `${window.location.origin}/convite-substituicao-orientador/${token}`
     navigator.clipboard?.writeText(link)
@@ -191,6 +211,32 @@ export function OrientadorSubstituicao() {
         {!jaSubstituido && !loading && !emAndamento && (
           <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <h2 className="text-sm font-bold text-gray-800 pb-2 border-b border-gray-100">Solicitar substituição</h2>
+
+            <div className="rounded-lg bg-blue-50/60 border border-blue-100 p-3 space-y-2">
+              <p className="text-xs text-blue-900">
+                Baixe os modelos já preenchidos com os dados do seu projeto — complete o que faltar (CPF/RG do
+                substituto, data) e colha as assinaturas. Preencha o nome do substituto abaixo antes de baixar para
+                que ele também já venha preenchido.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={handleBaixarDesligamento}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Baixar Solicitação de Desligamento
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBaixarAnuencia}
+                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  Baixar Declaração de Anuência
+                </button>
+              </div>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Motivo do desligamento</label>
