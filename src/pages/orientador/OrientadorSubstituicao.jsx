@@ -2,11 +2,17 @@
 //
 // Página do orientador para solicitar a própria substituição (Edital
 // FACITEC vigente, item 16.2). O orientador atual indica o motivo e o
-// professor substituto; o sistema gera um link de convite para que o
-// substituto preencha seus próprios dados (ver
-// ConviteSubstituicaoOrientador.jsx). O pedido só vira troca de
-// verdade depois da aprovação da Secretaria Executiva, no painel
-// "Substituições" do menu dela — ver
+// professor substituto (nome, e-mail, CPF e telefone) e anexa a própria
+// Solicitação de Desligamento assinada — o sistema gera essa carta já
+// preenchida em PDF para facilitar a assinatura eletrônica (GOV.BR). A
+// Declaração de Anuência da escola NÃO é mais anexada aqui: passou a ser
+// responsabilidade do substituto, na tela do convite (revisão de
+// 04/11/2026, a pedido de Sérgio).
+//
+// O sistema gera um link de convite para que o substituto preencha seus
+// próprios dados (ver ConviteSubstituicaoOrientador.jsx). O pedido só
+// vira troca de verdade depois da aprovação da Secretaria Executiva, no
+// painel "Substituições" do menu dela — ver
 // src/pages/admin/SubstituicoesOrientadorPainel.jsx.
 
 import { useEffect, useRef, useState } from 'react'
@@ -16,9 +22,9 @@ import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import {
   solicitarSubstituicaoOrientador,
   listarSolicitacoesSubstituicaoOrientadorDoOrientador,
-  uploadDocAnuenciaSubstituicao,
+  uploadDocSolicitacaoSubstituicao,
 } from '@/lib/substituicoesOrientador'
-import { baixarSolicitacaoDesligamento, baixarDeclaracaoAnuencia } from '@/lib/documentosSubstituicaoOrientador'
+import { baixarSolicitacaoDesligamento } from '@/lib/documentosSubstituicaoOrientador'
 
 function formatarDataHora(iso) {
   if (!iso) return '—'
@@ -50,8 +56,10 @@ export function OrientadorSubstituicao() {
   const [motivo, setMotivo] = useState('')
   const [nomeSubstituto, setNomeSubstituto] = useState('')
   const [emailSubstituto, setEmailSubstituto] = useState('')
-  const [anuencia, setAnuencia] = useState(null) // { url, nomeArquivo }
-  const [enviandoAnuencia, setEnviandoAnuencia] = useState(false)
+  const [cpfSubstituto, setCpfSubstituto] = useState('')
+  const [telefoneSubstituto, setTelefoneSubstituto] = useState('')
+  const [desligamento, setDesligamento] = useState(null) // { url, nomeArquivo }
+  const [enviandoDesligamento, setEnviandoDesligamento] = useState(false)
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState(null)
   const fileRef = useRef()
@@ -70,18 +78,18 @@ export function OrientadorSubstituicao() {
     }
   }
 
-  async function handleUploadAnuencia(e) {
+  async function handleUploadDesligamento(e) {
     const file = e.target.files?.[0]
     if (!file) return
-    setEnviandoAnuencia(true)
+    setEnviandoDesligamento(true)
     setError(null)
     try {
-      const result = await uploadDocAnuenciaSubstituicao(file, orientador.id)
-      setAnuencia(result)
+      const result = await uploadDocSolicitacaoSubstituicao(file, orientador.id, 'desligamento')
+      setDesligamento(result)
     } catch (err) {
-      setError(err.message ?? 'Erro ao enviar a Declaração de Anuência.')
+      setError(err.message ?? 'Erro ao enviar a Solicitação de Desligamento.')
     } finally {
-      setEnviandoAnuencia(false)
+      setEnviandoDesligamento(false)
       e.target.value = ''
     }
   }
@@ -89,8 +97,8 @@ export function OrientadorSubstituicao() {
   async function handleSubmit(e) {
     e.preventDefault()
     setError(null)
-    if (!anuencia) {
-      setError('Anexe a Declaração de Anuência da Direção da escola antes de enviar.')
+    if (!desligamento) {
+      setError('Anexe sua Solicitação de Desligamento assinada antes de enviar.')
       return
     }
     setEnviando(true)
@@ -100,13 +108,17 @@ export function OrientadorSubstituicao() {
         motivo,
         nomeSubstituto,
         emailSubstituto,
-        docAnuenciaUrl: anuencia.url,
-        docAnuenciaNomeArquivo: anuencia.nomeArquivo,
+        cpfSubstituto,
+        telefoneSubstituto,
+        docDesligamentoUrl: desligamento.url,
+        docDesligamentoNomeArquivo: desligamento.nomeArquivo,
       })
       setMotivo('')
       setNomeSubstituto('')
       setEmailSubstituto('')
-      setAnuencia(null)
+      setCpfSubstituto('')
+      setTelefoneSubstituto('')
+      setDesligamento(null)
       await carregar()
     } catch (err) {
       setError(err.message ?? 'Erro ao solicitar a substituição.')
@@ -121,16 +133,8 @@ export function OrientadorSubstituicao() {
       projeto,
       numeroEdital: projeto?.edicao?.numero_edital,
       nomeSubstituto,
+      cpfSubstituto,
       motivo,
-    })
-  }
-
-  function handleBaixarAnuencia() {
-    baixarDeclaracaoAnuencia({
-      orientador,
-      projeto,
-      numeroEdital: projeto?.edicao?.numero_edital,
-      nomeSubstituto,
     })
   }
 
@@ -212,32 +216,6 @@ export function OrientadorSubstituicao() {
           <form onSubmit={handleSubmit} className="bg-white rounded-xl border border-gray-200 p-5 space-y-4">
             <h2 className="text-sm font-bold text-gray-800 pb-2 border-b border-gray-100">Solicitar substituição</h2>
 
-            <div className="rounded-lg bg-blue-50/60 border border-blue-100 p-3 space-y-2">
-              <p className="text-xs text-blue-900">
-                Baixe os modelos já preenchidos com os dados do seu projeto — complete o que faltar (CPF/RG do
-                substituto, data) e colha as assinaturas. Preencha o nome do substituto abaixo antes de baixar para
-                que ele também já venha preenchido.
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  onClick={handleBaixarDesligamento}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Baixar Solicitação de Desligamento
-                </button>
-                <button
-                  type="button"
-                  onClick={handleBaixarAnuencia}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  Baixar Declaração de Anuência
-                </button>
-              </div>
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Motivo do desligamento</label>
               <textarea
@@ -270,37 +248,70 @@ export function OrientadorSubstituicao() {
                   placeholder="professor@email.com"
                   className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
-                <p className="text-[11px] text-gray-400 mt-1">Vamos gerar um link de convite para você enviar a este e-mail.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CPF do substituto</label>
+                <input
+                  value={cpfSubstituto}
+                  onChange={e => setCpfSubstituto(e.target.value)}
+                  required
+                  placeholder="000.000.000-00"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Telefone do substituto</label>
+                <input
+                  value={telefoneSubstituto}
+                  onChange={e => setTelefoneSubstituto(e.target.value)}
+                  placeholder="(00) 00000-0000"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
               </div>
             </div>
 
+            <div className="rounded-lg bg-blue-50/60 border border-blue-100 p-3 space-y-2">
+              <p className="text-xs text-blue-900">
+                Baixe sua Solicitação de Desligamento já preenchida com os dados do projeto e do substituto, assine
+                eletronicamente (GOV.BR) e anexe o arquivo assinado abaixo.
+              </p>
+              <button
+                type="button"
+                onClick={handleBaixarDesligamento}
+                className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Baixar Solicitação de Desligamento (PDF)
+              </button>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Declaração de Anuência da Direção da escola</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Minha Solicitação de Desligamento assinada</label>
               <p className="text-xs text-gray-400 mb-1.5">
-                Documento da direção autorizando a continuidade do projeto sob o novo orientador, citando os dois nomes.
+                Envie o documento acima já assinado (GOV.BR ou assinatura física digitalizada).
               </p>
               <div
                 className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                  anuencia ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
+                  desligamento ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
                 }`}
                 onClick={() => fileRef.current?.click()}
               >
-                {anuencia ? (
+                {desligamento ? (
                   <>
                     <FileText className="w-5 h-5 text-green-600 shrink-0" />
-                    <span className="text-xs text-gray-700 truncate flex-1">{anuencia.nomeArquivo}</span>
+                    <span className="text-xs text-gray-700 truncate flex-1">{desligamento.nomeArquivo}</span>
                     <span className="text-[10px] text-blue-600 shrink-0 font-medium">Substituir</span>
                   </>
                 ) : (
                   <>
                     <Upload className="w-4 h-4 text-gray-400" />
                     <span className="text-xs text-gray-400">
-                      {enviandoAnuencia ? 'Enviando...' : 'Clique para enviar (PDF, JPG, PNG)'}
+                      {enviandoDesligamento ? 'Enviando...' : 'Clique para enviar (PDF, JPG, PNG)'}
                     </span>
                   </>
                 )}
               </div>
-              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUploadAnuencia} disabled={enviandoAnuencia} />
+              <input ref={fileRef} type="file" accept=".pdf,.jpg,.jpeg,.png" className="hidden" onChange={handleUploadDesligamento} disabled={enviandoDesligamento} />
             </div>
 
             {error && (
@@ -312,7 +323,7 @@ export function OrientadorSubstituicao() {
 
             <button
               type="submit"
-              disabled={enviando || enviandoAnuencia}
+              disabled={enviando || enviandoDesligamento}
               className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               <ArrowLeftRight className="w-4 h-4" />
