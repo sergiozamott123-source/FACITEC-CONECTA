@@ -9,7 +9,7 @@
 import { useEffect, useState } from 'react'
 import {
   CheckCircle, XCircle, Clock, FileText, AlertTriangle,
-  ExternalLink, ChevronDown, ChevronUp, PenLine, UserCheck,
+  ExternalLink, ChevronDown, ChevronUp, PenLine, UserCheck, FileSignature,
 } from 'lucide-react'
 import {
   listarSolicitacoesSubstituicaoOrientadorPendentes,
@@ -17,6 +17,7 @@ import {
   aprovarSubstituicaoOrientador,
   recusarSubstituicaoOrientador,
 } from '@/lib/substituicoesOrientador'
+import { gerarTermoAditivoPdf } from '@/lib/documentosSubstituicaoOrientador'
 
 function formatarDataHora(iso) {
   if (!iso) return '—'
@@ -154,18 +155,48 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
             <DocumentosSubstituto orientadorEntrou={solicitacao.orientador_entrou} />
           </div>
 
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1.5">Documentos da substituição</p>
+            <div className="space-y-1.5">
+              {[
+                { key: 'doc_desligamento_url', label: 'Solicitação de Desligamento (assinada por quem sai)' },
+                { key: 'doc_anuencia_url', label: 'Declaração de Anuência da escola' },
+                { key: 'doc_aceitacao_url', label: 'Declaração de Aceitação da Substituição' },
+              ].map(d => (
+                <div key={d.key} className="flex items-center justify-between text-xs">
+                  <span className="text-gray-600">{d.label}</span>
+                  {solicitacao[d.key] ? (
+                    <a
+                      href={solicitacao[d.key]} target="_blank" rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-blue-700 font-medium hover:underline"
+                    >
+                      <FileText className="w-3 h-3" /> Ver documento <ExternalLink className="w-2.5 h-2.5" />
+                    </a>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-600">
+                      <AlertTriangle className="w-3 h-3" /> Faltando
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
           <div className="space-y-2">
-            {solicitacao.doc_anuencia_url && (
-              <a
-                href={solicitacao.doc_anuencia_url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+            {solicitacao.orientador_entrou && (
+              <button
+                type="button"
+                onClick={() => gerarTermoAditivoPdf({
+                  projeto: solicitacao.projeto,
+                  orientadorSaiu: solicitacao.orientador_saiu,
+                  orientadorEntrou: solicitacao.orientador_entrou,
+                  numeroEdital: solicitacao.projeto?.edicao?.numero_edital,
+                })}
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-1.5 hover:bg-indigo-100 transition-colors"
               >
-                <FileText className="w-3.5 h-3.5" />
-                Declaração de Anuência da escola
-                <ExternalLink className="w-3 h-3" />
-              </a>
+                <FileSignature className="w-3.5 h-3.5" />
+                Gerar minuta do Termo Aditivo
+              </button>
             )}
             {solicitacao.assinatura_confirmada_em ? (
               <div className="rounded-md bg-green-50 border border-green-200 px-3 py-2.5 text-xs text-green-900 space-y-1">

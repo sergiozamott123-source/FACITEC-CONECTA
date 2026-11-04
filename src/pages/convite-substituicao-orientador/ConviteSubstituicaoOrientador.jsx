@@ -5,19 +5,32 @@
 // substituto cria seu próprio acesso ao sistema e preenche seus
 // próprios dados — "Opção B" do plano de implementação: o substituto
 // assina sua própria Manifestação de Interesse, em vez do orientador
-// anterior preencher tudo em nome dele. Ver funções
-// obter_convite_substituicao_orientador / vincular_convite_substituicao_orientador
+// anterior preencher tudo em nome dele.
+//
+// Revisão de 04/11/2026 (a pedido de Sérgio): o cadastro aqui passou a
+// coletar o mesmo conjunto de campos do cadastro padrão de orientador
+// (endereço, escola completa), e o substituto passou a anexar, além dos
+// documentos pessoais de sempre, a Declaração de Anuência da escola
+// (antes era anexada por quem sai) e a nova Declaração de Aceitação da
+// Substituição. Depois de confirmar, o substituto fica com acesso
+// restrito ao sistema (status 'pendente_documentacao_substituicao', ver
+// RequireAcessoOrientador.jsx) até a Secretaria Executiva confirmar o
+// Termo Aditivo assinado e aprovar o pedido.
+//
+// Ver obter_convite_substituicao_orientador / vincular_convite_substituicao_orientador
 // no banco (src/lib/substituicoesOrientador.js).
 
 import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { AlertTriangle, CheckCircle, Upload, FileText, GraduationCap } from 'lucide-react'
+import { AlertTriangle, CheckCircle, Upload, FileText, GraduationCap, Download } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import {
   obterConviteSubstituicaoOrientador,
   uploadDocSubstituto,
+  uploadDocConviteSubstituto,
   vincularConviteSubstituicaoOrientador,
 } from '@/lib/substituicoesOrientador'
+import { baixarDeclaracaoAnuencia, baixarDeclaracaoAceitacao } from '@/lib/documentosSubstituicaoOrientador'
 
 function Card({ children }) {
   return (
@@ -43,13 +56,14 @@ function CabecalhoConvite({ convite }) {
   )
 }
 
-function UploadCampo({ label, obrigatorio, currentUrl, onUpload, uploading }) {
+function UploadCampo({ label, obrigatorio, currentUrl, onUpload, uploading, extra }) {
   const ref = useRef()
   return (
     <div>
       <label className="block text-sm font-medium text-gray-700 mb-1">
         {label} {obrigatorio && <span className="text-red-500">*</span>}
       </label>
+      {extra}
       <div
         className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${
           currentUrl ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
@@ -96,10 +110,19 @@ export function ConviteSubstituicaoOrientador() {
   const [authError, setAuthError] = useState(null)
   const [authSuccess, setAuthSuccess] = useState(null)
 
-  // Cadastro do substituto
+  // Cadastro do substituto (mesmos campos do cadastro padrão de orientador)
   const [meuOrientador, setMeuOrientador] = useState(null)
-  const [form, setForm] = useState({ nome_completo: '', cpf: '', telefone: '', escola: '', instituicao: '' })
+  const [form, setForm] = useState({
+    nome_completo: '', cpf: '', telefone: '', rua: '', bairro: '', cidade: '',
+    escola: '', telefone_escola: '', email_escola: '', instituicao: '',
+  })
   const [uploading, setUploading] = useState({})
+  // Anuência da escola + Aceitação da substituição — não ficam no registro
+  // `orientador`, vivem na própria solicitação (ver vincularConviteSubstituicaoOrientador).
+  const [anuencia, setAnuencia] = useState(null)
+  const [aceitacao, setAceitacao] = useState(null)
+  const [enviandoAnuencia, setEnviandoAnuencia] = useState(false)
+  const [enviandoAceitacao, setEnviandoAceitacao] = useState(false)
   const [concluido, setConcluido] = useState(false)
   const [confirmando, setConfirmando] = useState(false)
   const [errorForm, setErrorForm] = useState(null)
@@ -112,6 +135,11 @@ export function ConviteSubstituicaoOrientador() {
         } else {
           setConvite(data)
           setEmail(data.email_substituto ?? '')
+          setForm(prev => ({
+            ...prev,
+            cpf: data.cpf_substituto ?? '',
+            telefone: data.telefone_substituto ?? '',
+          }))
         }
       })
       .catch(err => setErroConvite(err.message ?? 'Não foi possível carregar este convite.'))
@@ -136,28 +164,42 @@ export function ConviteSubstituicaoOrientador() {
     const { data } = await supabase.from('orientador').select('*').eq('auth_user_id', session.user.id).maybeSingle()
     if (data) {
       setMeuOrientador(data)
-      setForm({
-        nome_completo: data.nome_completo ?? '',
-        cpf: data.cpf ?? '',
-        telefone: data.telefone ?? '',
-        escola: data.escola ?? '',
-        instituicao: data.instituicao ?? '',
-      })
+      setForm(prev => ({
+        ...prev,
+        nome_completo: data.nome_completo ?? prev.nome_completo,
+        cpf: data.cpf ?? prev.cpf,
+        telefone: data.telefone ?? prev.telefone,
+        rua: data.rua ?? prev.rua,
+        bairro: data.bairro ?? prev.bairro,
+        cidade: data.cidade ?? prev.cidade,
+        escola: data.escola ?? prev.escola,
+        telefone_escola: data.telefone_escola ?? prev.telefone_escola,
+        email_escola: data.email_escola ?? prev.email_escola,
+        instituicao: data.instituicao ?? prev.instituicao,
+      }))
     } else {
-      // Primeiro acesso: cria o cadastro básico vinculado a este login.
+      // Primeiro acesso: cria o cadastro básico vinculado a este login, já
+      // com o CPF/telefone informados pelo orientador que saiu (se houver).
       const { data: created, error } = await supabase
         .from('orientador')
         .insert({
           auth_user_id: session.user.id,
           email: session.user.email,
           nome_completo: convite?.nome_substituto ?? '',
+          cpf: convite?.cpf_substituto ?? null,
+          telefone: convite?.telefone_substituto ?? null,
           status: 'em_preenchimento',
         })
         .select()
         .single()
       if (!error) {
         setMeuOrientador(created)
-        setForm(prev => ({ ...prev, nome_completo: created.nome_completo ?? '' }))
+        setForm(prev => ({
+          ...prev,
+          nome_completo: created.nome_completo ?? prev.nome_completo,
+          cpf: created.cpf ?? prev.cpf,
+          telefone: created.telefone ?? prev.telefone,
+        }))
       }
     }
   }
@@ -207,6 +249,49 @@ export function ConviteSubstituicaoOrientador() {
     }
   }
 
+  async function handleUploadAnuencia(file) {
+    setEnviandoAnuencia(true)
+    setErrorForm(null)
+    try {
+      const result = await uploadDocConviteSubstituto(file, token, 'anuencia')
+      setAnuencia(result)
+    } catch (err) {
+      setErrorForm(err.message ?? 'Erro ao enviar a Declaração de Anuência.')
+    } finally {
+      setEnviandoAnuencia(false)
+    }
+  }
+
+  async function handleUploadAceitacao(file) {
+    setEnviandoAceitacao(true)
+    setErrorForm(null)
+    try {
+      const result = await uploadDocConviteSubstituto(file, token, 'aceitacao')
+      setAceitacao(result)
+    } catch (err) {
+      setErrorForm(err.message ?? 'Erro ao enviar a Declaração de Aceitação da Substituição.')
+    } finally {
+      setEnviandoAceitacao(false)
+    }
+  }
+
+  function handleBaixarAnuencia() {
+    baixarDeclaracaoAnuencia({
+      orientador: { nome_completo: convite?.orientador_saiu_nome, escola: form.escola },
+      projeto: { titulo: convite?.projeto_titulo },
+      nomeSubstituto: form.nome_completo || convite?.nome_substituto,
+    })
+  }
+
+  function handleBaixarAceitacao() {
+    baixarDeclaracaoAceitacao({
+      nomeSubstituto: form.nome_completo || convite?.nome_substituto,
+      cpfSubstituto: form.cpf,
+      projetoTitulo: convite?.projeto_titulo,
+      orientadorSaiuNome: convite?.orientador_saiu_nome,
+    })
+  }
+
   async function handleConfirmar(e) {
     e.preventDefault()
     setErrorForm(null)
@@ -220,10 +305,22 @@ export function ConviteSubstituicaoOrientador() {
       setErrorForm('Envie todos os documentos obrigatórios antes de confirmar.')
       return
     }
+    if (!anuencia) {
+      setErrorForm('Anexe a Declaração de Anuência da Direção da escola antes de confirmar.')
+      return
+    }
+    if (!aceitacao) {
+      setErrorForm('Anexe a Declaração de Aceitação da Substituição assinada antes de confirmar.')
+      return
+    }
     setConfirmando(true)
     try {
-      await supabase.from('orientador').update({ ...form, status: 'enviado' }).eq('id', meuOrientador.id)
-      await vincularConviteSubstituicaoOrientador(token, form.nome_completo.trim())
+      await supabase.from('orientador').update({ ...form, status: 'pendente_documentacao_substituicao' }).eq('id', meuOrientador.id)
+      await vincularConviteSubstituicaoOrientador(
+        token, form.nome_completo.trim(),
+        anuencia.url, anuencia.nomeArquivo,
+        aceitacao.url, aceitacao.nomeArquivo,
+      )
       setConcluido(true)
     } catch (err) {
       setErrorForm(err.message ?? 'Erro ao confirmar o convite.')
@@ -255,8 +352,9 @@ export function ConviteSubstituicaoOrientador() {
           <CheckCircle className="w-10 h-10 text-green-600 mx-auto" />
           <p className="text-base font-semibold text-gray-900">Convite confirmado!</p>
           <p className="text-sm text-gray-600">
-            Sua Manifestação de Interesse foi registrada. Agora é só aguardar a aprovação da Secretaria Executiva — você
-            será avisado assim que a substituição for efetivada e poderá acessar o portal do orientador normalmente.
+            Sua Manifestação de Interesse foi registrada. Enquanto a Secretaria Executiva confirma o Termo Aditivo e
+            aprova o pedido, seu acesso ao sistema fica restrito ao acompanhamento desta solicitação — você será
+            avisado assim que a substituição for efetivada.
           </p>
         </div>
       </Card>
@@ -360,19 +458,81 @@ export function ConviteSubstituicaoOrientador() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
+
+            <div className="col-span-2 pt-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Endereço</p>
+            </div>
             <div className="col-span-2">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Escola / instituição onde atua</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rua</label>
+              <input
+                name="rua" value={form.rua}
+                onChange={e => setForm(p => ({ ...p, rua: e.target.value }))}
+                onBlur={handleBlurField} placeholder="Rua das Flores, 123"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Bairro</label>
+              <input
+                name="bairro" value={form.bairro}
+                onChange={e => setForm(p => ({ ...p, bairro: e.target.value }))}
+                onBlur={handleBlurField}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Cidade</label>
+              <input
+                name="cidade" value={form.cidade}
+                onChange={e => setForm(p => ({ ...p, cidade: e.target.value }))}
+                onBlur={handleBlurField}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            <div className="col-span-2 pt-1">
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Escola / instituição</p>
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Escola onde atua</label>
               <input
                 name="escola" value={form.escola}
                 onChange={e => setForm(p => ({ ...p, escola: e.target.value }))}
-                onBlur={handleBlurField}
+                onBlur={handleBlurField} placeholder="EMEF Nome da Escola"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Telefone da escola</label>
+              <input
+                name="telefone_escola" value={form.telefone_escola}
+                onChange={e => setForm(p => ({ ...p, telefone_escola: e.target.value }))}
+                onBlur={handleBlurField} placeholder="(27) 3333-4444"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">E-mail da escola</label>
+              <input
+                type="email" name="email_escola" value={form.email_escola}
+                onChange={e => setForm(p => ({ ...p, email_escola: e.target.value }))}
+                onBlur={handleBlurField} placeholder="secretaria@escola.edu.br"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+            <div className="col-span-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Formação (instituição/curso)</label>
+              <input
+                name="instituicao" value={form.instituicao}
+                onChange={e => setForm(p => ({ ...p, instituicao: e.target.value }))}
+                onBlur={handleBlurField} placeholder="Ex: Licenciatura em Ciências Biológicas — UFES"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
           </div>
 
           <div className="space-y-3 pt-2 border-t border-gray-100">
-            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos obrigatórios</p>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos pessoais obrigatórios</p>
             <UploadCampo
               label="Identidade com foto e CPF"
               obrigatorio
@@ -400,6 +560,42 @@ export function ConviteSubstituicaoOrientador() {
               currentUrl={meuOrientador?.doc_regularidade_url}
               uploading={uploading.doc_regularidade_url}
               onUpload={f => handleUpload('doc_regularidade_url', f)}
+            />
+          </div>
+
+          <div className="space-y-3 pt-2 border-t border-gray-100">
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Documentos da substituição</p>
+            <UploadCampo
+              label="Declaração de Anuência da Direção da escola"
+              obrigatorio
+              currentUrl={anuencia?.url}
+              uploading={enviandoAnuencia}
+              onUpload={handleUploadAnuencia}
+              extra={
+                <button
+                  type="button"
+                  onClick={handleBaixarAnuencia}
+                  className="flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline mb-1.5"
+                >
+                  <Download className="w-3 h-3" /> Baixar modelo já preenchido
+                </button>
+              }
+            />
+            <UploadCampo
+              label="Declaração de Aceitação da Substituição"
+              obrigatorio
+              currentUrl={aceitacao?.url}
+              uploading={enviandoAceitacao}
+              onUpload={handleUploadAceitacao}
+              extra={
+                <button
+                  type="button"
+                  onClick={handleBaixarAceitacao}
+                  className="flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline mb-1.5"
+                >
+                  <Download className="w-3 h-3" /> Baixar modelo já preenchido
+                </button>
+              }
             />
           </div>
 

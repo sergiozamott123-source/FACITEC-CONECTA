@@ -67,7 +67,7 @@ export function PortalOrientadorProvider({ children }) {
       if (histData?.projeto_id) {
         const { data: pr } = await supabase
           .from('projeto')
-          .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
+          .select('*, edicao:edicao_id(id, programa_id, ano_referencia, numero_edital)')
           .eq('id', histData.projeto_id)
           .maybeSingle()
         prData = pr ?? null
@@ -75,7 +75,7 @@ export function PortalOrientadorProvider({ children }) {
     } else {
       const { data: pr } = await supabase
         .from('projeto')
-        .select('*, edicao:edicao_id(id, programa_id, ano_referencia)')
+        .select('*, edicao:edicao_id(id, programa_id, ano_referencia, numero_edital)')
         .eq('orientador_id', orData.id)
         .eq('status', 'selecionado')
         .maybeSingle()

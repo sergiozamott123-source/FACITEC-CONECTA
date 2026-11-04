@@ -5,27 +5,36 @@
 // confirma o convite preenchendo os próprios dados (Opção B), em vez
 // do orientador atual preencher por ele.
 //
-// Fluxo: orientador atual chama solicitarSubstituicaoOrientador() →
-// gera token_convite → substituto abre /convite-substituicao-orientador/:token,
-// cria login próprio, preenche seu cadastro e chama
-// vincularConviteSubstituicaoOrientador() → pedido vira "aguardando
-// aprovação" → Secretaria aprova/recusa em SubstituicoesOrientadorPainel.jsx
-// (aprovar_substituicao_orientador / recusar_substituicao_orientador no banco).
+// Fluxo (revisado em 04/11/2026, a pedido de Sérgio): orientador atual
+// chama solicitarSubstituicaoOrientador() — já com CPF/telefone do
+// substituto e a própria Solicitação de Desligamento assinada — e gera
+// token_convite → substituto abre /convite-substituicao-orientador/:token,
+// cria login próprio, preenche o cadastro completo e anexa a Declaração
+// de Anuência da escola + a Declaração de Aceitação da Substituição,
+// chamando vincularConviteSubstituicaoOrientador() → pedido vira
+// "aguardando aprovação" e o substituto fica com acesso restrito
+// (status 'pendente_documentacao_substituicao', ver
+// RequireAcessoOrientador.jsx) até a Secretaria aprovar/recusar em
+// SubstituicoesOrientadorPainel.jsx (aprovar_substituicao_orientador /
+// recusar_substituicao_orientador no banco).
 
 import { supabase } from './supabase'
 
 export const BUCKET_SUBSTITUICAO = 'inscricoes'
 
 export async function solicitarSubstituicaoOrientador({
-  projetoId, motivo, nomeSubstituto, emailSubstituto, docAnuenciaUrl, docAnuenciaNomeArquivo,
+  projetoId, motivo, nomeSubstituto, emailSubstituto, cpfSubstituto, telefoneSubstituto,
+  docDesligamentoUrl, docDesligamentoNomeArquivo,
 }) {
   const { data, error } = await supabase.rpc('solicitar_substituicao_orientador', {
     p_projeto_id: projetoId,
     p_motivo: motivo,
     p_nome_substituto: nomeSubstituto,
     p_email_substituto: emailSubstituto,
-    p_doc_anuencia_url: docAnuenciaUrl,
-    p_doc_anuencia_nome_arquivo: docAnuenciaNomeArquivo ?? null,
+    p_cpf_substituto: cpfSubstituto,
+    p_telefone_substituto: telefoneSubstituto,
+    p_doc_desligamento_url: docDesligamentoUrl,
+    p_doc_desligamento_nome_arquivo: docDesligamentoNomeArquivo ?? null,
   })
   if (error) throw new Error(error.message)
   return data
@@ -41,9 +50,12 @@ export async function listarSolicitacoesSubstituicaoOrientadorDoOrientador(orien
   return data ?? []
 }
 
-export async function uploadDocAnuenciaSubstituicao(file, orientadorSaiuId) {
+// Usada pelo orientador que está saindo para anexar a própria Solicitação
+// de Desligamento assinada (substitui o antigo uploadDocAnuenciaSubstituicao
+// — a Anuência agora é anexada pelo substituto, ver uploadDocConviteSubstituto).
+export async function uploadDocSolicitacaoSubstituicao(file, orientadorSaiuId, campo = 'desligamento') {
   const ext = file.name.split('.').pop()
-  const path = `substituicoes-orientador/${orientadorSaiuId}/anuencia_${Date.now()}.${ext}`
+  const path = `substituicoes-orientador/${orientadorSaiuId}/${campo}_${Date.now()}.${ext}`
   const { error } = await supabase.storage.from(BUCKET_SUBSTITUICAO).upload(path, file, { upsert: true })
   if (error) throw error
   const { data: { publicUrl } } = supabase.storage.from(BUCKET_SUBSTITUICAO).getPublicUrl(path)
@@ -56,6 +68,8 @@ export async function obterConviteSubstituicaoOrientador(token) {
   return data?.[0] ?? null
 }
 
+// Documentos do cadastro do substituto (identidade, diploma, etc.) — ficam
+// no próprio registro `orientador` dele, prefixados pelo seu id.
 export async function uploadDocSubstituto(file, orientadorEntrouId, campo) {
   const ext = file.name.split('.').pop()
   const path = `orientadores/${orientadorEntrouId}/${campo}_${Date.now()}.${ext}`
@@ -65,10 +79,31 @@ export async function uploadDocSubstituto(file, orientadorEntrouId, campo) {
   return publicUrl
 }
 
-export async function vincularConviteSubstituicaoOrientador(token, assinaturaNome) {
+// Anuência da escola + Aceitação da substituição — ao contrário dos docs
+// acima, não ficam no registro `orientador`: vivem em
+// solicitacao_substituicao_orientador (doc_anuencia_url/doc_aceitacao_url),
+// escritos só na hora de vincular_convite_substituicao_orientador. Por isso
+// o upload aqui é prefixado pelo token do convite, não por um id de
+// orientador (o substituto pode ainda não ter terminado o próprio cadastro).
+export async function uploadDocConviteSubstituto(file, token, campo) {
+  const ext = file.name.split('.').pop()
+  const path = `substituicoes-orientador/convite/${token}/${campo}_${Date.now()}.${ext}`
+  const { error } = await supabase.storage.from(BUCKET_SUBSTITUICAO).upload(path, file, { upsert: true })
+  if (error) throw error
+  const { data: { publicUrl } } = supabase.storage.from(BUCKET_SUBSTITUICAO).getPublicUrl(path)
+  return { url: publicUrl, nomeArquivo: file.name }
+}
+
+export async function vincularConviteSubstituicaoOrientador(
+  token, assinaturaNome, docAnuenciaUrl, docAnuenciaNomeArquivo, docAceitacaoUrl, docAceitacaoNomeArquivo,
+) {
   const { data, error } = await supabase.rpc('vincular_convite_substituicao_orientador', {
     p_token: token,
     p_assinatura_nome: assinaturaNome,
+    p_doc_anuencia_url: docAnuenciaUrl,
+    p_doc_anuencia_nome_arquivo: docAnuenciaNomeArquivo ?? null,
+    p_doc_aceitacao_url: docAceitacaoUrl,
+    p_doc_aceitacao_nome_arquivo: docAceitacaoNomeArquivo ?? null,
   })
   if (error) throw new Error(error.message)
   return data
@@ -76,8 +111,8 @@ export async function vincularConviteSubstituicaoOrientador(token, assinaturaNom
 
 const SELECT_SOLICITACAO_ORIENTADOR = `
   *,
-  projeto:projeto_id ( titulo ),
-  orientador_saiu:orientador_saiu_id ( nome_completo, codigo_orientador, email ),
+  projeto:projeto_id ( titulo, edicao:edicao_id ( numero_edital ) ),
+  orientador_saiu:orientador_saiu_id ( nome_completo, codigo_orientador, email, cpf, rg ),
   orientador_entrou:orientador_entrou_id ( * )
 `
 
@@ -114,6 +149,21 @@ export async function recusarSubstituicaoOrientador(solicitacaoId, motivoRecusa)
     p_motivo_recusa: motivoRecusa,
   })
   if (error) throw new Error(error.message)
+  return data
+}
+
+// Usada pela tela de acesso restrito do substituto (RequireAcessoOrientador)
+// enquanto ele aguarda a aprovação da Secretaria — mostra o status do
+// próprio pedido sem precisar saber o id da solicitação de antemão.
+export async function obterMinhaSolicitacaoComoSubstituto(orientadorEntrouId) {
+  const { data, error } = await supabase
+    .from('solicitacao_substituicao_orientador')
+    .select('*, projeto:projeto_id ( titulo ), orientador_saiu:orientador_saiu_id ( nome_completo )')
+    .eq('orientador_entrou_id', orientadorEntrouId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+  if (error) throw error
   return data
 }
 
