@@ -142,6 +142,9 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
               <p className="text-gray-400 uppercase tracking-wide text-[10px]">Orientador que sai</p>
               <p className="text-gray-700">{solicitacao.orientador_saiu?.nome_completo}</p>
               <p className="text-gray-400">{solicitacao.orientador_saiu?.codigo_orientador}</p>
+              {solicitacao.orientador_saiu?.numero_contrato && (
+                <p className="text-gray-400">Contrato nº {solicitacao.orientador_saiu.numero_contrato}</p>
+              )}
             </div>
             <div>
               <p className="text-gray-400 uppercase tracking-wide text-[10px]">Substituto</p>
@@ -191,6 +194,7 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
                   orientadorSaiu: solicitacao.orientador_saiu,
                   orientadorEntrou: solicitacao.orientador_entrou,
                   numeroEdital: solicitacao.projeto?.edicao?.numero_edital,
+                  numeroContrato: solicitacao.orientador_saiu?.numero_contrato,
                 })}
                 className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-1.5 hover:bg-indigo-100 transition-colors"
               >

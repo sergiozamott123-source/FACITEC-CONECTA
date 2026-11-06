@@ -112,7 +112,7 @@ export async function vincularConviteSubstituicaoOrientador(
 const SELECT_SOLICITACAO_ORIENTADOR = `
   *,
   projeto:projeto_id ( titulo, edicao:edicao_id ( numero_edital ) ),
-  orientador_saiu:orientador_saiu_id ( nome_completo, codigo_orientador, email, cpf, rg ),
+  orientador_saiu:orientador_saiu_id ( nome_completo, codigo_orientador, email, cpf, rg, numero_contrato ),
   orientador_entrou:orientador_entrou_id ( * )
 `
 

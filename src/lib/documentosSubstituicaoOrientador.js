@@ -256,7 +256,7 @@ export async function baixarDeclaracaoAceitacao(dados) {
 // revisar e levar para assinatura via ZapSign — não substitui a revisão
 // jurídica/administrativa do documento final.
 
-export function gerarTermoAditivoPdf({ projeto, orientadorSaiu, orientadorEntrou, numeroEdital }) {
+export function gerarTermoAditivoPdf({ projeto, orientadorSaiu, orientadorEntrou, numeroEdital, numeroContrato }) {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' })
   const mL = 25, mR = 25
   const pgW = 210
@@ -282,12 +282,12 @@ export function gerarTermoAditivoPdf({ projeto, orientadorSaiu, orientadorEntrou
 
   function paragrafo(texto, espacoDepois = 8) {
     const linhas = doc.splitTextToSize(texto, usableW)
-    doc.text(linhas, mL, y, { lineHeightFactor: 1.4 })
+    doc.text(linhas, mL, y, { lineHeightFactor: 1.4, align: 'justify', maxWidth: usableW })
     y += linhas.length * 5.3 + espacoDepois
   }
 
   paragrafo(
-    `TERMO ADITIVO ao Contrato de Concessão de Apoio Financeiro referente ao projeto “${campo(projeto?.titulo, 60)}”, Edital FACITEC nº ${campo(numeroEdital, 10)}, celebrado entre a Companhia de Desenvolvimento, Turismo e Inovação de Vitória – CDTIV, na qualidade de gestora do Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória – FACITEC, e o(a) orientador(a) do projeto, nos termos do item 16.2 do Edital vigente.`,
+    `TERMO ADITIVO ao Contrato de Concessão de Apoio Financeiro nº ${campo(numeroContrato, 10)}, referente ao projeto “${campo(projeto?.titulo, 60)}”, Edital FACITEC nº ${campo(numeroEdital, 10)}, celebrado entre a Companhia de Desenvolvimento, Turismo e Inovação de Vitória – CDTIV, na qualidade de gestora do Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória – FACITEC, e o(a) orientador(a) do projeto, nos termos do item 16.2 do Edital vigente.`,
   )
   paragrafo(
     `CLÁUSULA PRIMEIRA — DO OBJETO. O presente Termo tem por objeto formalizar a SUBSTITUIÇÃO do(a) orientador(a) responsável pelo projeto acima identificado, que passa da seguinte forma:`,
@@ -298,20 +298,20 @@ export function gerarTermoAditivoPdf({ projeto, orientadorSaiu, orientadorEntrou
   y += 6
   doc.setFont('helvetica', 'normal')
   doc.text(`Nome: ${campo(orientadorSaiu?.nome_completo, 55)}`, mL, y); y += 5.5
-  doc.text(`CPF: ${campo(orientadorSaiu?.cpf, 18)}    RG: ${campo(orientadorSaiu?.rg, 16)}`, mL, y); y += 10
+  doc.text(`CPF: ${campo(orientadorSaiu?.cpf, 18)}`, mL, y); y += 10
 
   doc.setFont('helvetica', 'bold')
   doc.text('Orientador(a) substituto(a):', mL, y)
   y += 6
   doc.setFont('helvetica', 'normal')
   doc.text(`Nome: ${campo(orientadorEntrou?.nome_completo, 55)}`, mL, y); y += 5.5
-  doc.text(`CPF: ${campo(orientadorEntrou?.cpf, 18)}    RG: ${campo(orientadorEntrou?.rg, 16)}`, mL, y); y += 12
+  doc.text(`CPF: ${campo(orientadorEntrou?.cpf, 18)}`, mL, y); y += 12
 
   paragrafo(
     'CLÁUSULA SEGUNDA — DA VIGÊNCIA DAS DEMAIS CLÁUSULAS. Permanecem inalteradas e em pleno vigor todas as demais cláusulas e condições do Contrato de Concessão de Apoio Financeiro original, no que não contrariarem o disposto neste Termo Aditivo.',
   )
   paragrafo(
-    `E por estarem assim justas e contratadas, firmam o presente Termo Aditivo, em ${dotted(2)} vias de igual teor, juntamente com as testemunhas abaixo.`,
+    'E por estarem assim justas e contratadas, firmam o presente Termo Aditivo, em duas vias de igual teor, juntamente com as testemunhas abaixo.',
     16,
   )
 
