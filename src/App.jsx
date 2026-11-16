@@ -5,6 +5,7 @@ import PibicJr from '@/pages/PibicJr';
 import SelecaoM1 from '@/pages/SelecaoM1';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@/components/layout/Layout'
+import { AvisosDoSistema } from '@/components/AvisosDoSistema'
 import { Dashboard } from '@/pages/Dashboard'
 import { Edicoes } from '@/pages/Edicoes'
 import { Avaliacoes } from '@/pages/Avaliacoes'
@@ -104,6 +105,8 @@ function ProtectedCandidato({ children }) {
 function App() {
   return (
     <BrowserRouter>
+      {/* Avisos do sistema: versão nova disponível e convite para instalar o aplicativo */}
+      <AvisosDoSistema />
       <Routes>
         {/* Ficha pública de inscrição, por programa */}
         <Route path="/pibic-jr/inscricao" element={<FichaInscricao slug="pibic-jr" />} />
