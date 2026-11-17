@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { supabase } from '@/lib/supabase'
-import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 export function LoginOrientador() {
   const { login } = usePortalOrientador()
@@ -60,32 +59,30 @@ export function LoginOrientador() {
     setError(null)
   }
 
+  // Visual de entrada no padrão do Portal CCAD (pedido do Sérgio, 17/11/2026):
+  // fundo azul-marinho liso, assinatura branca grande, cartão branco.
+  // A foto aérea (/images/hero-vitoria.jpg) continua guardada no projeto.
   return (
-    <div
-      className="min-h-screen flex flex-col bg-cover bg-center"
-      style={{
-        backgroundColor: '#0f1e2d',
-        backgroundImage: `linear-gradient(180deg, rgba(15,30,45,0.30) 0%, rgba(15,30,45,0.45) 55%, rgba(10,20,32,0.68) 100%), url('/images/hero-vitoria.jpg')`,
-      }}
-    >
-      <header className="px-6 py-6 flex justify-center">
-        <LogoFacitecConecta size="sm" inverted />
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-4 py-6">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-6">
+    <div className="min-h-screen flex flex-col bg-[var(--dv-marinho)]">
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <img
+              src="/identidade/facitec-conecta-assinatura-branca.svg"
+              alt="FACITEC Conecta"
+              className="h-14 sm:h-20 w-auto mx-auto mb-4"
+            />
             <h1 className="text-2xl font-bold text-white">Portal do orientador</h1>
-            <p className="text-white/70 text-sm mt-1">
+            <p className="text-sm mt-1 text-[var(--dv-texto-suave-escuro)]">
               Acompanhe seus bolsistas e solicitações
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-2xl p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-4">
             {view === 'login' ? (
               <>
                 {error && (
-                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                  <div className="rounded-md bg-[var(--dv-erro-fundo)] border border-[var(--dv-erro-fundo)] px-4 py-3 text-sm text-[var(--dv-erro)]">
                     {error}
                   </div>
                 )}
@@ -101,7 +98,7 @@ export function LoginOrientador() {
                       placeholder="seuemail@exemplo.com"
                       required
                       autoFocus
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                     />
                   </div>
                   <div className="space-y-1">
@@ -114,13 +111,13 @@ export function LoginOrientador() {
                       onChange={e => setSenha(e.target.value)}
                       placeholder="Sua senha"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-2.5 px-4 bg-[var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Entrando...' : 'Entrar'}
                   </button>
@@ -129,7 +126,7 @@ export function LoginOrientador() {
                   <button
                     type="button"
                     onClick={switchToForgot}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-[var(--dv-primaria-texto)] hover:underline"
                   >
                     Esqueci minha senha
                   </button>
@@ -152,7 +149,7 @@ export function LoginOrientador() {
                 ) : (
                   <>
                     {forgotError && (
-                      <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                      <div className="rounded-md bg-[var(--dv-erro-fundo)] border border-[var(--dv-erro-fundo)] px-4 py-3 text-sm text-[var(--dv-erro)]">
                         {forgotError}
                       </div>
                     )}
@@ -168,13 +165,13 @@ export function LoginOrientador() {
                           placeholder="seuemail@exemplo.com"
                           required
                           autoFocus
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                         />
                       </div>
                       <button
                         type="submit"
                         disabled={forgotLoading}
-                        className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full py-2.5 px-4 bg-[var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {forgotLoading ? 'Enviando...' : 'Enviar link de recuperação'}
                       </button>
@@ -186,7 +183,7 @@ export function LoginOrientador() {
                   <button
                     type="button"
                     onClick={switchToLogin}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-[var(--dv-primaria-texto)] hover:underline"
                   >
                     ← Voltar ao login
                   </button>
@@ -198,7 +195,7 @@ export function LoginOrientador() {
       </main>
 
       <footer className="px-6 py-4 text-center">
-        <p className="text-white/40 text-xs">
+        <p className="text-xs text-[var(--dv-texto-suave-escuro)] opacity-70">
           Fundo Municipal de Ciência e Tecnologia de Vitória/ES · CDTIV
         </p>
       </footer>
