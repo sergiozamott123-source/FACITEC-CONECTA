@@ -6,7 +6,6 @@ import {
   ArrowLeftRight,
   BarChart2,
   BookOpen,
-  Building2,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -195,16 +194,16 @@ function Dropdown({ label, icon: Icon, children, collapsed }) {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground/90 hover:bg-white/10 transition-colors"
+        className="w-full flex items-center gap-2 px-3 py-2 rounded-md text-sm font-medium text-sidebar-foreground hover:bg-white/10 transition-colors"
       >
-        {Icon && <Icon className="w-4 h-4 shrink-0 text-sidebar-foreground/60" />}
+        {Icon && <Icon className="w-4 h-4 shrink-0 text-sidebar-foreground" />}
         <span className="flex-1 text-left truncate">{label}</span>
         <ChevronDown className={cn('w-3.5 h-3.5 shrink-0 transition-transform', open && 'rotate-180')} />
       </button>
 
       {open && (
         <div
-          className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-[#E2E8F0] rounded-md shadow-md overflow-hidden"
+          className="absolute left-0 right-0 top-full mt-1 z-50 bg-white border border-border rounded-md shadow-md overflow-hidden"
           onClick={() => setOpen(false)}
         >
           {children}
@@ -218,7 +217,7 @@ function Dropdown({ label, icon: Icon, children, collapsed }) {
 function SectionLabel({ children, collapsed }) {
   if (collapsed) return <div className="my-1 border-t border-sidebar-border" />
   return (
-    <p className="mt-4 mb-1 px-3 text-[10px] font-semibold uppercase tracking-wider text-sidebar-foreground/40 select-none">
+    <p className="mt-4 mb-1 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/70 select-none">
       {children}
     </p>
   )
@@ -232,8 +231,8 @@ function NavItem({ item, collapsed, pathname }) {
   const cls = cn(
     'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
     active
-      ? 'bg-white border border-[#E2E8F0] text-[#534AB7] shadow-sm'
-      : 'text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground'
+      ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_3px_0_0_var(--dv-primaria)]'
+      : 'text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-accent-foreground'
   )
 
   if (item.external) {
@@ -245,7 +244,7 @@ function NavItem({ item, collapsed, pathname }) {
         title={collapsed ? item.label : undefined}
         className={cls}
       >
-        <Icon className={cn('w-5 h-5 shrink-0', active ? 'text-[#534AB7]' : '')} />
+        <Icon className="w-5 h-5 shrink-0" />
         {!collapsed && (
           <>
             <span className="truncate flex-1">{item.label}</span>
@@ -262,10 +261,10 @@ function NavItem({ item, collapsed, pathname }) {
       title={collapsed ? item.label : undefined}
       className={cls}
     >
-      <Icon className={cn('w-5 h-5 shrink-0', active ? 'text-[#534AB7]' : '')} />
+      <Icon className="w-5 h-5 shrink-0" />
       {!collapsed && <span className="truncate flex-1">{item.label}</span>}
       {!collapsed && !!item.badge && (
-        <span className="shrink-0 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
+        <span className="shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1 rounded-full bg-[var(--dv-erro)] text-white text-xs font-bold">
           {item.badge}
         </span>
       )}
@@ -293,11 +292,11 @@ function NavGroupItem({ item, collapsed, pathname }) {
         className={cn(
           'flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
           hasActiveChild
-            ? 'bg-white border border-[#E2E8F0] text-[#534AB7] shadow-sm'
-            : 'text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground'
+            ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_3px_0_0_var(--dv-primaria)]'
+            : 'text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-accent-foreground'
         )}
       >
-        <Icon className={cn('w-5 h-5 shrink-0', hasActiveChild ? 'text-[#534AB7]' : '')} />
+        <Icon className="w-5 h-5 shrink-0" />
       </NavLink>
     )
   }
@@ -309,8 +308,8 @@ function NavGroupItem({ item, collapsed, pathname }) {
         className={cn(
           'w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium transition-colors',
           hasActiveChild
-            ? 'text-[#534AB7]'
-            : 'text-sidebar-foreground/80 hover:bg-white/10 hover:text-sidebar-foreground'
+            ? 'text-sidebar-accent-foreground font-semibold'
+            : 'text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-accent-foreground'
         )}
       >
         <Icon className="w-5 h-5 shrink-0" />
@@ -328,8 +327,8 @@ function NavGroupItem({ item, collapsed, pathname }) {
                 className={cn(
                   'flex items-center rounded-md px-3 py-2 text-sm font-medium transition-colors truncate',
                   childActive
-                    ? 'bg-white border border-[#E2E8F0] text-[#534AB7] shadow-sm'
-                    : 'text-sidebar-foreground/70 hover:bg-white/10 hover:text-sidebar-foreground'
+                    ? 'bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_3px_0_0_var(--dv-primaria)]'
+                    : 'text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-accent-foreground'
                 )}
               >
                 {child.label}
@@ -419,15 +418,15 @@ export function Sidebar() {
       )}
     >
       {/* ── Logo ── */}
-      <div className="flex items-center gap-3 px-4 py-5 min-h-[72px]">
-        <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-white/20 shrink-0">
-          <Building2 className="w-5 h-5 text-white" />
-        </div>
-        {!collapsed && (
-          <div className="overflow-hidden">
-            <p className="text-white font-bold text-sm leading-tight">FACITEC Conecta</p>
-            <p className="text-sidebar-foreground/50 text-xs leading-tight">CDTIV · Vitória/ES</p>
-          </div>
+      <div className={cn('flex items-center min-h-[72px] py-4', collapsed ? 'justify-center px-2' : 'px-4')}>
+        {collapsed ? (
+          <img src="/facitec-conecta-icone.svg" alt="FACITEC CONECTA" className="h-9 w-9 shrink-0 rounded-lg" />
+        ) : (
+          <img
+            src="/identidade/facitec-conecta-assinatura-branca.svg"
+            alt="FACITEC CONECTA"
+            className="h-10 w-auto max-w-full"
+          />
         )}
       </div>
 
@@ -438,14 +437,14 @@ export function Sidebar() {
         <div className="px-3 pt-3 pb-1">
           <button
             onClick={() => navigate('/admin/acervo')}
-            className="flex items-center gap-1.5 text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground transition-colors mb-2"
+            className="flex items-center gap-1.5 text-xs text-sidebar-foreground hover:text-sidebar-accent-foreground transition-colors mb-2"
           >
             <ArrowLeft className="w-3.5 h-3.5" /> Voltar ao Acervo
           </button>
           <p className="text-sm font-semibold text-white truncate">
             {programaAcervo?.nome ?? 'Acervo'}
           </p>
-          <p className="text-xs text-sidebar-foreground/50">
+          <p className="text-xs text-sidebar-foreground">
             {edicaoAcervo ? `Edição ${edicaoAcervo.ano_referencia}` : 'Carregando…'}
           </p>
         </div>
@@ -463,7 +462,7 @@ export function Sidebar() {
                 className={cn(
                   'w-full text-left px-4 py-2 text-sm transition-colors',
                   p.ativo
-                    ? 'text-[#534AB7] font-semibold bg-[#EEEDFE] hover:bg-[#e0dffe]'
+                    ? 'text-[var(--dv-primaria-texto)] font-semibold bg-[var(--dv-primaria-clara)]'
                     : 'text-gray-300 cursor-not-allowed'
                 )}
               >
@@ -487,7 +486,7 @@ export function Sidebar() {
                 className={cn(
                   'w-full text-left px-4 py-2 text-sm transition-colors hover:bg-gray-50',
                   edicaoSelecionada?.id === e.id
-                    ? 'text-[#534AB7] font-semibold bg-[#EEEDFE]'
+                    ? 'text-[var(--dv-primaria-texto)] font-semibold bg-[var(--dv-primaria-clara)]'
                     : 'text-gray-700'
                 )}
               >
@@ -544,7 +543,7 @@ export function Sidebar() {
         <button
           onClick={async () => { await logout(); navigate('/login/secretaria') }}
           title={collapsed ? 'Sair' : undefined}
-          className="w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground/80 hover:bg-white/10 transition-colors"
+          className="w-full flex items-center gap-3 rounded-md px-3 py-2.5 text-sm font-medium text-sidebar-foreground hover:bg-white/10 hover:text-sidebar-accent-foreground transition-colors"
         >
           <LogOut className="w-5 h-5 shrink-0" />
           {!collapsed && <span className="truncate">Sair</span>}

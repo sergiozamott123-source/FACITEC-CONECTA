@@ -1,6 +1,60 @@
+/* Identidade Visual DINOV v1.0 (kit copiado como está; não editar). Etapa 2: telas internas da Secretaria. */
+@import "./lib/identidade/identidade-dinov.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Identidade DINOV só nas telas internas da Secretaria (Etapa 2).
+   O Layout da Secretaria marca <html data-tema="dinov"> enquanto está na tela.
+   As telas públicas, de orientador e de avaliador (Etapa 4) continuam como antes.
+   Quando elas forem migradas, o tema abaixo passa a valer em :root para todos.
+   --------------------------------------------------------------------------- */
+
+/* O kit define h1–h4 e o fundo de <html> para o sistema todo; fora da Secretaria
+   mantemos o comportamento anterior (especificidade baixa: classes do Tailwind
+   continuam valendo). */
+html:where(:not([data-tema="dinov"])) {
+  background: none;
+  color: initial;
+}
+html:where(:not([data-tema="dinov"])) :is(h1, h2, h3, h4) {
+  font-family: inherit;
+  color: inherit;
+}
+
+/* Tema shadcn do kit: Tokens/facitec-conecta-tema-shadcn.css (valores copiados). */
+html[data-tema="dinov"] {
+  --background: 0 0% 100%;  /* #FFFFFF */
+  --foreground: 209 30% 17%;  /* #1F2D3A */
+  --card: 0 0% 100%;  /* #FFFFFF */
+  --card-foreground: 209 30% 17%;  /* #1F2D3A */
+  --popover: 0 0% 100%;  /* #FFFFFF */
+  --popover-foreground: 209 30% 17%;  /* #1F2D3A */
+  --primary: 209 57% 44%;  /* #3072B1 */
+  --primary-foreground: 0 0% 100%;  /* #FFFFFF */
+  --secondary: 213 22% 92%;  /* #E6EAEF */
+  --secondary-foreground: 209 53% 21%;  /* #193651 */
+  --muted: 214 26% 95%;  /* #EEF1F5 */
+  --muted-foreground: 211 18% 35%;  /* #4A5A6B */
+  --accent: 210 53% 94%;  /* #E8F0F8 */
+  --accent-foreground: 209 53% 21%;  /* #193651 */
+  --destructive: 3 71% 41%;  /* #B4261E */
+  --destructive-foreground: 0 0% 100%;  /* #FFFFFF */
+  --border: 210 20% 86%;  /* #D5DCE3 */
+  --input: 210 20% 86%;  /* #D5DCE3 */
+  --ring: 209 57% 44%;  /* #3072B1 */
+  --sidebar-background: 209 53% 21%;  /* #193651 */
+  --sidebar-foreground: 211 47% 83%;  /* #BFD3E8 */
+  --sidebar-primary: 0 0% 100%;  /* #FFFFFF */
+  --sidebar-primary-foreground: 209 53% 21%;  /* #193651 */
+  --sidebar-accent: 208 48% 27%;  /* #244766 */
+  --sidebar-accent-foreground: 0 0% 100%;  /* #FFFFFF */
+  --sidebar-border: 208 48% 27%;  /* #244766 */
+  --sidebar-ring: 209 57% 44%;  /* #3072B1 */
+  --radius: 0.625rem;  /* 10px */
+}
 
 @layer base {
   :root {
