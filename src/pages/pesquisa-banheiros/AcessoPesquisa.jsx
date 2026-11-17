@@ -5,7 +5,6 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { Navigate, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { temAcesso } from '@/lib/pesquisaBanheiros/api'
-import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 const Ctx = createContext(null)
 export const useEquipePesquisa = () => useContext(Ctx)
@@ -42,31 +41,33 @@ export function RequireAcessoPesquisa({ children }) {
   return <Ctx.Provider value={estado}>{children}</Ctx.Provider>
 }
 
+// Visual de entrada no padrão do Portal CCAD (pedido do Sérgio, 17/11/2026):
+// fundo azul-marinho liso, assinatura branca grande, cartão branco.
 function Moldura({ titulo, subtitulo, children }) {
   return (
-    <div className="min-h-screen flex flex-col bg-cover bg-center"
-      style={{
-        backgroundColor: '#0f1e2d',
-        backgroundImage: `linear-gradient(180deg, rgba(15,30,45,0.30) 0%, rgba(15,30,45,0.45) 55%, rgba(10,20,32,0.68) 100%), url('/images/hero-vitoria.jpg')`,
-      }}>
-      <header className="px-6 py-6 flex justify-center"><LogoFacitecConecta size="sm" inverted /></header>
-      <main className="flex-1 flex items-center justify-center px-4 py-6">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-6">
+    <div className="min-h-screen flex flex-col bg-[var(--dv-marinho)]">
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <img
+              src="/identidade/facitec-conecta-assinatura-branca.svg"
+              alt="FACITEC Conecta"
+              className="h-14 sm:h-20 w-auto mx-auto mb-4"
+            />
             <h1 className="text-2xl font-bold text-white">{titulo}</h1>
-            <p className="text-white/70 text-sm mt-1">{subtitulo}</p>
+            <p className="text-sm mt-1 text-[var(--dv-texto-suave-escuro)]">{subtitulo}</p>
           </div>
-          <div className="bg-white rounded-xl shadow-2xl p-6 space-y-4">{children}</div>
+          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-4">{children}</div>
         </div>
       </main>
     </div>
   )
 }
 
-const campo = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-cyan-700 focus:border-transparent'
-const botaoPrimario = 'w-full py-2.5 rounded-md bg-[#0D1F3C] text-white text-sm font-semibold hover:bg-[#112244] disabled:opacity-50'
+const campo = 'w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]'
+const botaoPrimario = 'w-full py-2.5 rounded-md bg-[var(--dv-primaria)] text-white text-sm font-semibold hover:bg-[var(--dv-primaria-hover)] disabled:opacity-50'
 const aviso = (tipo, texto) => (
-  <div className={`rounded-md px-4 py-3 text-sm border ${tipo === 'erro' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-emerald-50 border-emerald-200 text-emerald-800'}`}>{texto}</div>
+  <div className={`rounded-md px-4 py-3 text-sm border ${tipo === 'erro' ? 'bg-[var(--dv-erro-fundo)] border-[var(--dv-erro-fundo)] text-[var(--dv-erro)]' : 'bg-[var(--dv-sucesso-fundo)] border-[var(--dv-sucesso-fundo)] text-[var(--dv-sucesso)]'}`}>{texto}</div>
 )
 
 export function LoginPesquisa() {
@@ -121,8 +122,8 @@ export function LoginPesquisa() {
         </button>
       </form>
       <div className="flex justify-between text-sm">
-        <button type="button" className="text-cyan-800 underline" onClick={() => navigate('/')}>← Voltar ao portal</button>
-        <button type="button" className="text-cyan-800 underline" onClick={() => { setView(view === 'login' ? 'recuperar' : 'login'); setErro(null); setOk(null) }}>
+        <button type="button" className="text-[var(--dv-primaria-texto)] underline" onClick={() => navigate('/')}>← Voltar ao portal</button>
+        <button type="button" className="text-[var(--dv-primaria-texto)] underline" onClick={() => { setView(view === 'login' ? 'recuperar' : 'login'); setErro(null); setOk(null) }}>
           {view === 'login' ? 'Esqueci minha senha' : 'Voltar ao login'}
         </button>
       </div>

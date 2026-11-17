@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardCheck } from 'lucide-react'
 import { useAvaliador } from '@/contexts/AvaliadorContext'
 import { supabase } from '@/lib/supabase'
 
@@ -62,34 +61,29 @@ export function LoginAvaliador() {
     setError(null)
   }
 
+  // Visual de entrada no padrão do Portal CCAD (pedido do Sérgio, 17/11/2026):
+  // fundo azul-marinho liso, assinatura branca grande, cartão branco.
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0c2358 0%, #1a3f72 100%)' }}>
-      <header className="px-6 py-4">
-        <div className="max-w-md mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/20">
-            <ClipboardCheck className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <p className="text-white font-bold text-base leading-tight">FACITEC Conecta</p>
-            <p className="text-white/60 text-xs leading-tight">Portal de Avaliadores</p>
-          </div>
-        </div>
-      </header>
-
-      <main className="flex-1 flex items-center justify-center px-4 py-6">
-        <div className="w-full max-w-md">
-          <div className="text-center mb-6">
+    <div className="min-h-screen flex flex-col bg-[var(--dv-marinho)]">
+      <main className="flex-1 flex items-center justify-center px-4 py-8">
+        <div className="w-full max-w-sm">
+          <div className="text-center mb-8">
+            <img
+              src="/identidade/facitec-conecta-assinatura-branca.svg"
+              alt="FACITEC Conecta"
+              className="h-14 sm:h-20 w-auto mx-auto mb-4"
+            />
             <h1 className="text-2xl font-bold text-white">Área do Avaliador</h1>
-            <p className="text-white/70 text-sm mt-1">
+            <p className="text-sm mt-1 text-[var(--dv-texto-suave-escuro)]">
               FACITEC Conecta · Portal do Avaliador
             </p>
           </div>
 
-          <div className="bg-white rounded-xl shadow-2xl p-6 space-y-4">
+          <div className="bg-white rounded-2xl shadow-xl p-8 space-y-4">
             {view === 'login' ? (
               <>
                 {error && (
-                  <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                  <div className="rounded-md bg-[var(--dv-erro-fundo)] border border-[var(--dv-erro-fundo)] px-4 py-3 text-sm text-[var(--dv-erro)]">
                     {error}
                   </div>
                 )}
@@ -105,7 +99,7 @@ export function LoginAvaliador() {
                       placeholder="seu@email.com"
                       required
                       autoFocus
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                     />
                   </div>
                   <div className="space-y-1">
@@ -118,13 +112,13 @@ export function LoginAvaliador() {
                       onChange={e => setPassword(e.target.value)}
                       placeholder="Sua senha"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-2.5 px-4 bg-[var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Entrando...' : 'Entrar'}
                   </button>
@@ -133,7 +127,7 @@ export function LoginAvaliador() {
                   <button
                     type="button"
                     onClick={switchToForgot}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-[var(--dv-primaria-texto)] hover:underline"
                   >
                     Esqueci minha senha
                   </button>
@@ -149,14 +143,14 @@ export function LoginAvaliador() {
                 </div>
 
                 {forgotSent ? (
-                  <div className="rounded-md bg-green-50 border border-green-200 px-4 py-3 text-sm text-green-800">
+                  <div className="rounded-md bg-[var(--dv-sucesso-fundo)] border border-[var(--dv-sucesso-fundo)] px-4 py-3 text-sm text-[var(--dv-sucesso)]">
                     E-mail enviado! Verifique sua caixa de entrada e clique no link recebido.
                     O link expira em 1 hora.
                   </div>
                 ) : (
                   <>
                     {forgotError && (
-                      <div className="rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">
+                      <div className="rounded-md bg-[var(--dv-erro-fundo)] border border-[var(--dv-erro-fundo)] px-4 py-3 text-sm text-[var(--dv-erro)]">
                         {forgotError}
                       </div>
                     )}
@@ -172,13 +166,13 @@ export function LoginAvaliador() {
                           placeholder="seu@email.com"
                           required
                           autoFocus
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="w-full px-3 py-2 min-h-[40px] border border-[var(--dv-borda)] rounded-md text-sm text-[var(--dv-texto)] focus:outline-none focus:border-[var(--dv-primaria)] focus:ring-2 focus:ring-[var(--dv-primaria-clara)]"
                         />
                       </div>
                       <button
                         type="submit"
                         disabled={forgotLoading}
-                        className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full py-2.5 px-4 bg-[var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {forgotLoading ? 'Enviando...' : 'Enviar link de recuperação'}
                       </button>
@@ -190,7 +184,7 @@ export function LoginAvaliador() {
                   <button
                     type="button"
                     onClick={switchToLogin}
-                    className="text-sm text-blue-600 hover:underline"
+                    className="text-sm text-[var(--dv-primaria-texto)] hover:underline"
                   >
                     ← Voltar ao login
                   </button>
@@ -202,7 +196,7 @@ export function LoginAvaliador() {
       </main>
 
       <footer className="px-6 py-4 text-center">
-        <p className="text-white/40 text-xs">
+        <p className="text-xs text-[var(--dv-texto-suave-escuro)] opacity-70">
           Fundo Municipal de Ciência e Tecnologia de Vitória/ES · CDTIV
         </p>
       </footer>
