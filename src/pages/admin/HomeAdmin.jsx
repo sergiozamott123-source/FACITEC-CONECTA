@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Microscope, School, Lightbulb, Award, Archive, ChevronRight, Hash, ClipboardList } from 'lucide-react'
+import { Microscope, School, Lightbulb, Award, Archive, ChevronRight, Hash } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { db, edicaoService } from '@/lib/db'
 import { PROGRAMAS, PROGRAMA_ID_PADRAO } from '@/lib/programas'
@@ -252,12 +252,15 @@ export function HomeAdmin() {
             descricao="Edições encerradas de todos os programas — projetos, orientadores, bolsistas e material histórico."
             onClick={() => navigate('/admin/acervo')}
           />
-          <FerramentaCard
-            icon={ClipboardList}
-            nome="Pesquisa Banheiros Públicos"
-            descricao="Levantamento da CDTIV com as secretarias: respostas, fichas, análise CPSI e códigos de acesso."
-            onClick={() => navigate('/pesquisa-banheiros/painel')}
-          />
+          {/* Card "Pesquisa Banheiros Públicos" removido desta tela a pedido do Sérgio (17/11/2026).
+              A funcionalidade continua disponível pelo endereço direto (/pesquisa-banheiros/painel).
+              Para devolver o card, basta recolocar o item abaixo:
+              <FerramentaCard
+                icon={ClipboardList}
+                nome="Pesquisa Banheiros Públicos"
+                descricao="Levantamento da CDTIV com as secretarias: respostas, fichas, análise CPSI e códigos de acesso."
+                onClick={() => navigate('/pesquisa-banheiros/painel')}
+              /> */}
         </div>
       </div>
 
