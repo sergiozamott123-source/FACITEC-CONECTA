@@ -1,7 +1,6 @@
 import { useCallback, useMemo, useState } from 'react'
-import { Search, Plus, ChevronRight, FileText, ExternalLink, Download, Trash2 } from 'lucide-react'
+import { Search, Plus, ChevronRight, FileText, ExternalLink, Download, Trash2, Pencil } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { FormField, Input, Select, Textarea, ErrorAlert, EmptyState, LoadingState } from '@/components/common/FormField'
@@ -11,7 +10,16 @@ import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { AnexarDocumentoAtaCmct, CATEGORIAS_ATA_CMCT } from './AnexarDocumentoAtaCmct'
 
 const STATUS_ATA_LABEL = { sem_ata: 'Sem ata', minuta: 'Minuta', assinada: 'Assinada' }
-const STATUS_ATA_VARIANT = { sem_ata: 'secondary', minuta: 'warning', assinada: 'success' }
+// Selos com a palavra, nas cores do kit de identidade (classes .dv-selo do kit).
+const STATUS_ATA_SELO = { sem_ata: 'dv-selo--neutro', minuta: 'dv-selo--atencao', assinada: 'dv-selo--sucesso' }
+
+function SeloAta({ status }) {
+  return <span className={`dv-selo ${STATUS_ATA_SELO[status] ?? 'dv-selo--neutro'}`}>{STATUS_ATA_LABEL[status] ?? status}</span>
+}
+
+function formatarData(d) {
+  return d ? new Date(`${d}T00:00:00`).toLocaleDateString('pt-BR') : 'Data não confirmada'
+}
 const CATEGORIA_LABEL = Object.fromEntries(CATEGORIAS_ATA_CMCT.map((c) => [c.value, c.label]))
 
 function tituloReuniao(r) {
@@ -108,7 +116,7 @@ function AnexarEmReuniaoExistenteForm({ reunioes, onUploaded }) {
   )
 }
 
-function EnviarDocumentoModal({ open, onClose, reunioes, onChanged }) {
+function EnviarDocumentoModal({ open, onClose, reunioes, onChanged, onAtaAnexada }) {
   const [modo, setModo] = useState('nova')
 
   function handleClose() {
@@ -133,20 +141,19 @@ function EnviarDocumentoModal({ open, onClose, reunioes, onChanged }) {
       {modo === 'nova' ? (
         <NovaReuniaoForm onCreated={() => { onChanged(); handleClose() }} onCancel={handleClose} />
       ) : (
-        <AnexarEmReuniaoExistenteForm reunioes={reunioes} onUploaded={() => { onChanged(); handleClose() }} />
+        <AnexarEmReuniaoExistenteForm reunioes={reunioes} onUploaded={(doc) => { onChanged(); handleClose(); onAtaAnexada?.(doc) }} />
       )}
     </Modal>
   )
 }
 
-function DocumentosReuniao({ reuniaoId, podeEditar, onChanged }) {
+function DocumentosReuniao({ reuniaoId, podeEditar, onAnexou }) {
   const fetch = useCallback(() => documentoAcervoService.listPorEntidade('reuniao_cmct', reuniaoId), [reuniaoId])
   const { data: documentos, loading, reload } = useTable(fetch)
 
   async function handleExcluir(id) {
     await documentoAcervoService.remove(id)
     reload()
-    onChanged?.()
   }
 
   if (loading) return <LoadingState />
@@ -188,29 +195,114 @@ function DocumentosReuniao({ reuniaoId, podeEditar, onChanged }) {
         </div>
       )}
       {podeEditar && (
-        <AnexarDocumentoAtaCmct reuniaoId={reuniaoId} onUploaded={() => { reload(); onChanged?.() }} />
+        <AnexarDocumentoAtaCmct reuniaoId={reuniaoId} onUploaded={(doc) => { reload(); onAnexou?.(doc) }} />
       )}
     </div>
   )
 }
 
-function ReuniaoDetalheModal({ reuniao, onClose, podeEditar }) {
-  if (!reuniao) return null
+// Edição de data e situação da ata de uma reunião (só a Secretaria).
+// O banco não atualiza `atualizado_em` sozinho, então gravamos o carimbo aqui.
+function EditarReuniaoForm({ reuniao, onSaved, onCancel }) {
+  const [data, setData] = useState(reuniao.data_reuniao ?? '')
+  const [status, setStatus] = useState(reuniao.status_ata)
+  const { saving, crudError, update } = useCrud(reuniaoCmctService)
+
+  async function handleSubmit(e) {
+    e.preventDefault()
+    try {
+      const atualizada = await update(reuniao.id, {
+        data_reuniao: data || null,
+        status_ata: status,
+        atualizado_em: new Date().toISOString(),
+      })
+      onSaved(atualizada)
+    } catch { /* crudError exibido no formulário */ }
+  }
+
   return (
-    <Modal open={!!reuniao} onClose={onClose} title={`${reuniao.ano} — ${tituloReuniao(reuniao)}`} size="lg">
+    <form onSubmit={handleSubmit} className="space-y-3 rounded-md border border-border p-3 bg-muted/30">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <FormField label="Data da reunião">
+          <Input type="date" value={data} onChange={(e) => setData(e.target.value)} />
+        </FormField>
+        <FormField label="Situação da ata">
+          <Select value={status} onChange={(e) => setStatus(e.target.value)}>
+            {Object.entries(STATUS_ATA_LABEL).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+          </Select>
+        </FormField>
+      </div>
+      <p className="text-xs text-muted-foreground">Deixe a data vazia enquanto ela não estiver confirmada.</p>
+      <ErrorAlert message={crudError} />
+      <div className="flex gap-2 justify-end">
+        <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancelar</Button>
+        <Button type="submit" size="sm" disabled={saving}>{saving ? 'Salvando…' : 'Salvar'}</Button>
+      </div>
+    </form>
+  )
+}
+
+// Ao anexar um arquivo do tipo "Ata" numa reunião marcada como "Sem ata",
+// pergunta se a ata já está assinada. Nada muda sem a resposta de quem usa.
+function PerguntaAtaAssinada({ reuniao, onClose, onSaved }) {
+  const { saving, crudError, update } = useCrud(reuniaoCmctService)
+
+  async function definir(status) {
+    try {
+      const atualizada = await update(reuniao.id, { status_ata: status, atualizado_em: new Date().toISOString() })
+      onSaved(atualizada)
+    } catch { /* crudError exibido abaixo */ }
+  }
+
+  return (
+    <Modal open onClose={onClose} title="Situação da ata" size="sm">
+      <div className="space-y-4">
+        <p className="text-sm text-foreground">
+          Você anexou uma ata à {tituloReuniao(reuniao)} de {reuniao.ano}. <strong>Esta ata já está assinada?</strong>
+        </p>
+        <ErrorAlert message={crudError} />
+        <div className="flex flex-col gap-2">
+          <Button size="sm" disabled={saving} onClick={() => definir('assinada')}>Sim, a ata está assinada</Button>
+          <Button size="sm" variant="outline" disabled={saving} onClick={() => definir('minuta')}>Não, é uma minuta</Button>
+          <Button size="sm" variant="ghost" disabled={saving} onClick={onClose}>Deixar como está (Sem ata)</Button>
+        </div>
+      </div>
+    </Modal>
+  )
+}
+
+function ReuniaoDetalheModal({ reuniao, onClose, podeEditar, onSaved, onAnexou }) {
+  const [editando, setEditando] = useState(false)
+  if (!reuniao) return null
+
+  function fechar() {
+    setEditando(false)
+    onClose()
+  }
+
+  return (
+    <Modal open={!!reuniao} onClose={fechar} title={`${reuniao.ano} — ${tituloReuniao(reuniao)}`} size="lg">
       <div className="space-y-4">
         <div className="flex flex-wrap items-center gap-3 text-sm">
-          <Badge variant={STATUS_ATA_VARIANT[reuniao.status_ata]}>{STATUS_ATA_LABEL[reuniao.status_ata]}</Badge>
-          <span className="text-muted-foreground">
-            {reuniao.data_reuniao
-              ? new Date(`${reuniao.data_reuniao}T00:00:00`).toLocaleDateString('pt-BR')
-              : 'Data não confirmada'}
-          </span>
+          <SeloAta status={reuniao.status_ata} />
+          <span className="text-muted-foreground">{formatarData(reuniao.data_reuniao)}</span>
+          {podeEditar && !editando && (
+            <Button type="button" variant="outline" size="sm" className="ml-auto" onClick={() => setEditando(true)}>
+              <Pencil className="w-3.5 h-3.5" /> Editar data e situação
+            </Button>
+          )}
         </div>
+        {editando && (
+          <EditarReuniaoForm
+            reuniao={reuniao}
+            onSaved={(atualizada) => { setEditando(false); onSaved(atualizada) }}
+            onCancel={() => setEditando(false)}
+          />
+        )}
         {reuniao.observacoes && <p className="text-sm text-muted-foreground">{reuniao.observacoes}</p>}
         <div>
           <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wide mb-2">Arquivos</h3>
-          <DocumentosReuniao reuniaoId={reuniao.id} podeEditar={podeEditar} />
+          <DocumentosReuniao reuniaoId={reuniao.id} podeEditar={podeEditar} onAnexou={onAnexou} />
         </div>
       </div>
     </Modal>
@@ -226,6 +318,21 @@ export function AtasCmctTab() {
   const [filtroStatus, setFiltroStatus] = useState('')
   const [modalEnvio, setModalEnvio] = useState(false)
   const [reuniaoSelecionada, setReuniaoSelecionada] = useState(null)
+  const [perguntaAta, setPerguntaAta] = useState(null)
+
+  // Reunião salva (edição ou resposta da pergunta): recarrega a lista e
+  // mantém aberta a janela com os dados novos.
+  function handleSalva(atualizada) {
+    reload()
+    setReuniaoSelecionada((atual) => (atual && atual.id === atualizada.id ? atualizada : atual))
+  }
+
+  // Depois de anexar um arquivo: se for "Ata" e a reunião estiver "Sem ata", pergunta.
+  function handleAnexou(doc) {
+    if (doc?.categoria !== 'ata') return
+    const reuniao = reunioes.find((r) => r.id === doc.entidade_id)
+    if (reuniao && reuniao.status_ata === 'sem_ata') setPerguntaAta(reuniao)
+  }
 
   const anosDisponiveis = useMemo(
     () => [...new Set(reunioes.map((r) => r.ano))].sort((a, b) => b - a),
@@ -294,11 +401,11 @@ export function AtasCmctTab() {
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-foreground">{tituloReuniao(r)}</p>
                         <p className="text-xs text-muted-foreground mt-0.5">
-                          {r.data_reuniao ? new Date(`${r.data_reuniao}T00:00:00`).toLocaleDateString('pt-BR') : 'Data não confirmada'}
+                          {formatarData(r.data_reuniao)}
                         </p>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
-                        <Badge variant={STATUS_ATA_VARIANT[r.status_ata]}>{STATUS_ATA_LABEL[r.status_ata]}</Badge>
+                        <SeloAta status={r.status_ata} />
                         <ChevronRight className="w-4 h-4 text-muted-foreground" />
                       </div>
                     </CardContent>
@@ -310,8 +417,21 @@ export function AtasCmctTab() {
         </div>
       )}
 
-      <EnviarDocumentoModal open={modalEnvio} onClose={() => setModalEnvio(false)} reunioes={reunioes} onChanged={reload} />
-      <ReuniaoDetalheModal reuniao={reuniaoSelecionada} onClose={() => setReuniaoSelecionada(null)} podeEditar={podeEditar} />
+      <EnviarDocumentoModal open={modalEnvio} onClose={() => setModalEnvio(false)} reunioes={reunioes} onChanged={reload} onAtaAnexada={handleAnexou} />
+      <ReuniaoDetalheModal
+        reuniao={reuniaoSelecionada}
+        onClose={() => setReuniaoSelecionada(null)}
+        podeEditar={podeEditar}
+        onSaved={handleSalva}
+        onAnexou={handleAnexou}
+      />
+      {perguntaAta && (
+        <PerguntaAtaAssinada
+          reuniao={perguntaAta}
+          onClose={() => setPerguntaAta(null)}
+          onSaved={(atualizada) => { setPerguntaAta(null); handleSalva(atualizada) }}
+        />
+      )}
     </div>
   )
 }
