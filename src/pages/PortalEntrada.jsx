@@ -1,6 +1,5 @@
 import { useNavigate } from 'react-router-dom'
 import { Briefcase, Users } from 'lucide-react'
-import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 // Card "Pesquisa Banheiros Públicos" removido da tela de abertura a pedido do
 // Sérgio (06/10/2026) — a funcionalidade continua existindo normalmente no
@@ -26,56 +25,43 @@ const CARDS = [
   },
 ]
 
+// Visual de entrada no padrão do Portal CCAD (pedido do Sérgio, 17/11/2026):
+// fundo azul-marinho liso, assinatura branca grande e cartões brancos.
+// A foto aérea (/images/hero-vitoria.jpg) continua guardada no projeto.
 export function PortalEntrada() {
   const navigate = useNavigate()
 
   return (
-    <div
-      className="min-h-screen flex flex-col bg-cover bg-center"
-      style={{
-        backgroundColor: '#0f1e2d',
-        backgroundImage: `linear-gradient(180deg, rgba(15,30,45,0.30) 0%, rgba(15,30,45,0.45) 55%, rgba(10,20,32,0.68) 100%), url('/images/hero-vitoria.jpg')`,
-      }}
-    >
-      <header className="pt-12 pb-6 px-4 flex flex-col items-center text-center">
-        <LogoFacitecConecta size="lg" inverted />
-        <p className="mt-4 text-white/70 text-[11px] sm:text-xs font-medium tracking-[0.2em] uppercase max-w-md">
-          Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória
-        </p>
-      </header>
-
-      <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12">
-        <h1
-          className="text-center font-medium text-2xl sm:text-3xl tracking-wide mb-8 sm:mb-12"
-          style={{ color: '#FFD9A8' }}
-        >
-          PLATAFORMA FACITEC CONECTA
-        </h1>
+    <div className="min-h-screen flex flex-col bg-[var(--dv-marinho)]">
+      <main className="flex-1 flex flex-col items-center justify-center px-4 py-10">
+        <header className="text-center mb-8 sm:mb-10">
+          <img
+            src="/identidade/facitec-conecta-assinatura-branca.svg"
+            alt="FACITEC Conecta"
+            className="h-14 sm:h-20 w-auto mx-auto mb-4"
+          />
+          <p className="text-xs sm:text-sm font-medium tracking-[0.15em] uppercase max-w-md mx-auto text-[var(--dv-texto-suave-escuro)]">
+            Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória
+          </p>
+        </header>
 
         <div className="w-full max-w-3xl grid grid-cols-1 md:grid-cols-2 gap-5 sm:gap-6">
           {CARDS.map(({ icon: Icon, titulo, subtitulo, to }) => (
             <div
               key={to}
-              className="rounded-xl border p-6 sm:p-8 flex flex-col items-start gap-4 text-left"
-              style={{
-                backgroundColor: 'rgba(255,255,255,0.10)',
-                backdropFilter: 'blur(2px)',
-                WebkitBackdropFilter: 'blur(2px)',
-                borderColor: 'rgba(255,255,255,0.28)',
-                borderWidth: '0.5px',
-              }}
+              className="bg-white rounded-2xl shadow-xl p-8 flex flex-col items-start gap-4 text-left"
             >
-              <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-white/15">
-                <Icon className="w-5 h-5 text-white" />
+              <div className="flex items-center justify-center w-11 h-11 rounded-lg bg-[var(--dv-primaria-clara)]">
+                <Icon className="w-5 h-5 text-[var(--dv-primaria-texto)]" />
               </div>
               <div>
-                <h2 className="text-white font-semibold text-lg">{titulo}</h2>
-                <p className="text-white/70 text-sm mt-1">{subtitulo}</p>
+                <h2 className="text-lg font-semibold text-[var(--dv-texto)]">{titulo}</h2>
+                <p className="text-sm mt-1 text-[var(--dv-texto-secundario)]">{subtitulo}</p>
               </div>
               <button
                 type="button"
                 onClick={() => navigate(to)}
-                className="mt-2 w-full sm:w-auto px-5 py-2.5 rounded-md bg-white text-[#0f1e2d] text-sm font-semibold hover:bg-white/90 transition-colors"
+                className="mt-2 w-full py-2.5 px-4 rounded-md bg-[var(--dv-primaria)] text-white text-sm font-semibold hover:bg-[var(--dv-primaria-hover)] transition-colors"
               >
                 Entrar
               </button>
@@ -83,6 +69,12 @@ export function PortalEntrada() {
           ))}
         </div>
       </main>
+
+      <footer className="px-6 py-4 text-center">
+        <p className="text-xs text-[var(--dv-texto-suave-escuro)] opacity-70">
+          Fundo Municipal de Ciência e Tecnologia de Vitória/ES · CDTIV
+        </p>
+      </footer>
     </div>
   )
 }
