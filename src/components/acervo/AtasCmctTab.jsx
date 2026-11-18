@@ -8,6 +8,7 @@ import { useTable, useCrud } from '@/hooks/useTable'
 import { reuniaoCmctService, documentoAcervoService } from '@/lib/db'
 import { useSecretaria } from '@/contexts/SecretariaAuthContext'
 import { AnexarDocumentoAtaCmct, CATEGORIAS_ATA_CMCT } from './AnexarDocumentoAtaCmct'
+import { CalendarioCmctView } from './CalendarioCmctView'
 
 const STATUS_ATA_LABEL = { sem_ata: 'Sem ata', minuta: 'Minuta', assinada: 'Assinada' }
 // Selos com a palavra, nas cores do kit de identidade (classes .dv-selo do kit).
@@ -309,9 +310,7 @@ function ReuniaoDetalheModal({ reuniao, onClose, podeEditar, onSaved, onAnexou }
   )
 }
 
-export function AtasCmctTab() {
-  const { role } = useSecretaria()
-  const podeEditar = role === 'secretaria'
+function ListaAtasCmct({ podeEditar }) {
   const { data: reunioes, loading, error, reload } = useTable(reuniaoCmctService.list)
   const [busca, setBusca] = useState('')
   const [filtroAno, setFiltroAno] = useState('')
@@ -432,6 +431,31 @@ export function AtasCmctTab() {
           onSaved={(atualizada) => { setPerguntaAta(null); handleSalva(atualizada) }}
         />
       )}
+    </div>
+  )
+}
+
+// Duas visões: a lista de atas por reunião e o calendário do ano (previsto × realizado).
+export function AtasCmctTab() {
+  const { role } = useSecretaria()
+  const podeEditar = role === 'secretaria'
+  const [visao, setVisao] = useState('calendario')
+
+  return (
+    <div className="space-y-6">
+      <div className="flex gap-1 border-b border-border">
+        {[['calendario', 'Calendário do ano'], ['atas', 'Atas por reunião']].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setVisao(key)}
+            className={`px-3 py-2 text-sm font-medium border-b-2 transition-colors ${visao === key ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {visao === 'calendario' ? <CalendarioCmctView podeEditar={podeEditar} /> : <ListaAtasCmct podeEditar={podeEditar} />}
     </div>
   )
 }

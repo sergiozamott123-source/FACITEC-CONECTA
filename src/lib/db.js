@@ -279,6 +279,13 @@ export const reuniaoCmctService = {
   remove: (id) => db.remove('reuniao_cmct', id),
 }
 
+// Histórico de remarcações do calendário do CMCT (uma linha por mudança de data).
+export const reuniaoCmctHistoricoService = {
+  list: () => db.list('reuniao_cmct_historico', { order: 'criado_em', asc: true }),
+  create: (p) => db.insert('reuniao_cmct_historico', p),
+  update: (id, p) => db.update('reuniao_cmct_historico', id, p),
+}
+
 export const areaPesquisaService = {
   // Tabela pequena e estática (7 linhas hoje) — sem created_at, por isso
   // sempre passamos `order` explicitamente em vez de cair no default de db.list.
