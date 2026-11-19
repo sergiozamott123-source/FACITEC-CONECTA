@@ -1,5 +1,5 @@
 // Componentes compartilhados da Pesquisa Banheiros Públicos.
-import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
+import { LOGOS } from '@/lib/identidade/logosDinov'
 import { NATUREZAS, todasPerguntas } from '@/lib/pesquisaBanheiros/questionario'
 
 export function CabecalhoPesquisa({ subtitulo, direita }) {
@@ -7,7 +7,7 @@ export function CabecalhoPesquisa({ subtitulo, direita }) {
     <header className="bg-[color:var(--dv-marinho)] text-white print:bg-white print:text-black print:border-b print:border-slate-300">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <div className="bg-white rounded-md px-2 py-1 shrink-0"><img src={logoCdtiv} alt="CDTIV" className="h-6 block" /></div>
+          <div className="bg-white rounded-md px-2 py-1 shrink-0"><img src={LOGOS['cdtiv-logo'].dataUrl} alt="CDTIV" className="h-6 block" /></div>
           <div className="min-w-0">
             <div className="font-semibold text-sm leading-tight">Pesquisa Banheiros Públicos</div>
             {subtitulo && <div className="text-xs text-white/60 print:text-slate-500 leading-tight truncate">{subtitulo}</div>}

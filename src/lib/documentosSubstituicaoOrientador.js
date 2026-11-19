@@ -18,9 +18,7 @@
 // igual ao padrão dos anexos em papel já usados pela CCAD.
 
 import { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType } from 'docx'
-import {
-  LOGO_CDTIV_BYTES, LOGO_FACITEC_BYTES, LOGO_CDTIV_ASPECTO, LOGO_FACITEC_ASPECTO,
-} from '@/lib/identidadeVisual'
+import { LOGOS } from '@/lib/identidade/logosDinov'
 import {
   criarDocumento, titulo, paragrafo, secao, selo, linhaCampo, assinatura,
   finalizar, garantirEspaco, fonte, DV, MARGEM,
@@ -52,18 +50,33 @@ function dataExtensoHoje() {
   return `${hoje.getDate()} de ${meses[hoje.getMonth()]} de ${hoje.getFullYear()}`
 }
 
-// Cabeçalho padrão do sistema (docx): CDTIV + FACITEC lado a lado,
-// centralizados (mesmas artes e proporções usadas nos PDFs gerados pelo
-// sistema — ver src/lib/identidadeVisual.js).
+// Bytes crus (sem o prefixo data:...;base64,) que o ImageRun do pacote `docx`
+// exige, a partir das logos oficiais do kit de Identidade Visual DINOV.
+function bytesDaLogo(nome) {
+  const binario = atob(LOGOS[nome].dataUrl.split(',')[1])
+  const bytes = new Uint8Array(binario.length)
+  for (let i = 0; i < binario.length; i++) bytes[i] = binario.charCodeAt(i)
+  return bytes
+}
+
+// Cabeçalho padrão (docx), na ordem da política de identidade visual:
+// sistema · CDTIV · Prefeitura de Vitória, centralizados.
 function cabecalhoLogosDocx() {
   const altura = 34
+  const logo = (nome) => new ImageRun({
+    data: bytesDaLogo(nome),
+    type: 'png',
+    transformation: { width: Math.round(altura * LOGOS[nome].proporcao), height: altura },
+  })
   return new Paragraph({
     alignment: AlignmentType.CENTER,
     spacing: { after: 400 },
     children: [
-      new ImageRun({ data: LOGO_CDTIV_BYTES, type: 'png', transformation: { width: Math.round(altura * LOGO_CDTIV_ASPECTO), height: altura } }),
+      logo('facitec-conecta-assinatura'),
       new TextRun({ text: '     ' }),
-      new ImageRun({ data: LOGO_FACITEC_BYTES, type: 'png', transformation: { width: Math.round(altura * LOGO_FACITEC_ASPECTO), height: altura } }),
+      logo('cdtiv-logo'),
+      new TextRun({ text: '     ' }),
+      logo('prefeitura-vitoria-horizontal'),
     ],
   })
 }

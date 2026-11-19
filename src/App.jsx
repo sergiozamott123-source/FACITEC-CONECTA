@@ -1,4 +1,3 @@
-import PortalAdmin from '@/pages/PortalAdmin';
 import PainelModulo1 from '@/pages/PainelModulo1';
 import HubProgramas from '@/pages/HubProgramas';
 import PibicJr from '@/pages/PibicJr';

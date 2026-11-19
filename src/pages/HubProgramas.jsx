@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
-import logoFacitec from "@/assets/facitec_logo_cropped.png"
-import logoCdtiv from "@/assets/logo-cdtiv.jpg.jpg"
+import { LOGOS } from "@/lib/identidade/logosDinov"
 import { PROGRAMAS, rotaPrograma } from "@/lib/programas"
 
 function ProgramaCover({ programa }) {
@@ -156,11 +155,11 @@ export default function HubProgramas() {
         }}>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{ background: "#fff", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center" }}>
-              <img src={logoFacitec} alt="FACITEC" style={{ height: 26, display: "block" }} />
+              <img src={LOGOS["facitec-logo"].dataUrl} alt="FACITEC" style={{ height: 26, display: "block" }} />
             </div>
             <div style={{ width: 1, height: 24, background: "rgba(255,255,255,0.2)" }} />
             <div style={{ background: "#fff", borderRadius: 6, padding: "4px 8px", display: "flex", alignItems: "center" }}>
-              <img src={logoCdtiv} alt="CDTIV" style={{ height: 26, display: "block" }} />
+              <img src={LOGOS["cdtiv-logo"].dataUrl} alt="CDTIV" style={{ height: 26, display: "block" }} />
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
