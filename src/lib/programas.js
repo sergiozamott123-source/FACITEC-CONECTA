@@ -21,8 +21,8 @@ export const PROGRAMAS = [
     nomeCompleto: "Programa de Iniciação Científica Júnior",
     publico: "Ensino Fundamental II · 6º ao 9º ano",
     descricao: "Formação científica desde cedo, conectando alunos a orientadores e projetos de pesquisa aplicada.",
-    cor: "#534AB7",
-    corBg: "#EEEDFE",
+    cor: "#3072B1",
+    corBg: "#E8F0F8",
     ativo: true,
     // Prefixo curto usado nos códigos gerados (ex: código de bolsista PIBIC26-001-B01).
     codigoPrefixo: "PIBIC",

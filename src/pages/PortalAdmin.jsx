@@ -25,7 +25,7 @@ export default function PortalAdmin() {
           <div style={{ width: 130, height: 52, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <img src={logoCdtiv} alt="CDTIV" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
           </div>
-          <div style={{ width: 1, height: 36, background: "#E0E0E0" }} />
+          <div style={{ width: 1, height: 36, background: "var(--dv-divisoria)" }} />
           <div style={{ width: 130, height: 52, display: "flex", alignItems: "center", justifyContent: "center" }}>
             <img src={logoFacitec} alt="FACITEC" style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
           </div>
@@ -34,8 +34,8 @@ export default function PortalAdmin() {
           onClick={() => {}}
           style={{
             background: "none",
-            border: "1px solid #CBD5E1",
-            color: "#475569",
+            border: "1px solid var(--dv-borda)",
+            color: "var(--dv-texto-secundario)",
             borderRadius: 6,
             padding: "6px 14px",
             fontSize: 13,
@@ -49,7 +49,7 @@ export default function PortalAdmin() {
       {/* FAIXA 2 — Meio navy */}
       <div style={{
         flex: 1,
-        background: "#0B1C3D",
+        background: "var(--dv-marinho)",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -71,7 +71,7 @@ export default function PortalAdmin() {
           fontWeight: 500,
           textTransform: "uppercase",
           letterSpacing: "2.5px",
-          color: "#9FB3D9",
+          color: "var(--dv-texto-suave-escuro)",
           textAlign: "center",
         }}>
           Sistema Integrado de Gestão
@@ -90,7 +90,7 @@ export default function PortalAdmin() {
         <button
           onClick={() => navigate("/hub")}
           style={{
-            background: "#0B1C3D",
+            background: "var(--dv-marinho)",
             color: "#fff",
             border: "none",
             borderRadius: 8,
@@ -111,7 +111,7 @@ export default function PortalAdmin() {
         </button>
         <div style={{
           fontSize: 11,
-          color: "#94A3B8",
+          color: "var(--dv-texto-desativado)",
           letterSpacing: "0.02em",
         }}>
           Fundo Municipal de Ciência e Tecnologia de Vitória/ES

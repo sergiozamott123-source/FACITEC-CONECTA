@@ -14,7 +14,7 @@ const TIPOS_DOC = ['Petição', 'Parecer jurídico', 'Decisão final', 'Outro']
 
 function tipoIcon(tipo) {
   if (tipo === 'Petição')        return <FileText className="w-4 h-4 text-blue-500" />
-  if (tipo === 'Parecer jurídico') return <Scale className="w-4 h-4 text-purple-500" />
+  if (tipo === 'Parecer jurídico') return <Scale className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
   if (tipo === 'Decisão final')  return <CheckCircle2 className="w-4 h-4 text-green-600" />
   return <Paperclip className="w-4 h-4 text-gray-400" />
 }

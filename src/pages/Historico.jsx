@@ -741,7 +741,7 @@ export function Historico() {
         </RelatorioCard>
 
         <RelatorioCard
-          icon={FileSignature} iconBg="bg-violet-100" iconColor="text-violet-600"
+          icon={FileSignature} iconBg="bg-[color:var(--dv-primaria-clara)]" iconColor="text-[color:var(--dv-primaria-texto)]"
           title="Contratos"
           headerRight={<Badge variant="secondary" className="text-xs">{contratos ? `${emitidos}/${totalOrientadores} emitidos` : '...'}</Badge>}
           expanded={expanded.has('contratos')} onToggle={() => toggle('contratos')}

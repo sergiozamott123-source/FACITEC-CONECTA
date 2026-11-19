@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { getPrograma } from "@/lib/programas"
 import { ClipboardList, Users, BarChart2, Archive, FlaskConical } from "lucide-react"
+import { DV } from "@/lib/identidade/identidadeDinovTokens"
 
 const C = {
-  navy: "#0D1F3C",
-  purple: "#534AB7", purpleBg: "#EEEDFE",
+  navy: DV.base.marinho,
+  primaria: DV.sistemas["facitec-conecta"].primaria, primariaBg: DV.sistemas["facitec-conecta"].primariaClara,
   teal: "#0F6E56",   tealBg:   "#E1F5EE",
   coral: "#993C1D",  coralBg:  "#FAECE7",
   amber: "#854F0B",  amberBg:  "#FAEEDA",
@@ -17,7 +18,7 @@ function buildModulos(slug) {
     {
       id: "m1", codigo: "M1", nome: "Seleção",
       desc: "Inscrições, avaliação de projetos e resultado final",
-      cor: C.purple, corBg: C.purpleBg, ativo: true,
+      cor: C.primaria, corBg: C.primariaBg, ativo: true,
       rota: `/${slug}/selecao`, Icon: ClipboardList,
     },
     {
@@ -51,7 +52,7 @@ function ModuloCard({ modulo }) {
       style={{
         background: "#fff",
         borderRadius: 12,
-        border: `1px solid ${modulo.ativo ? modulo.cor + "44" : "#E2E8F0"}`,
+        border: `1px solid ${modulo.ativo ? modulo.cor + "44" : DV.base.borda}`,
         padding: "24px",
         cursor: modulo.ativo ? "pointer" : "not-allowed",
         opacity: modulo.ativo ? 1 : 0.52,
@@ -77,10 +78,10 @@ function ModuloCard({ modulo }) {
         }}>
           {modulo.codigo}
         </div>
-        <div style={{ fontSize: 18, fontWeight: 700, color: "#0F172A", marginBottom: 8, lineHeight: 1.2 }}>
+        <div style={{ fontSize: 18, fontWeight: 700, color: DV.base.texto, marginBottom: 8, lineHeight: 1.2 }}>
           {modulo.nome}
         </div>
-        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6 }}>
+        <div style={{ fontSize: 13, color: DV.base.textoSecundario, lineHeight: 1.6 }}>
           {modulo.desc}
         </div>
       </div>
@@ -98,7 +99,7 @@ function ModuloCard({ modulo }) {
           <span style={{
             display: "inline-block", fontSize: 11, fontWeight: 600,
             padding: "4px 10px", borderRadius: 20,
-            background: "#F1F5F9", color: "#94A3B8",
+            background: DV.situacao.neutro.fundo, color: DV.base.textoDesativado,
           }}>
             Em breve
           </span>
@@ -154,8 +155,8 @@ export default function PibicJr({ slug = "pibic-jr" }) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif" }}>
         <div style={{ textAlign: "center" }}>
-          <p style={{ fontSize: 16, fontWeight: 600, color: "#0F172A" }}>Programa não encontrado</p>
-          <Link to="/hub" style={{ fontSize: 13, color: "#534AB7" }}>← Voltar para Programas</Link>
+          <p style={{ fontSize: 16, fontWeight: 600, color: DV.base.texto }}>Programa não encontrado</p>
+          <Link to="/hub" style={{ fontSize: 13, color: C.primaria }}>← Voltar para Programas</Link>
         </div>
       </div>
     )
@@ -165,9 +166,9 @@ export default function PibicJr({ slug = "pibic-jr" }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#F8FAFC",
+      minHeight: "100vh", background: DV.base.fundo,
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 14, color: "#0F172A",
+      fontSize: 14, color: DV.base.texto,
     }}>
       {/* Breadcrumb */}
       <div style={{ background: C.navy, padding: "11px 32px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -187,7 +188,7 @@ export default function PibicJr({ slug = "pibic-jr" }) {
           <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 28 }}>
             <div style={{
               width: 56, height: 56, borderRadius: 14,
-              background: C.purpleBg, color: C.purple,
+              background: C.primariaBg, color: C.primaria,
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>
               <FlaskConical size={28} />
@@ -225,7 +226,7 @@ export default function PibicJr({ slug = "pibic-jr" }) {
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "36px 32px 60px" }}>
         <div style={{
           fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.1em", color: "#94A3B8", marginBottom: 20,
+          letterSpacing: "0.1em", color: DV.base.textoDesativado, marginBottom: 20,
         }}>
           Módulos operacionais
         </div>

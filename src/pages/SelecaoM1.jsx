@@ -4,10 +4,11 @@ import { getPrograma } from "@/lib/programas"
 import avaliacoesImg from "../assets/programas/avaliacoes_square.png"
 import classificacaoImg from "../assets/programas/classificacao_square.png"
 import convocacaoImg from "../assets/programas/convocacao_square.png"
+import { DV } from "@/lib/identidade/identidadeDinovTokens"
 
 const C = {
-  navy: "#0D1F3C",
-  purple: "#534AB7", purpleBg: "#EEEDFE",
+  navy: DV.base.marinho,
+  primaria: DV.sistemas["facitec-conecta"].primaria, primariaBg: DV.sistemas["facitec-conecta"].primariaClara,
   teal:   "#0F6E56", tealBg:   "#E1F5EE",
   coral:  "#993C1D", coralBg:  "#FAECE7",
 }
@@ -18,7 +19,7 @@ function buildFerramentas(slug) {
       img: avaliacoesImg,
       titulo: "Avaliações",
       desc: "Painel de progresso dos avaliadores e status das avaliações por projeto",
-      cor: C.purple, corBg: C.purpleBg,
+      cor: C.primaria, corBg: C.primariaBg,
       rota: `/admin/${slug}/2026/avaliacoes`,
     },
     {
@@ -47,7 +48,7 @@ function FerramentaCard({ f }) {
       style={{
         background: "#fff",
         borderRadius: 12,
-        border: "1px solid #E2E8F0",
+        border: `1px solid ${DV.base.borda}`,
         padding: "20px 24px",
         cursor: "pointer",
         display: "flex", alignItems: "center", gap: 18,
@@ -65,15 +66,15 @@ function FerramentaCard({ f }) {
       </div>
 
       <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#0F172A", marginBottom: 4 }}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: DV.base.texto, marginBottom: 4 }}>
           {f.titulo}
         </div>
-        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.5 }}>
+        <div style={{ fontSize: 13, color: DV.base.textoSecundario, lineHeight: 1.5 }}>
           {f.desc}
         </div>
       </div>
 
-      <span style={{ color: "#CBD5E1", fontSize: 20, flexShrink: 0 }}>→</span>
+      <span style={{ color: DV.base.borda, fontSize: 20, flexShrink: 0 }}>→</span>
     </div>
   )
 }
@@ -84,9 +85,9 @@ export default function SelecaoM1({ slug = "pibic-jr" }) {
 
   return (
     <div style={{
-      minHeight: "100vh", background: "#F8FAFC",
+      minHeight: "100vh", background: DV.base.fundo,
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-      fontSize: 14, color: "#0F172A",
+      fontSize: 14, color: DV.base.texto,
     }}>
       {/* Breadcrumb */}
       <div style={{ background: C.navy, padding: "11px 32px", borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
@@ -106,7 +107,7 @@ export default function SelecaoM1({ slug = "pibic-jr" }) {
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
             <div style={{
               width: 48, height: 48, borderRadius: 12,
-              background: "#EEEDFE", color: C.purple,
+              background: C.primariaBg, color: C.primaria,
               display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
             }}>
               <ClipboardList size={24} />
@@ -114,7 +115,7 @@ export default function SelecaoM1({ slug = "pibic-jr" }) {
             <div>
               <div style={{
                 fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-                letterSpacing: "0.1em", color: "#AFA9EC", marginBottom: 5,
+                letterSpacing: "0.1em", color: DV.base.textoSuaveEscuro, marginBottom: 5,
               }}>
                 {programa?.nome ?? 'Programa'} · Edição 2026
               </div>
@@ -130,7 +131,7 @@ export default function SelecaoM1({ slug = "pibic-jr" }) {
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "36px 32px 60px" }}>
         <div style={{
           fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.1em", color: "#94A3B8", marginBottom: 20,
+          letterSpacing: "0.1em", color: DV.base.textoDesativado, marginBottom: 20,
         }}>
           Ferramentas administrativas
         </div>

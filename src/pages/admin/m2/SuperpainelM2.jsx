@@ -116,7 +116,7 @@ function ProgressBar({ steps }) {
 
 function TipoBadge({ tipo }) {
   const cfg = tipo === 'voluntario'
-    ? { label: 'Voluntário', cls: 'bg-purple-50 text-purple-700 border-purple-200' }
+    ? { label: 'Voluntário', cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]' }
     : { label: 'Titular',    cls: 'bg-blue-50 text-blue-700 border-blue-200' }
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${cfg.cls}`}>
@@ -153,8 +153,8 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
     <div className="bg-white border border-gray-200 rounded-xl overflow-hidden flex flex-col">
       {/* ── Header ── */}
       <div className="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-          <span className="text-indigo-700 text-sm font-bold">{iniciais(orientador.nome_completo)}</span>
+        <div className="w-10 h-10 rounded-full bg-[color:var(--dv-primaria-clara)] flex items-center justify-center shrink-0">
+          <span className="text-[color:var(--dv-primaria-texto)] text-sm font-bold">{iniciais(orientador.nome_completo)}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">{orientador.nome_completo}</p>
@@ -284,7 +284,7 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
             </button>
             <button
               disabled={!contratoGerado}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-[color:var(--dv-primaria)] text-white rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               title={!contratoGerado ? 'Gere o contrato primeiro' : 'Gerar termos de compromisso'}
             >
               <FileCheck className="w-3 h-3" />
@@ -448,7 +448,7 @@ export default function SuperpainelM2() {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ background: '#1a2744' }} className="px-8 pt-6 pb-7">
+      <div style={{ background: 'var(--dv-marinho)' }} className="px-8 pt-6 pb-7">
         <button
           onClick={() => navigate(`/${slug}`)}
           className="text-xs text-white/40 hover:text-white/70 mb-4 flex items-center gap-1.5 transition-colors"
@@ -478,7 +478,7 @@ export default function SuperpainelM2() {
             </div>
             <button
               onClick={() => setModalSolicitacoesAberto(true)}
-              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-indigo-600/90 border border-indigo-400/30 rounded-lg px-3 py-1.5 hover:bg-indigo-600 transition-colors"
+              className="flex items-center gap-1.5 text-xs font-semibold text-white bg-[color:var(--dv-primaria)] border border-white/20 rounded-lg px-3 py-1.5 hover:bg-[color:var(--dv-primaria-hover)] transition-colors"
             >
               <MessageSquarePlus className="w-3.5 h-3.5" />
               Solicitações
@@ -531,9 +531,9 @@ export default function SuperpainelM2() {
               icon={FileText}
               label="Contratos prontos/emitidos"
               value={contratosProntos}
-              valueColor="text-indigo-600"
-              bg="bg-indigo-50"
-              border="border-indigo-200"
+              valueColor="text-[color:var(--dv-primaria-texto)]"
+              bg="bg-[color:var(--dv-primaria-clara)]"
+              border="border-[color:var(--dv-borda)]"
             />
             <MetricCard
               icon={Scroll}
@@ -599,7 +599,7 @@ export default function SuperpainelM2() {
                 onClick={() => setIdsSelecionados(
                   idsSelecionados.length === orientadores.length ? [] : orientadores.map(o => o.orientador.id)
                 )}
-                className="text-xs font-semibold text-indigo-600 hover:text-indigo-700"
+                className="text-xs font-semibold text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)]"
               >
                 {idsSelecionados.length === orientadores.length ? 'Desmarcar todos' : 'Selecionar todos'}
               </button>
@@ -615,7 +615,7 @@ export default function SuperpainelM2() {
                     type="checkbox"
                     checked={idsSelecionados.includes(orientador.id)}
                     onChange={() => toggleSelecionado(orientador.id)}
-                    className="w-4 h-4 rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                    className="w-4 h-4 rounded border-gray-300 text-[color:var(--dv-primaria-texto)] focus:ring-[color:var(--dv-primaria)]"
                   />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-semibold text-gray-800 truncate">{orientador.nome_completo}</p>

@@ -544,7 +544,7 @@ export default function BolsistaDetalhe() {
   }[status]
 
   const tipoCfg = bolsista.tipo === 'voluntario'
-    ? { label: 'Voluntário', cls: 'bg-purple-100 text-purple-700 border-purple-300' }
+    ? { label: 'Voluntário', cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]' }
     : { label: 'Titular',    cls: 'bg-blue-100 text-blue-700 border-blue-300'       }
 
   const idadeCfg = ehMenor
@@ -563,7 +563,7 @@ export default function BolsistaDetalhe() {
     <div className="min-h-screen bg-gray-50">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div style={{ background: '#1a2744' }} className="px-8 pt-5 pb-7 relative">
+      <div style={{ background: 'var(--dv-marinho)' }} className="px-8 pt-5 pb-7 relative">
 
         {/* Botão fechar (X) */}
         <button
@@ -878,7 +878,7 @@ export default function BolsistaDetalhe() {
             <button
               onClick={gerarTermoPDF}
               disabled={generatingPDF || semDataNascimento}
-              className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white text-sm font-semibold rounded-lg hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <FileText className="w-4 h-4" />
               {generatingPDF

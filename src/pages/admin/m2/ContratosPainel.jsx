@@ -3,29 +3,30 @@ import { useNavigate, useParams } from "react-router-dom"
 import { supabase } from "@/lib/supabase"
 import { useAdmin } from "@/contexts/AdminContext"
 import { getPrograma, getMaxBolsistas } from "@/lib/programas"
+import { DV } from "@/lib/identidade/identidadeDinovTokens"
 
 // ── PALETA ───────────────────────────────────────────────────────────────────
 const C = {
-  header:   "#1a2744",
-  border:   "#E2E8F0",
-  bg:       "#F8FAFC",
-  white:    "#FFFFFF",
-  dark:     "#0F172A",
-  gray:     "#64748B",
-  grayL:    "#94A3B8",
-  grayBg:   "#F1F5F9",
-  // status badges (conforme especificação)
-  red:    { bg: "#fcebeb", fg: "#a32d2d" },
-  amber:  { bg: "#faeeda", fg: "#854f0b" },
-  blue:   { bg: "#e6f1fb", fg: "#0c447c" },
-  green:  { bg: "#eaf3de", fg: "#3b6d11" },
-  purple: { bg: "#EEEDFE", fg: "#534AB7" },
+  header:  DV.base.marinho,
+  border:  DV.base.borda,
+  bg:      DV.base.fundo,
+  white:   DV.base.superficie,
+  dark:    DV.base.texto,
+  gray:    DV.base.textoSecundario,
+  grayL:   DV.base.textoDesativado,
+  grayBg:  DV.situacao.neutro.fundo,
+  // status (selos): texto escuro sobre fundo claro, conforme o kit
+  red:    { bg: DV.situacao.erro.fundo,    fg: DV.situacao.erro.texto },
+  amber:  { bg: DV.situacao.atencao.fundo, fg: DV.situacao.atencao.texto },
+  blue:   { bg: DV.situacao.info.fundo,    fg: DV.situacao.info.texto },
+  green:  { bg: DV.situacao.sucesso.fundo, fg: DV.situacao.sucesso.texto },
+  neutro: { bg: DV.situacao.neutro.fundo,  fg: DV.situacao.neutro.texto },
 }
 
 // ── STATUS ───────────────────────────────────────────────────────────────────
 const STATUS_CFG = {
   aguardando_dados:  { label: "Aguardando dados",  ...C.red    },
-  aguardando_equipe: { label: "Aguardando equipe", ...C.purple },
+  aguardando_equipe: { label: "Aguardando equipe", ...C.neutro },
   pronto:            { label: "Pronto p/ emitir",  ...C.amber  },
   emitido:           { label: "Contrato emitido",  ...C.blue   },
   assinado:          { label: "Assinado",          ...C.green  },
@@ -232,7 +233,7 @@ export default function ContratosPainel() {
                 style={{
                   position: "relative", display: "inline-flex", alignItems: "center",
                   width: 34, height: 18, borderRadius: 999,
-                  background: verTodos ? "#3aaa5c" : "rgba(255,255,255,0.2)",
+                  background: verTodos ? DV.sistemas["facitec-conecta"].acentos.verde : "rgba(255,255,255,0.2)",
                   transition: "background 0.15s",
                 }}
               >

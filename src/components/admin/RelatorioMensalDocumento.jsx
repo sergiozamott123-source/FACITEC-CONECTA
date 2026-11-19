@@ -18,7 +18,7 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
       <div className="relative bg-white w-full max-w-3xl max-h-[92vh] rounded-xl shadow-2xl overflow-hidden flex flex-col">
         {/* Cabeçalho de marca */}
-        <div style={{ background: '#16324A' }} className="px-6 py-4 flex items-center justify-between gap-4 shrink-0">
+        <div style={{ background: 'var(--dv-marinho)' }} className="px-6 py-4 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
             <LogoFacitecConecta size="sm" inverted />
             <div className="border-l border-white/20 pl-3 min-w-0">
@@ -91,7 +91,7 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
             )}
           </SecaoDoc>
 
-          <SecaoDoc icone={ClipboardList} titulo="Atividades realizadas" cor="text-indigo-600">
+          <SecaoDoc icone={ClipboardList} titulo="Atividades realizadas" cor="text-[color:var(--dv-primaria-texto)]">
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{relatorio.atividades_realizadas || '—'}</p>
           </SecaoDoc>
 
@@ -103,7 +103,7 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
             <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{relatorio.desafios_enfrentados || '—'}</p>
           </SecaoDoc>
 
-          <SecaoDoc icone={Camera} titulo="Evidências" cor="text-purple-600">
+          <SecaoDoc icone={Camera} titulo="Evidências" cor="text-[color:var(--dv-primaria-texto)]">
             {(() => {
               const evidencias = (relatorio.evidencias_urls ?? []).map(e =>
                 typeof e === 'string' ? { url: e, legenda: '' } : e)

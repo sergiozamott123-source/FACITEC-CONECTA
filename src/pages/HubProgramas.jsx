@@ -48,7 +48,7 @@ function ProgramaCard({ programa, totalProjetos }) {
       onClick={handleClick}
       style={{
         borderRadius: 12,
-        border: "1px solid #E2E8F0",
+        border: "1px solid var(--dv-borda)",
         background: "#fff",
         overflow: "hidden",
         cursor: programa.ativo ? "pointer" : "not-allowed",
@@ -73,12 +73,12 @@ function ProgramaCard({ programa, totalProjetos }) {
             display: "inline-flex", alignItems: "center", gap: 5,
             fontSize: 10, fontWeight: 700,
             padding: "3px 10px", borderRadius: 20,
-            background: programa.ativo ? "#DCFCE7" : "rgba(255,255,255,0.75)",
-            color: programa.ativo ? "#16A34A" : "#94A3B8",
+            background: programa.ativo ? "var(--dv-sucesso-fundo)" : "rgba(255,255,255,0.75)",
+            color: programa.ativo ? "var(--dv-sucesso)" : "var(--dv-texto-desativado)",
             backdropFilter: "blur(4px)",
           }}>
             {programa.ativo ? (
-              <><span style={{ width: 6, height: 6, borderRadius: "50%", background: "#16A34A", display: "inline-block" }} />Ativo</>
+              <><span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--dv-sucesso)", display: "inline-block" }} />Ativo</>
             ) : "Em breve"}
           </span>
         </div>
@@ -86,27 +86,27 @@ function ProgramaCard({ programa, totalProjetos }) {
 
       {/* Body */}
       <div style={{ padding: "16px 20px 20px" }}>
-        <div style={{ fontSize: 20, fontWeight: 700, color: "#0F172A", lineHeight: 1.2, marginBottom: 2 }}>
+        <div style={{ fontSize: 20, fontWeight: 700, color: "var(--dv-texto)", lineHeight: 1.2, marginBottom: 2 }}>
           {programa.nome}
         </div>
         <div style={{ fontSize: 10, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.05em", color: programa.cor, marginBottom: 10 }}>
           {programa.nomeCompleto}
         </div>
-        <div style={{ fontSize: 13, color: "#64748B", lineHeight: 1.6, marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: "var(--dv-texto-secundario)", lineHeight: 1.6, marginBottom: 16 }}>
           {programa.descricao}
         </div>
 
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          borderTop: "1px solid #F1F5F9", paddingTop: 12,
+          borderTop: "1px solid var(--dv-neutro-fundo)", paddingTop: 12,
         }}>
-          <span style={{ fontSize: 11, color: "#94A3B8" }}>{programa.publico}</span>
+          <span style={{ fontSize: 11, color: "var(--dv-texto-desativado)" }}>{programa.publico}</span>
           {programa.ativo ? (
             <span style={{ fontSize: 13, fontWeight: 700, color: programa.cor }}>
               {totalProjetos !== null ? `${totalProjetos} projetos` : "…"}
             </span>
           ) : (
-            <span style={{ fontSize: 11, color: "#CBD5E1" }}>Em configuração</span>
+            <span style={{ fontSize: 11, color: "var(--dv-borda)" }}>Em configuração</span>
           )}
         </div>
       </div>
@@ -143,13 +143,13 @@ export default function HubProgramas() {
   return (
     <div style={{
       minHeight: "100vh",
-      background: "#F8FAFC",
+      background: "var(--dv-fundo)",
       fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
       fontSize: 14,
-      color: "#0F172A",
+      color: "var(--dv-texto)",
     }}>
       {/* Top bar */}
-      <div style={{ background: "#0D1F3C", padding: "14px 32px" }}>
+      <div style={{ background: "var(--dv-marinho)", padding: "14px 32px" }}>
         <div style={{
           maxWidth: 960, margin: "0 auto",
           display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -176,13 +176,13 @@ export default function HubProgramas() {
 
       {/* Hero */}
       <div style={{
-        background: "linear-gradient(180deg, #112244 0%, #0D1F3C 100%)",
+        background: "linear-gradient(180deg, var(--dv-marinho-escuro) 0%, var(--dv-marinho) 100%)",
         padding: "44px 32px 52px",
       }}>
         <div style={{ maxWidth: 960, margin: "0 auto", textAlign: "center" }}>
           <div style={{
             fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-            textTransform: "uppercase", color: "#93C5FD", marginBottom: 12,
+            textTransform: "uppercase", color: "var(--dv-texto-suave-escuro)", marginBottom: 12,
           }}>
             Fundo Municipal de Ciência e Tecnologia
           </div>
@@ -199,7 +199,7 @@ export default function HubProgramas() {
       <div style={{ maxWidth: 960, margin: "0 auto", padding: "40px 32px 60px" }}>
         <div style={{
           fontSize: 10, fontWeight: 700, textTransform: "uppercase",
-          letterSpacing: "0.1em", color: "#94A3B8", marginBottom: 20,
+          letterSpacing: "0.1em", color: "var(--dv-texto-desativado)", marginBottom: 20,
         }}>
           Programas
         </div>

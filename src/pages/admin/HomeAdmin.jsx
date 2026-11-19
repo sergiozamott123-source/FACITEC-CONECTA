@@ -6,7 +6,7 @@ import { db, edicaoService } from '@/lib/db'
 import { PROGRAMAS, PROGRAMA_ID_PADRAO } from '@/lib/programas'
 
 const ICONS = { PIBICJR: Microscope, PROFICJR: School, PROFICJOVEM: Lightbulb, POSGRADUACAO: Award }
-const BORDERS = { PIBICJR: '#C5C1F5', PROFICJR: '#99F6E4', PROFICJOVEM: '#FDC5B0', POSGRADUACAO: '#FDE68A' }
+const BORDERS = { PROFICJR: '#99F6E4', PROFICJOVEM: '#FDC5B0', POSGRADUACAO: '#FDE68A' }
 
 // Deriva do registro único (src/lib/programas.js), só decorando com ícone/borda/badge locais.
 // `visivelNoHub === false` oculta o card apenas nesta tela (Pós-Graduação e Projeto de
@@ -39,12 +39,12 @@ function ProgramaCard({ config, qtdEdicoes, selecionado, onClick }) {
           ? 'cursor-pointer hover:shadow-md hover:-translate-y-0.5'
           : 'cursor-not-allowed opacity-50',
         selecionado
-          ? 'shadow-md ring-2 ring-[#534AB7] ring-offset-2'
+          ? 'shadow-md ring-2 ring-[color:var(--dv-primaria)] ring-offset-2'
           : 'hover:border-opacity-80'
       )}
       style={{
         backgroundColor: config.bg,
-        borderColor: selecionado ? '#534AB7' : config.border,
+        borderColor: selecionado ? 'var(--dv-primaria)' : config.border,
       }}
     >
       <div className="flex items-start justify-between gap-3">
@@ -115,14 +115,14 @@ function EdicaoRow({ edicao, selecionada, contagem, onClick }) {
       className={cn(
         'w-full text-left rounded-lg border-2 px-4 py-3 transition-all duration-150',
         selecionada
-          ? 'border-[#534AB7] bg-[#EEEDFE]'
-          : 'border-[#E2E8F0] bg-white hover:border-[#C5C1F5] hover:bg-[#F8F7FF]'
+          ? 'border-[color:var(--dv-primaria)] bg-[color:var(--dv-primaria-clara)]'
+          : 'border-[#E2E8F0] bg-white hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-fundo)]'
       )}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className={cn('font-semibold text-sm', selecionada ? 'text-[#534AB7]' : 'text-gray-800')}>
+            <span className={cn('font-semibold text-sm', selecionada ? 'text-[color:var(--dv-primaria-texto)]' : 'text-gray-800')}>
               Edição {edicao.ano_referencia}
             </span>
             {edicao.numero_edital && (
@@ -144,7 +144,7 @@ function EdicaoRow({ edicao, selecionada, contagem, onClick }) {
             {contagem == null ? 'carregando...' : `${contagem} inscrição${contagem !== 1 ? 'ões' : ''}`}
           </p>
         </div>
-        <ChevronRight className={cn('w-4 h-4 shrink-0', selecionada ? 'text-[#534AB7]' : 'text-gray-300')} />
+        <ChevronRight className={cn('w-4 h-4 shrink-0', selecionada ? 'text-[color:var(--dv-primaria-texto)]' : 'text-gray-300')} />
       </div>
     </button>
   )
@@ -279,7 +279,7 @@ export function HomeAdmin() {
             {edicaoDestaque && (
               <button
                 onClick={handleAcessarPainel}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#534AB7] text-white text-sm font-semibold hover:bg-[#4740A0] transition-colors"
+                className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[color:var(--dv-primaria)] text-white text-sm font-semibold hover:bg-[color:var(--dv-primaria-hover)] transition-colors"
               >
                 Acessar painel da edição {edicaoDestak?.ano_referencia}
                 <ChevronRight className="w-4 h-4" />

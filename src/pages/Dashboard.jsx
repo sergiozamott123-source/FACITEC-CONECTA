@@ -48,7 +48,7 @@ export function Dashboard() {
 
   const cards = [
     { title: 'Programas ativos', value: stats.programasAtivos, icon: LayoutGrid, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { title: 'Orientadores ativos', value: stats.orientadoresAtivos, icon: Users, color: 'text-violet-600', bg: 'bg-violet-50' },
+    { title: 'Orientadores ativos', value: stats.orientadoresAtivos, icon: Users, color: 'text-[color:var(--dv-primaria-texto)]', bg: 'bg-[color:var(--dv-primaria-clara)]' },
     { title: 'Bolsistas ativos', value: stats.bolsistasAtivos, icon: GraduationCap, color: 'text-emerald-600', bg: 'bg-emerald-50' },
   ]
 

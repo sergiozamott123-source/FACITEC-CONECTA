@@ -15,6 +15,7 @@ import { supabase } from "../lib/supabase";
 import { useAdmin } from "../contexts/AdminContext";
 import { getPrograma } from "../lib/programas";
 import { listarCiclos, statusRelatorioNoCiclo } from "../lib/relatorioMensal";
+import { DV } from "@/lib/identidade/identidadeDinovTokens"
 
 function useProgramaAtual() {
   const { programa: slug } = useParams();
@@ -23,29 +24,29 @@ function useProgramaAtual() {
 
 // ── PALETA ───────────────────────────────────────────────────────────
 const C = {
-  navy:"#0D1F3C", navy2:"#112244", accent:"#3B82F6", accentL:"#93C5FD",
-  teal:"#0F6E56", tealBg:"#E1F5EE",
-  green:"#16A34A", greenBg:"#DCFCE7",
-  amber:"#854F0B", amberBg:"#FEF3C7",
-  red:"#DC2626", redBg:"#FEF2F2",
-  purple:"#534AB7", purpleBg:"#EEEDFE",
-  gray:"#64748B", grayL:"#94A3B8", grayBg:"#F1F5F9",
-  border:"#E2E8F0", dark:"#0F172A", white:"#FFFFFF",
+  navy:DV.base.marinho, navy2:DV.base.marinhoEscuro, accent:DV.sistemas["facitec-conecta"].primaria, accentL:DV.base.textoSuaveEscuro,
+  teal:"#0F6E56", tealBg:"#E1F5EE",   // cor do PROFIC Jr (programa), fora do kit: provisória
+  green:DV.situacao.sucesso.texto, greenBg:DV.situacao.sucesso.fundo,
+  amber:DV.situacao.atencao.texto, amberBg:DV.situacao.atencao.fundo,
+  red:DV.situacao.erro.texto, redBg:DV.situacao.erro.fundo,
+  recurso:DV.situacao.info.texto, recursoBg:DV.situacao.info.fundo,
+  gray:DV.base.textoSecundario, grayL:DV.base.textoDesativado, grayBg:DV.situacao.neutro.fundo,
+  border:DV.base.borda, dark:DV.base.texto, white:DV.base.superficie,
 };
 
 // ── STATUS CONFIG ────────────────────────────────────────────────────
 const STATUS_PROJETO = {
-  inscrito:        { label:"Inscrito",         bg:"#EFF6FF", fg:"#1D4ED8" },
+  inscrito:        { label:"Inscrito",         bg:DV.situacao.info.fundo, fg:DV.situacao.info.texto },
   em_avaliacao:    { label:"Em avaliação",      bg:C.amberBg, fg:C.amber  },
   classificado:    { label:"Classificado",      bg:C.greenBg, fg:C.green  },
   nao_classificado:{ label:"Não classificado",  bg:C.redBg,   fg:C.red   },
-  recurso:         { label:"Recurso",           bg:C.purpleBg,fg:C.purple },
+  recurso:         { label:"Recurso",           bg:C.recursoBg,fg:C.recurso },
   finalizado:      { label:"Finalizado",        bg:C.grayBg,  fg:C.gray  },
 };
 
 const STATUS_AVALIACAO = {
   pendente:     { label:"Pendente",      bg:C.amberBg, fg:C.amber },
-  em_andamento: { label:"Em andamento",  bg:"#EFF6FF", fg:"#1D4ED8" },
+  em_andamento: { label:"Em andamento",  bg:DV.situacao.info.fundo, fg:DV.situacao.info.texto },
   concluida:    { label:"Concluída",     bg:C.greenBg, fg:C.green },
 };
 
@@ -297,7 +298,7 @@ function ListaProjetos({ onSelect, edicaoId }) {
                   onClick={() => onSelect(p)}
                   style={{ background: i % 2 === 0 ? C.white : C.grayBg,
                            cursor:"pointer", transition:"background 0.1s" }}
-                  onMouseEnter={e => e.currentTarget.style.background = "#EFF6FF"}
+                  onMouseEnter={e => e.currentTarget.style.background = DV.situacao.info.fundo}
                   onMouseLeave={e => e.currentTarget.style.background = i % 2 === 0 ? C.white : C.grayBg}>
                   <td style={{ padding:"10px 14px", fontSize:12, fontWeight:500,
                                color:C.accent, whiteSpace:"nowrap" }}>
@@ -546,9 +547,9 @@ function DetalheProjeto({ projeto, onVoltar }) {
 
       {/* Recursos */}
       {projeto.status === "recurso" && (
-        <Card style={{ border:`1px solid ${C.purple}`, background:C.purpleBg }}>
+        <Card style={{ border:`1px solid ${C.recurso}`, background:C.recursoBg }}>
           <SectionLabel>Fluxo de recursos</SectionLabel>
-          <div style={{ fontSize:13, color:C.purple }}>
+          <div style={{ fontSize:13, color:C.recurso }}>
             Este projeto interpôs recurso. Aguardando análise pela avaliadora Cláudia Solares.
           </div>
         </Card>
@@ -696,11 +697,11 @@ function FluxoRecursos({ onVoltar, edicaoId }) {
         Fluxo de Recursos — {programaNome} 2026
       </div>
 
-      <Card style={{ background:C.purpleBg, border:`0.5px solid ${C.purple}` }}>
-        <div style={{ fontSize:13, color:C.purple, fontWeight:500, marginBottom:4 }}>
+      <Card style={{ background:C.recursoBg, border:`0.5px solid ${C.recurso}` }}>
+        <div style={{ fontSize:13, color:C.recurso, fontWeight:500, marginBottom:4 }}>
           Avaliadora de recursos: Cláudia Solares
         </div>
-        <div style={{ fontSize:12, color:C.purple, opacity:0.8 }}>
+        <div style={{ fontSize:12, color:C.recurso, opacity:0.8 }}>
           Os projetos abaixo interpuseram recurso após o resultado da avaliação.
           A análise é realizada exclusivamente pela avaliadora designada.
         </div>
@@ -712,7 +713,7 @@ function FluxoRecursos({ onVoltar, edicaoId }) {
         <Card>
           <div style={{ textAlign:"center", padding:32, color:C.grayL }}>
             <div style={{ fontSize:32, marginBottom:8 }}>✅</div>
-            <div style={{ fontSize:14, fontWeight:500, color:"#334155" }}>
+            <div style={{ fontSize:14, fontWeight:500, color:DV.base.texto }}>
               Nenhum recurso pendente
             </div>
             <div style={{ fontSize:12 }}>Todos os recursos foram analisados.</div>
@@ -724,7 +725,7 @@ function FluxoRecursos({ onVoltar, edicaoId }) {
             <Card key={p.id} style={{ display:"flex", alignItems:"center",
                                        justifyContent:"space-between", gap:12 }}>
               <div>
-                <div style={{ fontSize:12, fontWeight:600, color:C.purple,
+                <div style={{ fontSize:12, fontWeight:600, color:C.recurso,
                               fontFamily:"monospace", marginBottom:4 }}>
                   {p.codigo_facitec}
                 </div>
@@ -967,7 +968,7 @@ export default function PainelModulo1() {
             cor:C.teal, tela:"avaliadores" },
           { icon:"⚖️", titulo:"Fluxo de recursos",
             desc:`${stats.recursos} recurso(s) pendente(s) — análise pela Cláudia Solares`,
-            cor:C.purple, tela:"recursos" },
+            cor:C.recurso, tela:"recursos" },
           { icon:"📊", titulo:"Relatório da edição",
             desc:"Exportar classificação final, notas e pareceres em PDF/Excel",
             cor:C.amber, tela:"menu", disabled:true },

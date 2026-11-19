@@ -552,7 +552,7 @@ export function DecisaoFinalRecurso() {
                 {recurso.codigo_recurso}
               </span>
             )}
-            <span className="text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded">
+            <span className="text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
               Decisão final
             </span>
           </div>

@@ -109,10 +109,10 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
   const aguardandoSubstituto = solicitacao.status === 'aguardando_substituto'
 
   return (
-    <div className="bg-white rounded-xl border border-indigo-200 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-indigo-50/40 transition-colors" onClick={() => setAberto(v => !v)}>
-        <div className="w-9 h-9 rounded-full bg-indigo-100 flex items-center justify-center shrink-0">
-          <UserCheck className="w-4 h-4 text-indigo-700" />
+    <div className="bg-white rounded-xl border border-[color:var(--dv-borda)] overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[color:var(--dv-primaria-clara)] transition-colors" onClick={() => setAberto(v => !v)}>
+        <div className="w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] flex items-center justify-center shrink-0">
+          <UserCheck className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">
@@ -123,7 +123,7 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
           </p>
         </div>
         <span className={`shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold ${
-          aguardandoSubstituto ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-700'
+          aguardandoSubstituto ? 'bg-amber-100 text-amber-700' : 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)]'
         }`}>
           <Clock className="w-3 h-3" /> {aguardandoSubstituto ? 'Aguardando substituto' : 'Aguardando sua aprovação'}
         </span>
@@ -196,7 +196,7 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
                   numeroEdital: solicitacao.projeto?.edicao?.numero_edital,
                   numeroContrato: solicitacao.orientador_saiu?.numero_contrato,
                 })}
-                className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md px-3 py-1.5 hover:bg-indigo-100 transition-colors"
+                className="inline-flex items-center gap-1.5 text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] rounded-md px-3 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
               >
                 <FileSignature className="w-3.5 h-3.5" />
                 Gerar minuta do Termo Aditivo
@@ -353,7 +353,7 @@ export function SubstituicoesOrientadorPainel() {
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Pendentes</h2>
           {pendentes.length > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-indigo-600 text-white text-xs font-bold">
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[color:var(--dv-primaria)] text-white text-xs font-bold">
               {pendentes.length}
             </span>
           )}

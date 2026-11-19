@@ -137,8 +137,8 @@ function GrupoOrientadorCard({ grupo, expanded, onToggle, onEdit, onDelete, onVe
         className="w-full flex items-center justify-between gap-4 px-4 py-3.5 text-left hover:bg-muted/40 transition-colors"
       >
         <div className="flex items-center gap-3 min-w-0">
-          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-violet-100 shrink-0">
-            <User className="w-5 h-5 text-violet-600" />
+          <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] shrink-0">
+            <User className="w-5 h-5 text-[color:var(--dv-primaria-texto)]" />
           </div>
           <div className="min-w-0">
             <p className="font-medium text-sm text-foreground truncate">{grupo.orientadorNome}</p>
@@ -327,8 +327,8 @@ export function Bolsistas() {
                   <CardContent className="pt-4 pb-4">
                     <div className="flex items-start justify-between gap-4">
                       <div className="flex gap-3">
-                        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-violet-100 shrink-0">
-                          <User className="w-5 h-5 text-violet-600" />
+                        <div className="flex items-center justify-center w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] shrink-0">
+                          <User className="w-5 h-5 text-[color:var(--dv-primaria-texto)]" />
                         </div>
                         <div className="space-y-1">
                           <span className="font-medium text-sm text-foreground">{o.nome_completo ?? '—'}</span>

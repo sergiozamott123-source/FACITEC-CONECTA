@@ -207,7 +207,7 @@ export function ConvocacaoRecurso() {
       return (
         <span
           title={tooltip}
-          className="inline-flex items-center gap-1 text-xs font-semibold text-purple-700 bg-purple-50 border border-purple-200 px-2 py-1 rounded shrink-0 cursor-default"
+          className="inline-flex items-center gap-1 text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-1 rounded shrink-0 cursor-default"
         >
           <Check className="w-3 h-3" />
           Respondido
