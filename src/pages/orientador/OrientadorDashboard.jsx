@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { listarSolicitacoesDoOrientador, marcarComoAtendida, TIPOS_SOLICITACAO } from '@/lib/solicitacoes'
 import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual, calcularBanner } from '@/lib/relatorioMensal'
 import { BannerRelatorioMensal } from '@/components/orientador/BannerRelatorioMensal'
+import { BoasVindasOrientadoraSubstituta } from '@/components/orientador/BoasVindasOrientadoraSubstituta'
 import { getMaxBolsistas } from '@/lib/programas'
 
 const ETAPAS = [
@@ -148,6 +149,7 @@ export function OrientadorDashboard() {
   return (
     <div className="min-h-screen flex bg-gray-50">
       <OrientadorSidebar />
+      <BoasVindasOrientadoraSubstituta />
 
       <main className="flex-1 ml-[200px] p-6 space-y-6">
         {/* Cabeçalho */}
