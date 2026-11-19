@@ -69,6 +69,38 @@ import { LOGOS } from '@/lib/identidade/logosDinov.js'
 
 export { DV, rgb }
 
+/**
+ * Parágrafo justificado de verdade. O `paragrafo` do kit usa o justificado
+ * nativo do jsPDF, que com fontes embutidas (Inter) deixa cada linha uns
+ * 3% mais curta que a margem direita. Aqui cada palavra é posicionada com
+ * espaço igual, e a linha vai exatamente de margem a margem. Mesma
+ * assinatura e mesmo espaçamento do `paragrafo` do kit (que ele substitui
+ * nas importações do sistema); o arquivo do kit continua intacto.
+ */
+export function paragrafo(doc, texto, y, { tamanho = 11, alinhamento = 'justify', cor = DV.base.texto, estilo = 'texto' } = {}) {
+  fonte(doc, estilo, tamanho, cor)
+  const alturaLinha = tamanho * 0.3528 * 1.5
+  const linhas = doc.splitTextToSize(texto, AREA.largura)
+  let yy = y
+  linhas.forEach((linha, i) => {
+    if (yy > FIM_CONTEUDO) { doc.addPage(); yy = INICIO_CONTEUDO; fonte(doc, estilo, tamanho, cor) }
+    const ultima = i === linhas.length - 1
+    const palavras = linha.trim().split(/\s+/)
+    if (alinhamento === 'justify' && !ultima && palavras.length > 1) {
+      const larguraPalavras = palavras.reduce((soma, w) => soma + doc.getTextWidth(w), 0)
+      const espaco = (AREA.largura - larguraPalavras) / (palavras.length - 1)
+      let x = MARGEM.esquerda
+      palavras.forEach((w) => { doc.text(w, x, yy); x += doc.getTextWidth(w) + espaco })
+    } else if (alinhamento === 'center') {
+      doc.text(linha, 105, yy, { align: 'center' })
+    } else {
+      doc.text(linha, MARGEM.esquerda, yy)
+    }
+    yy += alturaLinha
+  })
+  return yy + alturaLinha * 0.5
+}
+
 /** Se não houver `altura` mm livres na página, abre outra. Devolve o y a usar. */
 export function garantirEspaco(doc, y, altura) {
   if (y + altura > FIM_CONTEUDO) {
