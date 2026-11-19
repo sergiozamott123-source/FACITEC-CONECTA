@@ -1,7 +1,7 @@
 import { AlertTriangle, CheckCircle2, Clock } from 'lucide-react'
 
 const ESTILOS = {
-  info: 'border-blue-200 bg-blue-50 text-blue-900',
+  info: 'border-[color:var(--dv-borda)] bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)]',
   urgente: 'border-amber-300 bg-amber-50 text-amber-900',
   atraso: 'border-red-300 bg-red-50 text-red-900',
 }

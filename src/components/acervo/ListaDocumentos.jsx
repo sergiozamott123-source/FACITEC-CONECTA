@@ -34,7 +34,7 @@ export function ListaDocumentos({ documentos, onChange }) {
               href={doc.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 px-2 py-1 rounded hover:bg-muted transition-colors"
+              className="inline-flex items-center gap-1 text-xs text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] px-2 py-1 rounded hover:bg-muted transition-colors"
             >
               <ExternalLink className="w-3 h-3" /> Ver
             </a>

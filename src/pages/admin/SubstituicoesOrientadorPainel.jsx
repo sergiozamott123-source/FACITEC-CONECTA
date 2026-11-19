@@ -89,7 +89,7 @@ function DocumentosSubstituto({ orientadorEntrou }) {
           {orientadorEntrou[d.key] ? (
             <a
               href={orientadorEntrou[d.key]} target="_blank" rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-blue-700 font-medium hover:underline"
+              className="inline-flex items-center gap-1 text-[color:var(--dv-primaria-texto)] font-medium hover:underline"
             >
               <FileText className="w-3 h-3" /> Ver documento <ExternalLink className="w-2.5 h-2.5" />
             </a>
@@ -171,7 +171,7 @@ function PendenteCardOrientador({ solicitacao, onAprovar, onRecusar, aprovando }
                   {solicitacao[d.key] ? (
                     <a
                       href={solicitacao[d.key]} target="_blank" rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-blue-700 font-medium hover:underline"
+                      className="inline-flex items-center gap-1 text-[color:var(--dv-primaria-texto)] font-medium hover:underline"
                     >
                       <FileText className="w-3 h-3" /> Ver documento <ExternalLink className="w-2.5 h-2.5" />
                     </a>

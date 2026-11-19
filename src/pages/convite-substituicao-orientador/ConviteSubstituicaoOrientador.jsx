@@ -34,7 +34,7 @@ import { baixarDeclaracaoAnuencia, baixarDeclaracaoAceitacao } from '@/lib/docum
 
 function Card({ children }) {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-900 to-indigo-950 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-[color:var(--dv-marinho)] p-4">
       <div className="w-full max-w-xl bg-white rounded-2xl shadow-2xl overflow-hidden">{children}</div>
     </div>
   )
@@ -44,8 +44,8 @@ function CabecalhoConvite({ convite }) {
   return (
     <div className="px-6 pt-6 pb-4 border-b border-gray-100">
       <div className="flex items-center gap-2 mb-2">
-        <GraduationCap className="w-5 h-5 text-blue-600" />
-        <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Convite de substituição de orientador</span>
+        <GraduationCap className="w-5 h-5 text-[color:var(--dv-primaria-texto)]" />
+        <span className="text-xs font-semibold text-[color:var(--dv-primaria-texto)] uppercase tracking-wide">Convite de substituição de orientador</span>
       </div>
       <h1 className="text-lg font-bold text-gray-900">{convite.projeto_titulo}</h1>
       <p className="text-sm text-gray-500 mt-1">
@@ -66,7 +66,7 @@ function UploadCampo({ label, obrigatorio, currentUrl, onUpload, uploading, extr
       {extra}
       <div
         className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${
-          currentUrl ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
+          currentUrl ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-clara)]'
         }`}
         onClick={() => ref.current?.click()}
       >
@@ -74,7 +74,7 @@ function UploadCampo({ label, obrigatorio, currentUrl, onUpload, uploading, extr
           <>
             <FileText className="w-4 h-4 text-green-600 shrink-0" />
             <span className="text-xs text-gray-700 flex-1">Documento enviado</span>
-            <span className="text-[10px] text-blue-600 font-medium">Substituir</span>
+            <span className="text-[10px] text-[color:var(--dv-primaria-texto)] font-medium">Substituir</span>
           </>
         ) : (
           <>
@@ -372,7 +372,7 @@ export function ConviteSubstituicaoOrientador() {
                 key={t.id}
                 onClick={() => { setTab(t.id); setAuthError(null) }}
                 className={`py-2.5 text-sm font-medium transition-colors ${
-                  tab === t.id ? 'text-blue-700 border-b-2 border-blue-700' : 'text-gray-400 hover:text-gray-600'
+                  tab === t.id ? 'text-[color:var(--dv-primaria-texto)] border-b-2 border-[color:var(--dv-primaria-hover)]' : 'text-gray-400 hover:text-gray-600'
                 }`}
               >
                 {t.label}
@@ -392,7 +392,7 @@ export function ConviteSubstituicaoOrientador() {
               <label className="block text-xs font-medium text-gray-700 mb-1">E-mail</label>
               <input
                 type="email" required value={email} onChange={e => setEmail(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -400,7 +400,7 @@ export function ConviteSubstituicaoOrientador() {
               <input
                 type="password" required value={senha} onChange={e => setSenha(e.target.value)}
                 placeholder={tab === 'register' ? 'Mínimo 6 caracteres' : ''}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             {tab === 'register' && (
@@ -408,13 +408,13 @@ export function ConviteSubstituicaoOrientador() {
                 <label className="block text-xs font-medium text-gray-700 mb-1">Confirmar senha</label>
                 <input
                   type="password" required value={confirmSenha} onChange={e => setConfirmSenha(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
             )}
             <button
               type="submit" disabled={authLoading}
-              className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="w-full py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
             >
               {authLoading ? 'Aguarde...' : tab === 'register' ? 'Criar conta e continuar' : 'Entrar'}
             </button>
@@ -437,7 +437,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="nome_completo" value={form.nome_completo}
                 onChange={e => setForm(p => ({ ...p, nome_completo: e.target.value }))}
                 onBlur={handleBlurField} required
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -446,7 +446,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="cpf" value={form.cpf}
                 onChange={e => setForm(p => ({ ...p, cpf: e.target.value }))}
                 onBlur={handleBlurField} required placeholder="000.000.000-00"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -455,7 +455,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="telefone" value={form.telefone}
                 onChange={e => setForm(p => ({ ...p, telefone: e.target.value }))}
                 onBlur={handleBlurField} placeholder="(00) 00000-0000"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
 
@@ -468,7 +468,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="rua" value={form.rua}
                 onChange={e => setForm(p => ({ ...p, rua: e.target.value }))}
                 onBlur={handleBlurField} placeholder="Rua das Flores, 123"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -477,7 +477,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="bairro" value={form.bairro}
                 onChange={e => setForm(p => ({ ...p, bairro: e.target.value }))}
                 onBlur={handleBlurField}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -486,7 +486,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="cidade" value={form.cidade}
                 onChange={e => setForm(p => ({ ...p, cidade: e.target.value }))}
                 onBlur={handleBlurField}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
 
@@ -499,7 +499,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="escola" value={form.escola}
                 onChange={e => setForm(p => ({ ...p, escola: e.target.value }))}
                 onBlur={handleBlurField} placeholder="EMEF Nome da Escola"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -508,7 +508,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="telefone_escola" value={form.telefone_escola}
                 onChange={e => setForm(p => ({ ...p, telefone_escola: e.target.value }))}
                 onBlur={handleBlurField} placeholder="(27) 3333-4444"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div>
@@ -517,7 +517,7 @@ export function ConviteSubstituicaoOrientador() {
                 type="email" name="email_escola" value={form.email_escola}
                 onChange={e => setForm(p => ({ ...p, email_escola: e.target.value }))}
                 onBlur={handleBlurField} placeholder="secretaria@escola.edu.br"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
             <div className="col-span-2">
@@ -526,7 +526,7 @@ export function ConviteSubstituicaoOrientador() {
                 name="instituicao" value={form.instituicao}
                 onChange={e => setForm(p => ({ ...p, instituicao: e.target.value }))}
                 onBlur={handleBlurField} placeholder="Ex: Licenciatura em Ciências Biológicas — UFES"
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
           </div>
@@ -575,7 +575,7 @@ export function ConviteSubstituicaoOrientador() {
                 <button
                   type="button"
                   onClick={handleBaixarAnuencia}
-                  className="flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline mb-1.5"
+                  className="flex items-center gap-1 text-[11px] font-medium text-[color:var(--dv-primaria-texto)] hover:underline mb-1.5"
                 >
                   <Download className="w-3 h-3" /> Baixar modelo já preenchido
                 </button>
@@ -591,7 +591,7 @@ export function ConviteSubstituicaoOrientador() {
                 <button
                   type="button"
                   onClick={handleBaixarAceitacao}
-                  className="flex items-center gap-1 text-[11px] font-medium text-blue-700 hover:underline mb-1.5"
+                  className="flex items-center gap-1 text-[11px] font-medium text-[color:var(--dv-primaria-texto)] hover:underline mb-1.5"
                 >
                   <Download className="w-3 h-3" /> Baixar modelo já preenchido
                 </button>
@@ -599,8 +599,8 @@ export function ConviteSubstituicaoOrientador() {
             />
           </div>
 
-          <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-3">
-            <p className="text-xs text-blue-900">
+          <div className="rounded-md bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-3 py-3">
+            <p className="text-xs text-[color:var(--dv-primaria-texto)]">
               Ao confirmar, declaro estar ciente do Edital FACITEC vigente (item 16.2) e manifesto interesse em assumir a
               orientação deste projeto em substituição ao orientador anterior — esta confirmação vale como minha
               Manifestação de Interesse, assinada eletronicamente.
@@ -617,7 +617,7 @@ export function ConviteSubstituicaoOrientador() {
           <button
             type="submit"
             disabled={confirmando}
-            className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="w-full py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
           >
             {confirmando ? 'Confirmando...' : 'Confirmar e enviar para aprovação'}
           </button>

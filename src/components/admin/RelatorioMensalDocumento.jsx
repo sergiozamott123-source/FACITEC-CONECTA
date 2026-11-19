@@ -1,6 +1,5 @@
 import { useEffect } from 'react'
 import { X, Download, CheckCircle2, ClipboardList, Target, AlertTriangle, Camera, Users, Loader2 } from 'lucide-react'
-import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 
 export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas, onExportarPDF, exportando, permitirExportar }) {
   useEffect(() => {
@@ -20,7 +19,7 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
         {/* Cabeçalho de marca */}
         <div style={{ background: 'var(--dv-marinho)' }} className="px-6 py-4 flex items-center justify-between gap-4 shrink-0">
           <div className="flex items-center gap-3 min-w-0">
-            <LogoFacitecConecta size="sm" inverted />
+            <img src="/identidade/facitec-conecta-assinatura-branca.svg" alt="FACITEC Conecta" className="h-8 w-auto" />
             <div className="border-l border-white/20 pl-3 min-w-0">
               <p className="text-white text-sm font-semibold leading-tight">FACITEC · Relatório de Acompanhamento</p>
               <p className="text-white/50 text-[11px] leading-tight">Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória</p>
@@ -74,7 +73,7 @@ export function RelatorioMensalDocumento({ open, onClose, relatorio, ciclo, orie
 
         {/* Conteúdo */}
         <div className="overflow-y-auto flex-1 px-6 py-5 space-y-6">
-          <SecaoDoc icone={Users} titulo="Frequência da equipe" cor="text-blue-600">
+          <SecaoDoc icone={Users} titulo="Frequência da equipe" cor="text-[color:var(--dv-primaria-texto)]">
             {(relatorio.frequencia_bolsistas ?? []).length === 0 ? (
               <p className="text-sm text-gray-400">—</p>
             ) : (

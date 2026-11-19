@@ -66,7 +66,7 @@ export function OrientadorDados() {
             {!editing && (
               <button
                 onClick={() => { setEditing(true); setSuccess(false) }}
-                className="px-4 py-2 text-sm font-medium text-blue-700 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded-lg hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
               >
                 Editar
               </button>
@@ -86,7 +86,7 @@ export function OrientadorDados() {
 
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="flex items-center gap-3 mb-5 pb-4 border-b border-gray-100">
-              <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-[color:var(--dv-primaria)] flex items-center justify-center">
                 <span className="text-white text-base font-bold">
                   {orientador?.nome_completo?.split(' ').slice(0, 2).map(n => n[0]).join('').toUpperCase() ?? <User className="w-5 h-5" />}
                 </span>
@@ -108,7 +108,7 @@ export function OrientadorDados() {
                       value={form[name]}
                       onChange={handleChange}
                       disabled={!editable}
-                      className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                      className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent ${
                         editable
                           ? 'border-gray-300 bg-white'
                           : 'border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed'
@@ -123,7 +123,7 @@ export function OrientadorDados() {
                   <button
                     type="submit"
                     disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
                   >
                     <Save className="w-4 h-4" />
                     {saving ? 'Salvando...' : 'Salvar'}

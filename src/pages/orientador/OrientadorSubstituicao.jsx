@@ -41,7 +41,7 @@ const STATUS_INFO = {
 
 const colorCls = {
   amber: 'bg-amber-50 text-amber-800 border-amber-200',
-  blue: 'bg-blue-50 text-blue-800 border-blue-200',
+  blue: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]',
   green: 'bg-green-50 text-green-800 border-green-200',
   red: 'bg-red-50 text-red-800 border-red-200',
   gray: 'bg-gray-50 text-gray-600 border-gray-200',
@@ -195,14 +195,14 @@ export function OrientadorSubstituicao() {
               <p><span className="text-gray-400">Pedido em:</span> {formatarDataHora(emAndamento.created_at)}</p>
             </div>
             {emAndamento.status === 'aguardando_substituto' && (
-              <div className="rounded-md bg-blue-50 border border-blue-200 px-3 py-3 space-y-2">
-                <p className="text-xs text-blue-800">
+              <div className="rounded-md bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-3 py-3 space-y-2">
+                <p className="text-xs text-[color:var(--dv-primaria-texto)]">
                   Envie este link para <strong>{emAndamento.nome_substituto}</strong> preencher os próprios dados e
                   documentos. O link expira em {formatarDataHora(emAndamento.convite_expira_em)}.
                 </p>
                 <button
                   onClick={() => copiarLink(emAndamento.token_convite)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+                  className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-white border border-[color:var(--dv-borda)] rounded-md px-3 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
                 >
                   {copiado ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   {copiado ? 'Link copiado!' : 'Copiar link do convite'}
@@ -224,7 +224,7 @@ export function OrientadorSubstituicao() {
                 rows={3}
                 required
                 placeholder="Explique o motivo da sua substituição..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
 
@@ -235,7 +235,7 @@ export function OrientadorSubstituicao() {
                   value={nomeSubstituto}
                   onChange={e => setNomeSubstituto(e.target.value)}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
               <div>
@@ -246,7 +246,7 @@ export function OrientadorSubstituicao() {
                   onChange={e => setEmailSubstituto(e.target.value)}
                   required
                   placeholder="professor@email.com"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
               <div>
@@ -256,7 +256,7 @@ export function OrientadorSubstituicao() {
                   onChange={e => setCpfSubstituto(e.target.value)}
                   required
                   placeholder="000.000.000-00"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
               <div>
@@ -265,20 +265,20 @@ export function OrientadorSubstituicao() {
                   value={telefoneSubstituto}
                   onChange={e => setTelefoneSubstituto(e.target.value)}
                   placeholder="(00) 00000-0000"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
             </div>
 
-            <div className="rounded-lg bg-blue-50/60 border border-blue-100 p-3 space-y-2">
-              <p className="text-xs text-blue-900">
+            <div className="rounded-lg bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] p-3 space-y-2">
+              <p className="text-xs text-[color:var(--dv-primaria-texto)]">
                 Baixe sua Solicitação de Desligamento já preenchida com os dados do projeto e do substituto, assine
                 eletronicamente (GOV.BR) e anexe o arquivo assinado abaixo.
               </p>
               <button
                 type="button"
                 onClick={handleBaixarDesligamento}
-                className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 bg-white border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+                className="flex items-center gap-1.5 text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-white border border-[color:var(--dv-borda)] rounded-md px-3 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
               >
                 <Download className="w-3.5 h-3.5" />
                 Baixar Solicitação de Desligamento (PDF)
@@ -292,7 +292,7 @@ export function OrientadorSubstituicao() {
               </p>
               <div
                 className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${
-                  desligamento ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
+                  desligamento ? 'border-green-300 bg-green-50' : 'border-dashed border-gray-300 hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-clara)]'
                 }`}
                 onClick={() => fileRef.current?.click()}
               >
@@ -300,7 +300,7 @@ export function OrientadorSubstituicao() {
                   <>
                     <FileText className="w-5 h-5 text-green-600 shrink-0" />
                     <span className="text-xs text-gray-700 truncate flex-1">{desligamento.nomeArquivo}</span>
-                    <span className="text-[10px] text-blue-600 shrink-0 font-medium">Substituir</span>
+                    <span className="text-[10px] text-[color:var(--dv-primaria-texto)] shrink-0 font-medium">Substituir</span>
                   </>
                 ) : (
                   <>
@@ -324,7 +324,7 @@ export function OrientadorSubstituicao() {
             <button
               type="submit"
               disabled={enviando || enviandoDesligamento}
-              className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-2 px-5 py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
             >
               <ArrowLeftRight className="w-4 h-4" />
               {enviando ? 'Enviando...' : 'Solicitar substituição e gerar convite'}

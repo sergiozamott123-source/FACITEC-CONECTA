@@ -151,10 +151,10 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
   const novo = solicitacao.novo_dados || {}
 
   return (
-    <div className="bg-white rounded-xl border border-blue-200 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-blue-50/40 transition-colors" onClick={() => setAberto(v => !v)}>
-        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-          <ArrowLeftRight className="w-4 h-4 text-blue-700" />
+    <div className="bg-white rounded-xl border border-[color:var(--dv-borda)] overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-[color:var(--dv-primaria-clara)] transition-colors" onClick={() => setAberto(v => !v)}>
+        <div className="w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] flex items-center justify-center shrink-0">
+          <ArrowLeftRight className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">
@@ -169,7 +169,7 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
             )}
           </p>
         </div>
-        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-blue-100 text-blue-700">
+        <span className="shrink-0 inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)]">
           <Clock className="w-3 h-3" /> Pendente
         </span>
         {aberto ? <ChevronUp className="w-4 h-4 text-gray-400 shrink-0" /> : <ChevronDown className="w-4 h-4 text-gray-400 shrink-0" />}
@@ -216,7 +216,7 @@ function PendenteCard({ solicitacao, onAprovar, onRecusar, aprovando }) {
               href={solicitacao.oficio_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-3 py-1.5 hover:bg-blue-100 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] rounded-md px-3 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
             >
               <FileText className="w-3.5 h-3.5" />
               Baixar ofício anexado
@@ -282,7 +282,7 @@ function HistoricoLinha({ solicitacao }) {
           target="_blank"
           rel="noopener noreferrer"
           title={solicitacao.oficio_nome_arquivo || 'Baixar ofício anexado'}
-          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-md px-2.5 py-1.5 hover:bg-blue-100 transition-colors mt-0.5"
+          className="shrink-0 inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] rounded-md px-2.5 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors mt-0.5"
         >
           <FileText className="w-3.5 h-3.5" />
           Ofício
@@ -342,7 +342,7 @@ function DocumentosSubstitutoCard({ bolsista }) {
       <button
         onClick={handleGerarFicha}
         disabled={gerandoFicha}
-        className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-blue-700 bg-white border border-blue-200 rounded-md px-2.5 py-1.5 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+        className="mt-2.5 flex items-center gap-1.5 text-xs font-medium text-[color:var(--dv-primaria-texto)] bg-white border border-[color:var(--dv-borda)] rounded-md px-2.5 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] disabled:opacity-50 transition-colors"
       >
         {gerandoFicha ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <IdCard className="w-3.5 h-3.5" />}
         {gerandoFicha ? 'Gerando ficha...' : 'Gerar ficha cadastral'}
@@ -446,7 +446,7 @@ export function SubstituicoesPainel() {
         <div className="flex items-center gap-2 mb-3">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Pendentes</h2>
           {pendentes.length > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-blue-600 text-white text-xs font-bold">
+            <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[color:var(--dv-primaria)] text-white text-xs font-bold">
               {pendentes.length}
             </span>
           )}

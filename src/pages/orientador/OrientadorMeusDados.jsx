@@ -61,7 +61,7 @@ function UploadField({ label, reference, fieldKey, currentUrl, onUpload, uploadi
         className={`border rounded-lg p-3 flex items-center gap-3 cursor-pointer transition-colors ${
           hasFile
             ? 'border-green-300 bg-green-50 hover:bg-green-100'
-            : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'
+            : 'border-dashed border-gray-300 hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-clara)]'
         }`}
         onClick={() => ref.current?.click()}
       >
@@ -72,7 +72,7 @@ function UploadField({ label, reference, fieldKey, currentUrl, onUpload, uploadi
               : <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
             }
             <span className="text-xs text-gray-700 truncate flex-1">{filename}</span>
-            <span className="text-[10px] text-blue-600 shrink-0 font-medium">Substituir</span>
+            <span className="text-[10px] text-[color:var(--dv-primaria-texto)] shrink-0 font-medium">Substituir</span>
           </>
         ) : (
           <>
@@ -93,7 +93,7 @@ function UploadField({ label, reference, fieldKey, currentUrl, onUpload, uploadi
           e.target.value = ''
         }}
       />
-      {uploading && <p className="text-[10px] text-blue-500 mt-0.5">Enviando...</p>}
+      {uploading && <p className="text-[10px] text-[color:var(--dv-primaria-texto)] mt-0.5">Enviando...</p>}
     </div>
   )
 }
@@ -108,7 +108,7 @@ function calcProgress(form, docs) {
   return Math.round(((filled + docsFilled) / (fields.length + 2)) * 100)
 }
 
-const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent'
 const readonlyCls = 'w-full px-3 py-2 border border-gray-200 bg-gray-50 text-gray-500 rounded-md text-sm cursor-not-allowed'
 
 export function OrientadorMeusDados() {
@@ -235,20 +235,20 @@ export function OrientadorMeusDados() {
         <div className="bg-white rounded-xl border border-gray-200 p-4">
           <div className="flex items-center justify-between mb-2">
             <p className="text-sm font-medium text-gray-700">Progresso do cadastro</p>
-            <span className="text-sm font-bold text-blue-600">{progress}%</span>
+            <span className="text-sm font-bold text-[color:var(--dv-primaria-texto)]">{progress}%</span>
           </div>
           <div className="w-full bg-gray-100 rounded-full h-2">
             <div
-              className="bg-blue-500 h-2 rounded-full transition-all duration-500"
+              className="bg-[color:var(--dv-primaria)] h-2 rounded-full transition-all duration-500"
               style={{ width: `${progress}%` }}
             />
           </div>
         </div>
 
         {/* Aviso prazo */}
-        <div className="flex items-start gap-3 rounded-xl border border-blue-200 bg-blue-50 p-4">
-          <Info className="w-5 h-5 text-blue-500 shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800">
+        <div className="flex items-start gap-3 rounded-xl border border-[color:var(--dv-borda)] bg-[color:var(--dv-primaria-clara)] p-4">
+          <Info className="w-5 h-5 text-[color:var(--dv-primaria-texto)] shrink-0 mt-0.5" />
+          <p className="text-sm text-[color:var(--dv-primaria-texto)]">
             <span className="font-semibold">Prazo de entrega de documentos: 18/06 a 26/06/2026</span> — conforme item 13.5 do Edital FACITEC 01/2026. A entrega incompleta implica desclassificação.
           </p>
         </div>
@@ -307,7 +307,7 @@ export function OrientadorMeusDados() {
                 placeholder="00000-000"
                 className={inputCls}
               />
-              {buscandoCep && <p className="text-[10px] text-blue-500 mt-0.5">Buscando endereço...</p>}
+              {buscandoCep && <p className="text-[10px] text-[color:var(--dv-primaria-texto)] mt-0.5">Buscando endereço...</p>}
             </div>
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
@@ -370,7 +370,7 @@ export function OrientadorMeusDados() {
           <button
             onClick={() => salvar(true)}
             disabled={saving}
-            className="flex items-center gap-2 px-5 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-5 py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
           >
             Salvar e continuar
             <ArrowRight className="w-4 h-4" />

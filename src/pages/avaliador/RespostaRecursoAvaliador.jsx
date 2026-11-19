@@ -133,7 +133,7 @@ export function RespostaRecursoAvaliador() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center space-y-3">
           <p className="text-red-600 text-sm">{error}</p>
-          <button onClick={() => navigate('/avaliador/projetos')} className="text-blue-600 text-sm underline">
+          <button onClick={() => navigate('/avaliador/projetos')} className="text-[color:var(--dv-primaria-texto)] text-sm underline">
             ← Voltar
           </button>
         </div>
@@ -159,7 +159,7 @@ export function RespostaRecursoAvaliador() {
             </p>
             <button
               onClick={() => navigate('/avaliador/projetos')}
-              className="text-sm text-blue-600 hover:underline font-medium"
+              className="text-sm text-[color:var(--dv-primaria-texto)] hover:underline font-medium"
             >
               ← Voltar aos meus projetos
             </button>
@@ -177,14 +177,14 @@ export function RespostaRecursoAvaliador() {
         <div className="max-w-2xl mx-auto space-y-4">
 
           {/* Cabeçalho do recurso */}
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
+          <div className="bg-[color:var(--dv-marinho)] rounded-xl p-5 text-white">
             <div className="flex items-center gap-2 mb-2">
               {recurso?.codigo_recurso && (
                 <span className="text-xs font-bold bg-white/20 px-2 py-0.5 rounded">
                   {recurso.codigo_recurso}
                 </span>
               )}
-              <span className="text-xs text-blue-200 uppercase tracking-wide font-semibold">
+              <span className="text-xs text-[color:var(--dv-texto-suave-escuro)] uppercase tracking-wide font-semibold">
                 Convocação de Recurso
               </span>
             </div>
@@ -193,7 +193,7 @@ export function RespostaRecursoAvaliador() {
             </h1>
             <div className="bg-white/15 rounded-lg px-3 py-2 flex items-center justify-between">
               <div>
-                <span className="text-xs font-bold text-blue-200 mr-2">
+                <span className="text-xs font-bold text-[color:var(--dv-texto-suave-escuro)] mr-2">
                   {criterio?.codigo}
                 </span>
                 <span className="text-sm font-semibold">{criterio?.nome}</span>
@@ -245,7 +245,7 @@ export function RespostaRecursoAvaliador() {
                     'py-2.5 px-3 rounded-lg border text-sm font-semibold transition-all',
                     resposta === opt.value
                       ? opt.value === 'sim'
-                        ? 'bg-blue-600 text-white border-blue-600'
+                        ? 'bg-[color:var(--dv-primaria)] text-white border-[color:var(--dv-primaria)]'
                         : 'bg-gray-800 text-white border-gray-800'
                       : 'bg-white text-gray-600 border-gray-200 hover:border-gray-400',
                   ].join(' ')}
@@ -270,7 +270,7 @@ export function RespostaRecursoAvaliador() {
                   value={novaNota}
                   onChange={e => setNovaNota(e.target.value)}
                   placeholder={`Ex: ${criterio?.nota_maxima}`}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
                 />
               </div>
             )}
@@ -285,7 +285,7 @@ export function RespostaRecursoAvaliador() {
                 onChange={e => setJustificativa(e.target.value)}
                 placeholder="Explique os motivos da sua decisão..."
                 rows={5}
-                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-gray-300"
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] resize-none placeholder:text-gray-300"
               />
             </div>
 
@@ -298,7 +298,7 @@ export function RespostaRecursoAvaliador() {
             <button
               onClick={handleEnviar}
               disabled={!podeEnviar || enviando}
-              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="w-full flex items-center justify-center gap-2 py-3 px-4 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               <Send className="w-4 h-4" />
               {enviando ? 'Enviando...' : 'Enviar resposta'}

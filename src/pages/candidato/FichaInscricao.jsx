@@ -17,7 +17,7 @@ function FLabel({ children, required }) {
 function FInput({ className = '', ...props }) {
   return (
     <input
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 ${className}`}
+      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent disabled:opacity-50 ${className}`}
       {...props}
     />
   )
@@ -26,7 +26,7 @@ function FInput({ className = '', ...props }) {
 function FTextarea({ className = '', ...props }) {
   return (
     <textarea
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 resize-none ${className}`}
+      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent disabled:opacity-50 resize-none ${className}`}
       {...props}
     />
   )
@@ -35,7 +35,7 @@ function FTextarea({ className = '', ...props }) {
 function FSelect({ children, className = '', ...props }) {
   return (
     <select
-      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:opacity-50 ${className}`}
+      className={`w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent disabled:opacity-50 ${className}`}
       {...props}
     >
       {children}
@@ -63,20 +63,20 @@ function StepIndicator({ current }) {
             <div key={n} className="flex items-center flex-1">
               <div className="flex flex-col items-center shrink-0">
                 <div className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs font-bold transition-all ${
-                  done   ? 'bg-blue-600 border-blue-600 text-white' :
-                  active ? 'border-blue-600 text-blue-600 bg-white' :
+                  done   ? 'bg-[color:var(--dv-primaria)] border-[color:var(--dv-primaria)] text-white' :
+                  active ? 'border-[color:var(--dv-primaria)] text-[color:var(--dv-primaria-texto)] bg-white' :
                            'border-gray-300 text-gray-400 bg-white'
                 }`}>
                   {done ? <Check className="w-4 h-4" /> : n}
                 </div>
                 <span className={`text-[10px] mt-1 font-medium hidden sm:block ${
-                  active ? 'text-blue-700' : done ? 'text-blue-500' : 'text-gray-400'
+                  active ? 'text-[color:var(--dv-primaria-texto)]' : done ? 'text-[color:var(--dv-primaria-texto)]' : 'text-gray-400'
                 }`}>
                   {label}
                 </span>
               </div>
               {i < LABELS.length - 1 && (
-                <div className={`h-0.5 flex-1 mx-1 -translate-y-2.5 ${done ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                <div className={`h-0.5 flex-1 mx-1 -translate-y-2.5 ${done ? 'bg-[color:var(--dv-primaria)]' : 'bg-gray-200'}`} />
               )}
             </div>
           )
@@ -104,7 +104,7 @@ function NavButtons({ step, onBack, onNext, nextLabel, saving, disabled }) {
         type="button"
         onClick={onNext}
         disabled={saving || disabled}
-        className="flex items-center gap-1.5 px-6 py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-1.5 px-6 py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
       >
         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
         {nextLabel ?? 'Continuar'}
@@ -120,14 +120,14 @@ function FileUploadInput({ label, accept, currentUrl, onFile, uploading, hint })
       <FLabel>{label}</FLabel>
       {hint && <p className="text-xs text-gray-500">{hint}</p>}
       {currentUrl && (
-        <div className="flex items-center gap-2 text-sm text-blue-600 mb-1">
+        <div className="flex items-center gap-2 text-sm text-[color:var(--dv-primaria-texto)] mb-1">
           <FileText className="w-4 h-4 flex-none" />
           <a href={currentUrl} target="_blank" rel="noreferrer" className="underline truncate">
             Ver arquivo enviado
           </a>
         </div>
       )}
-      <label className={`flex items-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${uploading ? 'opacity-50 cursor-not-allowed border-gray-200' : 'border-gray-300 hover:border-blue-400'}`}>
+      <label className={`flex items-center gap-2 px-3 py-2 border-2 border-dashed rounded-md cursor-pointer transition-colors ${uploading ? 'opacity-50 cursor-not-allowed border-gray-200' : 'border-gray-300 hover:border-[color:var(--dv-primaria)]'}`}>
         <Upload className="w-4 h-4 text-gray-400 flex-none" />
         <span className="text-sm text-gray-500">{uploading ? 'Enviando…' : 'Selecionar arquivo'}</span>
         <input
@@ -273,7 +273,7 @@ function Step1Auth({ onAuth, urlAuthError }) {
                 <button
                   type="button"
                   onClick={() => { setShowReset(true); setResetEmail(email) }}
-                  className="text-xs text-blue-600 hover:underline"
+                  className="text-xs text-[color:var(--dv-primaria-texto)] hover:underline"
                 >
                   Esqueci minha senha
                 </button>
@@ -296,7 +296,7 @@ function Step1Auth({ onAuth, urlAuthError }) {
                           type="button"
                           onClick={handleReset}
                           disabled={resetLoading || !resetEmail}
-                          className="flex-1 py-1.5 text-xs font-semibold bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                          className="flex-1 py-1.5 text-xs font-semibold bg-[color:var(--dv-primaria)] text-white rounded hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
                         >
                           {resetLoading ? 'Enviando…' : 'Enviar link de recuperação'}
                         </button>
@@ -344,7 +344,7 @@ function Step1Auth({ onAuth, urlAuthError }) {
         <button
           type="submit"
           disabled={loading}
-          className="w-full py-2.5 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
+          className="w-full py-2.5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
         >
           {loading ? 'Aguarde…' : mode === 'login' ? 'Entrar' : 'Criar conta e continuar'}
         </button>
@@ -466,10 +466,10 @@ function Step4Projeto({ form, onChange, onPdfChange, uploadingPdf, eixos }) {
                   type="checkbox"
                   checked={form.eixosSelecionados.includes(e.id)}
                   onChange={() => toggleEixo(e.id)}
-                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-blue-600 accent-blue-600 flex-none"
+                  className="w-4 h-4 mt-0.5 rounded border-gray-300 text-[color:var(--dv-primaria-texto)] accent-[color:var(--dv-primaria)] flex-none"
                 />
                 <div>
-                  <span className="text-sm font-medium text-gray-800 group-hover:text-blue-700">{e.nome}</span>
+                  <span className="text-sm font-medium text-gray-800 group-hover:text-[color:var(--dv-primaria-texto)]">{e.nome}</span>
                   {e.descricao && <p className="text-xs text-gray-500 mt-0.5">{e.descricao}</p>}
                 </div>
               </label>
@@ -489,7 +489,7 @@ function Step4Projeto({ form, onChange, onPdfChange, uploadingPdf, eixos }) {
                 value={v}
                 checked={String(form.inedito) === v}
                 onChange={() => onChange({ ...form, inedito: v === 'true' })}
-                className="w-4 h-4 accent-blue-600"
+                className="w-4 h-4 accent-[color:var(--dv-primaria)]"
               />
               <span className="text-sm text-gray-700">{l}</span>
             </label>
@@ -639,7 +639,7 @@ function Step6Revisao({ proponente, escola, projeto, eixos, termosAceitos, onTer
           type="checkbox"
           checked={termosAceitos}
           onChange={e => onTermos(e.target.checked)}
-          className="w-4 h-4 mt-0.5 rounded accent-blue-600 flex-none"
+          className="w-4 h-4 mt-0.5 rounded accent-[color:var(--dv-primaria)] flex-none"
         />
         <span className="text-sm text-gray-700">
           Li e aceito os termos de uso e a política de privacidade (LGPD) do FACITEC Conecta.
@@ -653,7 +653,7 @@ function Step6Revisao({ proponente, escola, projeto, eixos, termosAceitos, onTer
         type="button"
         onClick={onEnviar}
         disabled={!termosAceitos || saving}
-        className="w-full py-3 bg-blue-600 text-white text-sm font-bold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+        className="w-full py-3 bg-[color:var(--dv-primaria)] text-white text-sm font-bold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
       >
         {saving && <Loader2 className="w-4 h-4 animate-spin" />}
         {saving ? 'Enviando inscrição…' : 'Enviar inscrição'}
@@ -683,9 +683,9 @@ function Confirmacao({ codigo, edicao }) {
           Edição {edicao?.codigo_facitec ?? edicao?.ano_referencia}
         </p>
       </div>
-      <div className="inline-block bg-blue-50 border border-blue-200 rounded-xl px-6 py-4">
-        <p className="text-xs font-semibold text-blue-500 uppercase tracking-wide mb-1">Código de inscrição</p>
-        <p className="text-2xl font-bold text-blue-700 tracking-widest">{codigo}</p>
+      <div className="inline-block bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] rounded-xl px-6 py-4">
+        <p className="text-xs font-semibold text-[color:var(--dv-primaria-texto)] uppercase tracking-wide mb-1">Código de inscrição</p>
+        <p className="text-2xl font-bold text-[color:var(--dv-primaria-texto)] tracking-widest">{codigo}</p>
       </div>
       <p className="text-sm text-gray-500 max-w-sm mx-auto">
         Guarde este código. Ele será necessário para acompanhar o andamento da sua inscrição.
@@ -1052,15 +1052,12 @@ export function FichaInscricao({ slug = 'pibic-jr' }) {
   // ── Render ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0c2358 0%, #1a3f72 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--dv-marinho)' }}>
       {/* Header */}
       <header className="px-6 py-4 shrink-0">
         <div className="max-w-2xl mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/20">
-            <FileText className="w-6 h-6 text-white" />
-          </div>
+          <img src="/identidade/facitec-conecta-assinatura-branca.svg" alt="FACITEC Conecta" className="h-10 w-auto" />
           <div>
-            <p className="text-white font-bold text-base leading-tight">FACITEC Conecta</p>
             <p className="text-white/60 text-xs leading-tight">
               Ficha de Inscrição · {getProgramaByProgramaId(edicaoAtiva?.programa_id)?.nome ?? 'PIBIC Jr'}
             </p>
@@ -1074,7 +1071,7 @@ export function FichaInscricao({ slug = 'pibic-jr' }) {
           <div className="bg-white rounded-2xl shadow-2xl p-6 sm:p-8">
             {globalLoading ? (
               <div className="flex items-center justify-center py-16">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[color:var(--dv-primaria-texto)]" />
               </div>
             ) : globalError ? (
               <div className="py-8">

@@ -50,8 +50,8 @@ function TipoBadge({ tipo }) {
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${
       voluntario
-        ? 'bg-purple-50 text-purple-700 border-purple-200'
-        : 'bg-blue-50 text-blue-700 border-blue-200'
+        ? 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]'
+        : 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]'
     }`}>
       {voluntario ? 'Voluntário' : 'Titular'}
     </span>
@@ -161,7 +161,7 @@ export function OrientadorDashboard() {
             </p>
           </div>
           {rankLabel && (
-            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-600 text-white text-sm font-bold">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[color:var(--dv-primaria)] text-white text-sm font-bold">
               <Award className="w-4 h-4" />
               {rankLabel} classificado
             </span>
@@ -189,10 +189,10 @@ export function OrientadorDashboard() {
 
         {/* Solicitações da Secretaria Executiva */}
         {solicitacoes.length > 0 && (
-          <div className="rounded-xl border border-indigo-200 bg-indigo-50/60 p-4 space-y-3">
+          <div className="rounded-xl border border-[color:var(--dv-borda)] bg-[color:var(--dv-primaria-clara)] p-4 space-y-3">
             <div className="flex items-center gap-2">
-              <Bell className="w-4 h-4 text-indigo-600" />
-              <p className="text-sm font-semibold text-indigo-900">
+              <Bell className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
+              <p className="text-sm font-semibold text-[color:var(--dv-primaria-texto)]">
                 {solicitacoes.length === 1
                   ? '1 solicitação da Secretaria Executiva'
                   : `${solicitacoes.length} solicitações da Secretaria Executiva`}
@@ -202,12 +202,12 @@ export function OrientadorDashboard() {
               {solicitacoes.map(s => {
                 const tipoLabel = TIPOS_SOLICITACAO.find(t => t.key === s.tipo)?.label
                 return (
-                  <div key={s.id} className="bg-white rounded-lg border border-indigo-100 p-3">
+                  <div key={s.id} className="bg-white rounded-lg border border-[color:var(--dv-borda)] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-900">{s.titulo}</p>
                         {tipoLabel && (
-                          <span className="inline-block mt-1 text-[10px] font-medium text-indigo-600 bg-indigo-50 border border-indigo-200 rounded px-1.5 py-0.5">
+                          <span className="inline-block mt-1 text-[10px] font-medium text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] rounded px-1.5 py-0.5">
                             {tipoLabel}
                           </span>
                         )}
@@ -225,7 +225,7 @@ export function OrientadorDashboard() {
                       {s.link_acao && (
                         <button
                           onClick={() => navigate(s.link_acao)}
-                          className="flex items-center gap-1 text-xs font-semibold text-indigo-600 hover:text-indigo-800"
+                          className="flex items-center gap-1 text-xs font-semibold text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)]"
                         >
                           Resolver agora <ExternalLink className="w-3 h-3" />
                         </button>
@@ -277,8 +277,8 @@ export function OrientadorDashboard() {
         <div className="grid grid-cols-3 gap-4">
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
-                <Users className="w-4 h-4 text-blue-600" />
+              <div className="w-8 h-8 rounded-lg bg-[color:var(--dv-primaria-clara)] flex items-center justify-center">
+                <Users className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
               </div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Bolsistas</p>
             </div>
@@ -317,8 +317,8 @@ export function OrientadorDashboard() {
 
           <div className="bg-white rounded-xl border border-gray-200 p-4">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                <Clock className="w-4 h-4 text-purple-600" />
+              <div className="w-8 h-8 rounded-lg bg-[color:var(--dv-primaria-clara)] flex items-center justify-center">
+                <Clock className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
               </div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">Vigência</p>
             </div>
@@ -339,7 +339,7 @@ export function OrientadorDashboard() {
               <div className="flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Meu projeto</p>
                 {projeto.rank && (
-                  <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                  <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded">
                     #{String(projeto.rank).padStart(3, '0')}
                   </span>
                 )}
@@ -366,7 +366,7 @@ export function OrientadorDashboard() {
               <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Minha equipe</p>
               <button
                 onClick={() => navigate('/orientador/bolsistas')}
-                className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 font-medium"
+                className="flex items-center gap-1 text-xs text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] font-medium"
               >
                 Ver todos <ChevronRight className="w-3 h-3" />
               </button>
@@ -422,13 +422,13 @@ export function OrientadorDashboard() {
                       done
                         ? 'bg-green-500 border-green-500 text-white'
                         : active
-                        ? 'bg-blue-600 border-blue-600 text-white'
+                        ? 'bg-[color:var(--dv-primaria)] border-[color:var(--dv-primaria)] text-white'
                         : 'bg-white border-gray-300 text-gray-400'
                     }`}>
                       {done ? <CheckCircle2 className="w-4 h-4" /> : idx + 1}
                     </div>
                     <p className={`text-[10px] mt-1.5 text-center leading-tight max-w-[72px] ${
-                      active ? 'text-blue-700 font-semibold' : done ? 'text-green-700' : 'text-gray-400'
+                      active ? 'text-[color:var(--dv-primaria-texto)] font-semibold' : done ? 'text-green-700' : 'text-gray-400'
                     }`}>
                       {etapa}
                     </p>

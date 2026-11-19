@@ -125,7 +125,7 @@ function DocRow({ label, reference, url, filename }) {
               href={url}
               target="_blank"
               rel="noreferrer"
-              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-blue-700 bg-white border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+              className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-[color:var(--dv-primaria-texto)] bg-white border border-[color:var(--dv-borda)] rounded hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
             >
               <ExternalLink className="w-3 h-3" />
               Visualizar
@@ -520,7 +520,7 @@ export default function BolsistaDetalhe() {
           <p className="text-red-600 text-sm font-medium">{error ?? 'Bolsista não encontrado.'}</p>
           <button
             onClick={() => navigate(`/admin/${slug}/${ano}/m2`)}
-            className="mt-3 text-xs text-blue-600 hover:underline"
+            className="mt-3 text-xs text-[color:var(--dv-primaria-texto)] hover:underline"
           >
             ← Voltar ao Superpainel
           </button>
@@ -545,7 +545,7 @@ export default function BolsistaDetalhe() {
 
   const tipoCfg = bolsista.tipo === 'voluntario'
     ? { label: 'Voluntário', cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]' }
-    : { label: 'Titular',    cls: 'bg-blue-100 text-blue-700 border-blue-300'       }
+    : { label: 'Titular',    cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]'       }
 
   const idadeCfg = ehMenor
     ? { label: `Menor · ${idade} anos`, cls: 'bg-amber-100 text-amber-700 border-amber-300' }
@@ -553,7 +553,7 @@ export default function BolsistaDetalhe() {
 
   const toastCls = toast?.type === 'ok'  ? 'bg-green-50 text-green-800 border-green-200'
                  : toast?.type === 'err' ? 'bg-red-50 text-red-800 border-red-200'
-                 : 'bg-blue-50 text-blue-800 border-blue-200'
+                 : 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]'
 
   const colegaIdx  = colegas.findIndex(c => c.id === bolsistaId)
   const prevColega = colegaIdx > 0                   ? colegas[colegaIdx - 1] : null
@@ -609,7 +609,7 @@ export default function BolsistaDetalhe() {
           <div className="flex-1 min-w-0">
             <h1 className="text-xl font-bold text-white leading-tight">{bolsista.nome_completo}</h1>
             <div className="flex items-center gap-2 mt-1.5 flex-wrap">
-              <span className="text-[10px] font-bold font-mono text-blue-300 bg-blue-950/50 border border-blue-700/40 px-2 py-0.5 rounded">
+              <span className="text-[10px] font-bold font-mono text-[color:var(--dv-texto-suave-escuro)] bg-[color:var(--dv-marinho)] border border-[color:var(--dv-primaria-hover)] px-2 py-0.5 rounded">
                 {bolsista.codigo_bolsista}
               </span>
               {colegas.length > 1 && (
@@ -724,7 +724,7 @@ export default function BolsistaDetalhe() {
                     href={bolsista.termo_adesao_url}
                     target="_blank"
                     rel="noreferrer"
-                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200 rounded hover:bg-blue-50 transition-colors"
+                    className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" /> Visualizar
                   </a>
@@ -772,7 +772,7 @@ export default function BolsistaDetalhe() {
                   placeholder="Ex: 009/2026"
                   value={dados.numero_contrato}
                   onChange={e => setDados(d => ({ ...d, numero_contrato: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                 />
               </div>
               <div>
@@ -784,7 +784,7 @@ export default function BolsistaDetalhe() {
                   placeholder="Ex: 01/2026"
                   value={dados.numero_edital}
                   onChange={e => setDados(d => ({ ...d, numero_edital: e.target.value }))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                 />
               </div>
             </div>
@@ -798,7 +798,7 @@ export default function BolsistaDetalhe() {
                 placeholder="Ex: EMEF Serafim Derenzi"
                 value={nomeEscola}
                 onChange={e => setNomeEscola(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
               />
             </div>
 
@@ -813,7 +813,7 @@ export default function BolsistaDetalhe() {
                     placeholder="Nome completo do responsável"
                     value={nomeResponsavel}
                     onChange={e => setNomeResponsavel(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -826,7 +826,7 @@ export default function BolsistaDetalhe() {
                       placeholder="000.000.000-00"
                       value={cpfResponsavel}
                       onChange={e => setCpfResponsavel(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                     />
                   </div>
                   <div>
@@ -838,7 +838,7 @@ export default function BolsistaDetalhe() {
                       placeholder="Número do documento"
                       value={docResponsavel}
                       onChange={e => setDocResponsavel(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -853,7 +853,7 @@ export default function BolsistaDetalhe() {
                 type="date"
                 value={dados.data_assinatura}
                 onChange={e => setDados(d => ({ ...d, data_assinatura: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
               />
             </div>
 

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardCheck, CheckCircle } from 'lucide-react'
+import { CheckCircle } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 
 export function RedefinirSenhaAvaliador() {
@@ -53,14 +53,11 @@ export function RedefinirSenhaAvaliador() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0c2358 0%, #1a3f72 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--dv-marinho)' }}>
       <header className="px-6 py-4">
         <div className="max-w-md mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/20">
-            <ClipboardCheck className="w-6 h-6 text-white" />
-          </div>
+          <img src="/identidade/facitec-conecta-assinatura-branca.svg" alt="FACITEC Conecta" className="h-10 w-auto" />
           <div>
-            <p className="text-white font-bold text-base leading-tight">FACITEC Conecta</p>
             <p className="text-white/60 text-xs leading-tight">Portal de Avaliadores</p>
           </div>
         </div>
@@ -94,7 +91,7 @@ export function RedefinirSenhaAvaliador() {
                 <button
                   type="button"
                   onClick={() => navigate('/avaliador/login')}
-                  className="text-sm text-blue-600 hover:underline"
+                  className="text-sm text-[color:var(--dv-primaria-texto)] hover:underline"
                 >
                   ← Voltar ao login
                 </button>
@@ -125,7 +122,7 @@ export function RedefinirSenhaAvaliador() {
                       placeholder="Mínimo 6 caracteres"
                       required
                       autoFocus
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                     />
                   </div>
                   <div className="space-y-1">
@@ -138,13 +135,13 @@ export function RedefinirSenhaAvaliador() {
                       onChange={e => setConfirm(e.target.value)}
                       placeholder="Repita a senha"
                       required
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                     />
                   </div>
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full py-2.5 px-4 bg-blue-600 text-white text-sm font-semibold rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    className="w-full py-2.5 px-4 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-md hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                   >
                     {loading ? 'Salvando...' : 'Salvar nova senha'}
                   </button>

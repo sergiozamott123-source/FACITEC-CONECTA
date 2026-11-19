@@ -269,7 +269,7 @@ export function ConvocacaoRecurso() {
           <div className="min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               {selected.codigo_recurso && (
-                <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
                   {selected.codigo_recurso}
                 </span>
               )}
@@ -319,7 +319,7 @@ export function ConvocacaoRecurso() {
                         {/* Cabeçalho do critério */}
                         <div className="flex items-center gap-2 flex-wrap">
                           {criterio.codigo && (
-                            <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                            <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded">
                               {criterio.codigo}
                             </span>
                           )}
@@ -415,7 +415,7 @@ export function ConvocacaoRecurso() {
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       {rec.codigo_recurso && (
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                        <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
                           {rec.codigo_recurso}
                         </span>
                       )}
@@ -464,7 +464,7 @@ export function ConvocacaoRecurso() {
                     href={doc.url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-1 rounded transition-colors"
                   >
                     <Eye className="w-3 h-3" />
                     Visualizar

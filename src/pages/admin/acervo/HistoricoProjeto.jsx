@@ -128,7 +128,7 @@ export function HistoricoProjeto({ projetoId }) {
                         href={doc.url}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                        className="inline-flex items-center gap-1 text-xs text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)]"
                       >
                         <FileText className="w-3 h-3" /> Ver PDF ({TIPO_DOC[doc.tipo] ?? doc.tipo})
                       </a>

@@ -26,20 +26,20 @@ function WizardStepIndicator({ current }) {
             <div className="flex flex-col items-center gap-1 shrink-0">
               <div className={[
                 'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
-                done || active ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-400',
-                active ? 'ring-4 ring-blue-100' : '',
+                done || active ? 'bg-[color:var(--dv-primaria)] text-white' : 'bg-gray-100 text-gray-400',
+                active ? 'ring-4 ring-[color:var(--dv-primaria-clara)]' : '',
               ].join(' ')}>
                 {done ? <Check className="w-3.5 h-3.5" /> : s.n}
               </div>
               <span className={[
                 'text-xs hidden sm:block whitespace-nowrap',
-                active ? 'text-blue-700 font-semibold' : done ? 'text-gray-700' : 'text-gray-400',
+                active ? 'text-[color:var(--dv-primaria-texto)] font-semibold' : done ? 'text-gray-700' : 'text-gray-400',
               ].join(' ')}>
                 {s.label}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`flex-1 h-0.5 mx-2 mb-4 transition-colors ${done ? 'bg-blue-600' : 'bg-gray-200'}`} />
+              <div className={`flex-1 h-0.5 mx-2 mb-4 transition-colors ${done ? 'bg-[color:var(--dv-primaria)]' : 'bg-gray-200'}`} />
             )}
           </Fragment>
         )
@@ -282,7 +282,7 @@ export function RecursoWizard() {
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
         <div className="text-center space-y-3">
           <p className="text-red-600 text-sm">{error ?? 'Projeto não encontrado.'}</p>
-          <button onClick={() => navigate('/candidato/meus-recursos')} className="text-blue-600 text-sm underline">
+          <button onClick={() => navigate('/candidato/meus-recursos')} className="text-[color:var(--dv-primaria-texto)] text-sm underline">
             ← Voltar
           </button>
         </div>
@@ -302,7 +302,7 @@ export function RecursoWizard() {
             Meus recursos
           </button>
           <div className="flex items-center gap-1.5">
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
             <span className="text-sm font-semibold text-gray-700">Recurso</span>
             {saving && <span className="text-xs text-gray-400">· salvando...</span>}
           </div>
@@ -316,11 +316,11 @@ export function RecursoWizard() {
         <div className="max-w-2xl mx-auto space-y-4">
 
           {/* Projeto banner */}
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
-            <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-2">Projeto</p>
+          <div className="bg-[color:var(--dv-marinho)] rounded-xl p-5 text-white">
+            <p className="text-xs font-semibold text-[color:var(--dv-texto-suave-escuro)] uppercase tracking-wide mb-2">Projeto</p>
             <h1 className="text-base font-bold leading-snug">{projeto.titulo}</h1>
             {projeto.codigo_facitec && (
-              <p className="text-blue-200 text-xs mt-1">Código: {projeto.codigo_facitec}</p>
+              <p className="text-[color:var(--dv-texto-suave-escuro)] text-xs mt-1">Código: {projeto.codigo_facitec}</p>
             )}
           </div>
 
@@ -362,7 +362,7 @@ export function RecursoWizard() {
                     onChange={e => setDestinatario(e.target.value)}
                     placeholder="Ex: Comissão de Recursos do FACITEC"
                     rows={3}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-gray-300"
+                    className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] resize-none placeholder:text-gray-300"
                   />
                 </div>
               </div>
@@ -371,7 +371,7 @@ export function RecursoWizard() {
                 <button
                   onClick={goNext}
                   disabled={saving}
-                  className="flex items-center gap-2 py-2.5 px-5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex items-center gap-2 py-2.5 px-5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
                 >
                   Próxima etapa
                   <ArrowRight className="w-4 h-4" />
@@ -400,7 +400,7 @@ export function RecursoWizard() {
                   return (
                     <div
                       key={c.id}
-                      className={`bg-white rounded-xl border p-4 transition-all ${checked ? 'border-blue-300' : 'border-gray-200'}`}
+                      className={`bg-white rounded-xl border p-4 transition-all ${checked ? 'border-[color:var(--dv-borda)]' : 'border-gray-200'}`}
                     >
                       <div className="flex items-start gap-3">
                         <input
@@ -413,7 +413,7 @@ export function RecursoWizard() {
                               [c.id]: { ...prev[c.id], checked: e.target.checked },
                             }))
                           }
-                          className="mt-0.5 w-4 h-4 rounded text-blue-600 accent-blue-600 cursor-pointer shrink-0"
+                          className="mt-0.5 w-4 h-4 rounded text-[color:var(--dv-primaria-texto)] accent-[color:var(--dv-primaria)] cursor-pointer shrink-0"
                         />
                         <div className="flex-1 min-w-0">
                           <div className="flex items-start gap-2">
@@ -422,7 +422,7 @@ export function RecursoWizard() {
                               className="flex-1 text-sm font-semibold text-gray-900 cursor-pointer leading-snug"
                             >
                               {c.codigo && (
-                                <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mr-2">
+                                <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded mr-2">
                                   {c.codigo}
                                 </span>
                               )}
@@ -432,7 +432,7 @@ export function RecursoWizard() {
                               <button
                                 type="button"
                                 onClick={() => setTooltipOpen(isTooltipOpen ? null : c.id)}
-                                className="text-gray-400 hover:text-blue-600 transition-colors shrink-0 mt-0.5"
+                                className="text-gray-400 hover:text-[color:var(--dv-primaria-texto)] transition-colors shrink-0 mt-0.5"
                                 title="Ver descrição oficial do critério"
                               >
                                 <HelpCircle className="w-4 h-4" />
@@ -441,8 +441,8 @@ export function RecursoWizard() {
                           </div>
 
                           {isTooltipOpen && c.descricao && (
-                            <div className="mt-2 rounded-lg bg-blue-50 border border-blue-200 px-3 py-2">
-                              <p className="text-xs text-blue-800 leading-relaxed">{c.descricao}</p>
+                            <div className="mt-2 rounded-lg bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-3 py-2">
+                              <p className="text-xs text-[color:var(--dv-primaria-texto)] leading-relaxed">{c.descricao}</p>
                             </div>
                           )}
 
@@ -461,7 +461,7 @@ export function RecursoWizard() {
                                 }
                                 placeholder="Descreva os motivos da contestação deste critério..."
                                 rows={4}
-                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none placeholder:text-gray-300"
+                                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] resize-none placeholder:text-gray-300"
                               />
                             </div>
                           )}
@@ -483,7 +483,7 @@ export function RecursoWizard() {
                 <button
                   onClick={goNext}
                   disabled={saving}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
                 >
                   Revisar recurso
                   <ArrowRight className="w-4 h-4" />
@@ -552,7 +552,7 @@ export function RecursoWizard() {
                 </button>
                 <button
                   onClick={goNext}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] transition-colors"
                 >
                   Prosseguir para assinatura
                   <ArrowRight className="w-4 h-4" />
@@ -577,7 +577,7 @@ export function RecursoWizard() {
                     value={nomeAssinatura}
                     onChange={e => setNomeAssinatura(e.target.value)}
                     placeholder="Seu nome completo"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent"
                   />
                 </div>
 
@@ -586,7 +586,7 @@ export function RecursoWizard() {
                     type="checkbox"
                     checked={declaracaoAceita}
                     onChange={e => setDeclaracaoAceita(e.target.checked)}
-                    className="mt-0.5 w-4 h-4 rounded text-blue-600 accent-blue-600 shrink-0 cursor-pointer"
+                    className="mt-0.5 w-4 h-4 rounded text-[color:var(--dv-primaria-texto)] accent-[color:var(--dv-primaria)] shrink-0 cursor-pointer"
                   />
                   <span className="text-sm text-gray-700 leading-relaxed">
                     Declaro que as informações acima são verdadeiras e de minha responsabilidade.
@@ -606,7 +606,7 @@ export function RecursoWizard() {
                 <button
                   onClick={handleEnviar}
                   disabled={sending || !nomeAssinatura.trim() || !declaracaoAceita}
-                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="flex-1 flex items-center justify-center gap-2 py-2.5 px-5 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   <Send className="w-4 h-4" />
                   {sending ? 'Enviando...' : 'Assinar e Enviar'}
@@ -629,7 +629,7 @@ export function RecursoWizard() {
                 {codigoRecurso && (
                   <div className="rounded-lg bg-gray-50 border border-gray-200 px-6 py-3 inline-block">
                     <p className="text-xs text-gray-500 mb-0.5">Código do recurso</p>
-                    <p className="text-2xl font-bold text-blue-700">{codigoRecurso}</p>
+                    <p className="text-2xl font-bold text-[color:var(--dv-primaria-texto)]">{codigoRecurso}</p>
                   </div>
                 )}
                 <p className="text-sm text-gray-600 leading-relaxed max-w-sm mx-auto">
@@ -638,7 +638,7 @@ export function RecursoWizard() {
                 </p>
                 <button
                   onClick={() => navigate('/candidato/meus-recursos')}
-                  className="text-sm text-blue-600 hover:underline font-medium"
+                  className="text-sm text-[color:var(--dv-primaria-texto)] hover:underline font-medium"
                 >
                   ← Voltar aos meus recursos
                 </button>

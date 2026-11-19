@@ -1,15 +1,11 @@
-import { Building2 } from 'lucide-react'
 
 export function InscricaoLayout({ children }) {
   return (
-    <div className="min-h-screen flex flex-col" style={{ background: 'linear-gradient(135deg, #0c2358 0%, #1a3f72 100%)' }}>
+    <div className="min-h-screen flex flex-col" style={{ background: 'var(--dv-marinho)' }}>
       <header className="px-6 py-4 shrink-0">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-white/20">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
+          <img src="/identidade/facitec-conecta-assinatura-branca.svg" alt="FACITEC Conecta" className="h-10 w-auto" />
           <div>
-            <p className="text-white font-bold text-base leading-tight">FACITEC Conecta</p>
             <p className="text-white/60 text-xs leading-tight">Portal de Inscrições PibicJr</p>
           </div>
         </div>

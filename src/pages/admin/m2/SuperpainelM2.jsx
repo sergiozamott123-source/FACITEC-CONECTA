@@ -117,7 +117,7 @@ function ProgressBar({ steps }) {
 function TipoBadge({ tipo }) {
   const cfg = tipo === 'voluntario'
     ? { label: 'Voluntário', cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]' }
-    : { label: 'Titular',    cls: 'bg-blue-50 text-blue-700 border-blue-200' }
+    : { label: 'Titular',    cls: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]' }
   return (
     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium border ${cfg.cls}`}>
       {cfg.label}
@@ -159,7 +159,7 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">{orientador.nome_completo}</p>
           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-            <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded font-mono">
+            <span className="text-[10px] font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded font-mono">
               {orientador.codigo_orientador}
             </span>
             {projeto ? (
@@ -226,7 +226,7 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
                   key={b.id}
                   onClick={() => clicavel && navigate(`/admin/${slug}/${ano}/m2/bolsista/${b.id}`)}
                   className={`border border-gray-100 rounded-lg p-2.5 bg-gray-50 space-y-1 transition-colors ${
-                    clicavel ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-200' : ''
+                    clicavel ? 'cursor-pointer hover:bg-[color:var(--dv-primaria-clara)] hover:border-[color:var(--dv-borda)]' : ''
                   }`}
                 >
                   <p className="text-[10px] font-mono text-gray-400 leading-none">
@@ -277,7 +277,7 @@ function OrientadorCard({ item, ano, slug, onGerarRelatorio, gerando }) {
             <button
               onClick={() => projeto && navigate(`/admin/${slug}/${ano}/m2/contratos/${projeto.id}`)}
               disabled={!projeto}
-              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium bg-[color:var(--dv-primaria)] text-white rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
             >
               <FileText className="w-3 h-3" />
               Gerar contrato
@@ -515,9 +515,9 @@ export default function SuperpainelM2() {
               icon={Users}
               label="Total de orientadores"
               value={totalOrientadores}
-              valueColor="text-blue-600"
-              bg="bg-blue-50"
-              border="border-blue-200"
+              valueColor="text-[color:var(--dv-primaria-texto)]"
+              bg="bg-[color:var(--dv-primaria-clara)]"
+              border="border-[color:var(--dv-borda)]"
             />
             <MetricCard
               icon={AlertCircle}

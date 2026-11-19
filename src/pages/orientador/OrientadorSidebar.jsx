@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { LayoutDashboard, User, FolderOpen, Users, FileText, ClipboardList, Video, LogOut, ArrowLeftRight } from 'lucide-react'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
-import LogoFacitecConecta from '@/components/orientador/LogoFacitecConecta'
 import { listarCiclos, listarRelatoriosDoOrientador, detectarCicloAtual } from '@/lib/relatorioMensal'
 import { listarCiclosVideo, listarVideosDoOrientador, statusVideoNoCiclo } from '@/lib/videoAcompanhamento'
 
@@ -69,17 +68,17 @@ export function OrientadorSidebar() {
   return (
     <aside
       className="w-[200px] min-h-screen flex flex-col shrink-0 fixed left-0 top-0 z-20"
-      style={{ background: '#0D1F3C' }}
+      style={{ background: 'var(--dv-marinho)' }}
     >
       {/* Logo */}
       <div className="px-4 pt-6 pb-5 border-b border-white/10">
-        <LogoFacitecConecta size="lg" inverted />
+        <img src="/identidade/facitec-conecta-assinatura-branca.svg" alt="FACITEC Conecta" className="h-12 w-auto" />
       </div>
 
       {/* Orientador info */}
       <div className="px-4 py-3 border-b border-white/10">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center shrink-0">
+          <div className="w-8 h-8 rounded-full bg-[color:var(--dv-primaria)] flex items-center justify-center shrink-0">
             <span className="text-white text-xs font-bold">{initials}</span>
           </div>
           <div className="min-w-0">

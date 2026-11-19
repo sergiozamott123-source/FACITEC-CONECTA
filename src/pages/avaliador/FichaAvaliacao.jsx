@@ -196,7 +196,7 @@ export function FichaAvaliacao() {
           <p className="text-red-600 text-sm">{error}</p>
           <button
             onClick={() => navigate('/avaliador/projetos')}
-            className="text-blue-600 text-sm underline"
+            className="text-[color:var(--dv-primaria-texto)] text-sm underline"
           >
             Voltar à lista de projetos
           </button>
@@ -218,7 +218,7 @@ export function FichaAvaliacao() {
             Voltar
           </button>
           <div className="flex items-center gap-1.5">
-            <ClipboardCheck className="w-4 h-4 text-blue-600" />
+            <ClipboardCheck className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
             <span className="text-sm font-semibold text-gray-700">Ficha de Avaliação</span>
           </div>
           <button
@@ -235,15 +235,15 @@ export function FichaAvaliacao() {
         <div className="max-w-2xl mx-auto space-y-4">
 
           {/* Cabeçalho do projeto */}
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
-            <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-2">
+          <div className="bg-[color:var(--dv-marinho)] rounded-xl p-5 text-white">
+            <p className="text-xs font-semibold text-[color:var(--dv-texto-suave-escuro)] uppercase tracking-wide mb-2">
               Projeto para avaliação
             </p>
             <h1 className="text-lg font-bold leading-snug">
               {avaliacao?.projeto?.titulo}
             </h1>
             {avaliacao?.projeto?.area_conhecimento && (
-              <p className="text-blue-200 text-sm mt-1">{avaliacao.projeto.area_conhecimento}</p>
+              <p className="text-[color:var(--dv-texto-suave-escuro)] text-sm mt-1">{avaliacao.projeto.area_conhecimento}</p>
             )}
             {locked && (
               <div className="mt-3 bg-white/15 rounded-lg px-3 py-2">
@@ -293,7 +293,7 @@ export function FichaAvaliacao() {
                   <div key={c.id} className="bg-white rounded-xl border border-gray-200 p-4">
                     <div className="mb-3">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+                        <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
                           {c.codigo}
                         </span>
                         <span className="text-sm font-semibold text-gray-900">{c.nome}</span>
@@ -318,8 +318,8 @@ export function FichaAvaliacao() {
                               onClick={() => !locked && setNotas(prev => ({ ...prev, [c.id]: nivel.valor }))}
                               className={`flex items-center justify-between gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all border
                                 ${ativo
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
+                                  ? 'bg-[color:var(--dv-primaria)] text-white border-[color:var(--dv-primaria)] shadow-sm'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-[color:var(--dv-primaria-clara)] hover:text-[color:var(--dv-primaria-texto)] hover:border-[color:var(--dv-borda)]'
                                 }
                                 ${locked ? 'cursor-default opacity-70' : 'cursor-pointer'}
                               `}
@@ -343,8 +343,8 @@ export function FichaAvaliacao() {
                               onClick={() => !locked && setNotas(prev => ({ ...prev, [c.id]: v }))}
                               className={`w-11 h-11 rounded-lg text-sm font-semibold transition-all border
                                 ${ativo
-                                  ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-blue-50 hover:text-blue-700 hover:border-blue-300'
+                                  ? 'bg-[color:var(--dv-primaria)] text-white border-[color:var(--dv-primaria)] shadow-sm'
+                                  : 'bg-gray-50 text-gray-600 border-gray-200 hover:bg-[color:var(--dv-primaria-clara)] hover:text-[color:var(--dv-primaria-texto)] hover:border-[color:var(--dv-borda)]'
                                 }
                                 ${locked ? 'cursor-default opacity-70' : 'cursor-pointer'}
                               `}
@@ -357,7 +357,7 @@ export function FichaAvaliacao() {
                     )}
 
                     {selecionada && (
-                      <p className="text-xs text-blue-600 font-semibold mt-2">
+                      <p className="text-xs text-[color:var(--dv-primaria-texto)] font-semibold mt-2">
                         Selecionado: {notaSelecionada} ponto{notaSelecionada !== 1 ? 's' : ''}
                       </p>
                     )}
@@ -382,7 +382,7 @@ export function FichaAvaliacao() {
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-3xl font-bold text-blue-700 leading-none">
+                <p className="text-3xl font-bold text-[color:var(--dv-primaria-texto)] leading-none">
                   {notaTotal % 1 === 0 ? notaTotal : notaTotal.toFixed(1).replace('.', ',')}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">de {notaMaxTotal} pontos</p>
@@ -390,7 +390,7 @@ export function FichaAvaliacao() {
             </div>
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                className="h-full bg-[color:var(--dv-primaria)] rounded-full transition-all duration-500"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -407,7 +407,7 @@ export function FichaAvaliacao() {
                   key={r.value}
                   className={`flex items-center gap-3 p-3 rounded-lg border transition-all
                     ${recomendacaoFinal === r.value
-                      ? 'border-blue-500 bg-blue-50'
+                      ? 'border-[color:var(--dv-primaria)] bg-[color:var(--dv-primaria-clara)]'
                       : 'border-gray-200 hover:border-gray-300 bg-white'
                     }
                     ${locked ? 'cursor-default' : 'cursor-pointer'}
@@ -420,7 +420,7 @@ export function FichaAvaliacao() {
                     checked={recomendacaoFinal === r.value}
                     onChange={() => !locked && setRecomendacaoFinal(r.value)}
                     disabled={locked}
-                    className="text-blue-600 accent-blue-600"
+                    className="text-[color:var(--dv-primaria-texto)] accent-[color:var(--dv-primaria)]"
                   />
                   <span className="text-sm font-medium text-gray-900">{r.label}</span>
                 </label>
@@ -442,7 +442,7 @@ export function FichaAvaliacao() {
               disabled={locked}
               placeholder="Escreva aqui suas observações sobre o projeto..."
               rows={5}
-              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none disabled:bg-gray-50 disabled:text-gray-500 placeholder:text-gray-300"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] resize-none disabled:bg-gray-50 disabled:text-gray-500 placeholder:text-gray-300"
             />
           </div>
 
@@ -460,7 +460,7 @@ export function FichaAvaliacao() {
               <button
                 onClick={() => handleSave(false)}
                 disabled={saving}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-blue-600 text-white text-sm font-semibold rounded-xl hover:bg-blue-700 disabled:opacity-50 transition-colors"
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-xl hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
               >
                 <Send className="w-4 h-4" />
                 {saving ? 'Enviando...' : 'Enviar definitivamente'}
@@ -473,7 +473,7 @@ export function FichaAvaliacao() {
               </p>
               <button
                 onClick={() => navigate('/avaliador/projetos')}
-                className="text-sm text-blue-600 underline underline-offset-2"
+                className="text-sm text-[color:var(--dv-primaria-texto)] underline underline-offset-2"
               >
                 Voltar à lista de projetos
               </button>

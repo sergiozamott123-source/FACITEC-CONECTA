@@ -7,8 +7,8 @@ import { supabase } from '@/lib/supabase'
 const RECURSO_STATUS = {
   rascunho:   { label: 'Rascunho salvo', classes: 'bg-amber-50 text-amber-700 border-amber-200',  btnLabel: 'Continuar Rascunho' },
   enviado:    { label: 'Enviado',         classes: 'bg-green-50 text-green-700 border-green-200',  btnLabel: 'Ver Recurso'        },
-  em_analise: { label: 'Em análise',      classes: 'bg-blue-50  text-blue-700  border-blue-200',   btnLabel: 'Ver Recurso'        },
-  respondido: { label: 'Respondido',      classes: 'bg-purple-50 text-purple-700 border-purple-200', btnLabel: 'Ver Resposta'     },
+  em_analise: { label: 'Em análise',      classes: 'bg-[color:var(--dv-primaria-clara)]  text-[color:var(--dv-primaria-texto)]  border-[color:var(--dv-borda)]',   btnLabel: 'Ver Recurso'        },
+  respondido: { label: 'Respondido',      classes: 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]', btnLabel: 'Ver Resposta'     },
 }
 
 function StatusBadge({ status }) {
@@ -85,7 +85,7 @@ export function MeusRecursos() {
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[color:var(--dv-primaria)]">
               <FileText className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -106,14 +106,14 @@ export function MeusRecursos() {
       <main className="flex-1 px-4 py-6">
         <div className="max-w-2xl mx-auto space-y-5">
 
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
-            <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">
+          <div className="bg-[color:var(--dv-marinho)] rounded-xl p-5 text-white">
+            <p className="text-xs font-semibold text-[color:var(--dv-texto-suave-escuro)] uppercase tracking-wide mb-1">
               FACITEC Conecta
             </p>
             <h1 className="text-xl font-bold mb-1">
               Olá, {orientador?.nome_completo?.split(' ')[0]}!
             </h1>
-            <p className="text-blue-200 text-sm">
+            <p className="text-[color:var(--dv-texto-suave-escuro)] text-sm">
               {loading ? '...' : `${projetos.length} projeto(s) vinculado(s) ao seu cadastro`}
             </p>
           </div>
@@ -147,7 +147,7 @@ export function MeusRecursos() {
                     <button
                       key={proj.id}
                       onClick={() => navigate(`/candidato/recurso/${proj.id}`)}
-                      className="w-full bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-blue-300 hover:shadow-sm transition-all"
+                      className="w-full bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-[color:var(--dv-borda)] hover:shadow-sm transition-all"
                     >
                       <div className="flex items-start justify-between gap-3">
                         <div className="flex-1 min-w-0">
@@ -167,7 +167,7 @@ export function MeusRecursos() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-blue-600 font-medium mt-2">{btnLabel} →</p>
+                          <p className="text-xs text-[color:var(--dv-primaria-texto)] font-medium mt-2">{btnLabel} →</p>
                         </div>
                         <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 mt-1" />
                       </div>

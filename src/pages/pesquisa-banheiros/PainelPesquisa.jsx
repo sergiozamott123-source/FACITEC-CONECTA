@@ -316,7 +316,7 @@ function Codigos() {
             <input id="pb-qtd" type="number" min={1} max={200} value={qtd} onChange={(e) => setQtd(e.target.value)} className={input} /></div>
           <div><label htmlFor="pb-val" className="block text-xs font-medium text-slate-600 mb-1">Validade (dias)</label>
             <input id="pb-val" type="number" min={1} max={365} value={validade} onChange={(e) => setValidade(e.target.value)} placeholder="sem validade" className={input} /></div>
-          <button disabled={ocupado || !(qtd >= 1 && qtd <= 200)} className="py-2 rounded-md bg-[#0D1F3C] text-white text-sm font-semibold disabled:opacity-40">{ocupado ? 'Gerando…' : 'Gerar'}</button>
+          <button disabled={ocupado || !(qtd >= 1 && qtd <= 200)} className="py-2 rounded-md bg-[color:var(--dv-marinho)] text-white text-sm font-semibold disabled:opacity-40">{ocupado ? 'Gerando…' : 'Gerar'}</button>
         </form>
         {erro && <div className="mt-3 rounded-md bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-800">{erro}</div>}
       </section>

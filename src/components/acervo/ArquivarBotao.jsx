@@ -17,7 +17,7 @@ export function ArquivarBotao({ arquivado, loading, onClick }) {
       type="button"
       disabled={loading}
       onClick={onClick}
-      className="inline-flex items-center gap-1 text-xs font-medium text-blue-700 border border-blue-200 rounded-md px-2 py-1 hover:bg-blue-50 disabled:opacity-50 transition-colors"
+      className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded-md px-2 py-1 hover:bg-[color:var(--dv-primaria-clara)] disabled:opacity-50 transition-colors"
     >
       {loading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Archive className="w-3 h-3" />}
       {loading ? 'Arquivando…' : 'Arquivar no Acervo'}

@@ -67,7 +67,7 @@ function ExtratoRow({ av, onUpload, uploading }) {
             href={url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800 transition-colors"
+            className="inline-flex items-center gap-1 text-xs text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] transition-colors"
           >
             <Download className="w-3 h-3" />
             Download
@@ -307,7 +307,7 @@ export function Avaliacoes() {
                             href={av.extrato_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                            className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-1 rounded transition-colors"
                           >
                             <Eye className="w-3 h-3" />
                             Ver

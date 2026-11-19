@@ -125,7 +125,7 @@ export function FormularioInscricao() {
           <StepIndicator current={step} />
 
           {rascunhoRecuperado && (
-            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-md bg-blue-50 border border-blue-200 text-sm text-blue-800">
+            <div className="flex items-center gap-2 mb-4 px-3 py-2 rounded-md bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] text-sm text-[color:var(--dv-primaria-texto)]">
               <RotateCcw className="w-4 h-4 shrink-0" />
               Rascunho recuperado — continue de onde parou.
             </div>

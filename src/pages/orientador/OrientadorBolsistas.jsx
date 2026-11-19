@@ -169,7 +169,7 @@ function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uplo
             ? 'border-gray-200 bg-gray-50 cursor-not-allowed opacity-50'
             : hasFile
               ? 'border-green-300 bg-green-50 hover:bg-green-100 cursor-pointer'
-              : 'border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30 cursor-pointer'
+              : 'border-dashed border-gray-300 hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-clara)] cursor-pointer'
         }`}
         onClick={() => !disabled && ref.current?.click()}
       >
@@ -180,7 +180,7 @@ function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uplo
               : <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
             }
             <span className="text-xs text-gray-600 truncate flex-1">{filename}</span>
-            <span className="text-[10px] text-blue-600 shrink-0">Substituir</span>
+            <span className="text-[10px] text-[color:var(--dv-primaria-texto)] shrink-0">Substituir</span>
           </>
         ) : (
           <>
@@ -203,7 +203,7 @@ function DocUploadField({ label, reference, fieldKey, currentUrl, onUpload, uplo
           e.target.value = ''
         }}
       />
-      {uploading && <p className="text-[10px] text-blue-500">Enviando...</p>}
+      {uploading && <p className="text-[10px] text-[color:var(--dv-primaria-texto)]">Enviando...</p>}
     </div>
   )
 }
@@ -274,13 +274,13 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
     onDelete(bolsista.id)
   }
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent'
 
   return (
     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
       <div className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors" onClick={onToggle}>
-        <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-          <span className="text-blue-700 text-xs font-bold">{iniciais(form.nome_completo)}</span>
+        <div className="w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] flex items-center justify-center shrink-0">
+          <span className="text-[color:var(--dv-primaria-texto)] text-xs font-bold">{iniciais(form.nome_completo)}</span>
         </div>
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-gray-900 truncate">{form.nome_completo}</p>
@@ -460,7 +460,7 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
           </div>
 
           {solicitacao?.status === 'pendente' && (
-            <div className="rounded-lg bg-blue-50 border border-blue-200 px-3 py-2 flex items-start gap-2 text-xs text-blue-800">
+            <div className="rounded-lg bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-3 py-2 flex items-start gap-2 text-xs text-[color:var(--dv-primaria-texto)]">
               <ArrowLeftRight className="w-3.5 h-3.5 shrink-0 mt-0.5" />
               <p>Substituição solicitada — aguardando aprovação da Secretaria Executiva.</p>
             </div>
@@ -482,7 +482,7 @@ function BolsistaCard({ bolsista, projeto, expanded, onToggle, onUpdate, onDelet
                   : solicitacao?.status === 'pendente' ? 'Já existe um pedido pendente para este bolsista.'
                   : undefined
               }
-              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 hover:bg-blue-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-blue-50"
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] hover:bg-[color:var(--dv-primaria-clara)] transition-colors disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[color:var(--dv-primaria-clara)]"
             >
               <ArrowLeftRight className="w-3.5 h-3.5" />
               {solicitacao?.status === 'pendente' ? 'Aguardando aprovação' : 'Substituir bolsista'}
@@ -579,25 +579,25 @@ function NovoBolsistaCard({ projeto, orientador, onInserted, onCancel, titulares
     }
   }
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent'
 
   return (
-    <div className="bg-white rounded-xl border-2 border-blue-300 overflow-hidden">
-      <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border-b border-blue-100">
-        <div className="w-9 h-9 rounded-full bg-blue-200 flex items-center justify-center shrink-0">
-          <span className="text-blue-600 text-xs font-bold">
+    <div className="bg-white rounded-xl border-2 border-[color:var(--dv-borda)] overflow-hidden">
+      <div className="flex items-center gap-3 px-4 py-3 bg-[color:var(--dv-primaria-clara)] border-b border-[color:var(--dv-borda)]">
+        <div className="w-9 h-9 rounded-full bg-[color:var(--dv-primaria-clara)] flex items-center justify-center shrink-0">
+          <span className="text-[color:var(--dv-primaria-texto)] text-xs font-bold">
             {form.nome_completo ? iniciais(form.nome_completo) : '+'}
           </span>
         </div>
         <div className="flex-1">
-          <p className="text-sm font-semibold text-blue-800">
+          <p className="text-sm font-semibold text-[color:var(--dv-primaria-texto)]">
             {form.nome_completo || 'Novo bolsista'}
           </p>
-          <p className="text-xs text-blue-500">
+          <p className="text-xs text-[color:var(--dv-primaria-texto)]">
             {saving ? 'Salvando...' : 'Preencha o nome para salvar automaticamente'}
           </p>
         </div>
-        <button onClick={onCancel} className="text-blue-400 hover:text-blue-600 transition-colors" title="Cancelar">
+        <button onClick={onCancel} className="text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] transition-colors" title="Cancelar">
           <X className="w-4 h-4" />
         </button>
       </div>
@@ -755,7 +755,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
     })
   }
 
-  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent'
+  const inputCls = 'w-full px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)] focus:border-transparent'
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
@@ -802,7 +802,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
                 href={OFICIO_MODELO_URL}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] font-medium text-blue-600 hover:underline shrink-0"
+                className="text-[11px] font-medium text-[color:var(--dv-primaria-texto)] hover:underline shrink-0"
               >
                 Baixar modelo do ofício
               </a>
@@ -816,7 +816,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
                 </button>
               </div>
             ) : (
-              <label className="flex items-center gap-2 border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50/30 rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors">
+              <label className="flex items-center gap-2 border border-dashed border-gray-300 hover:border-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-clara)] rounded-md px-3 py-2.5 text-sm cursor-pointer transition-colors">
                 <Upload className="w-4 h-4 text-gray-400 shrink-0" />
                 <span className="text-gray-400">Anexar ofício (PDF, JPG, PNG — máx. 5MB)</span>
                 <input
@@ -837,7 +837,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
                   type="button"
                   onClick={() => setModo('novo')}
                   className={`px-3 py-2 rounded-lg text-xs font-semibold border text-left transition-colors ${
-                    modo === 'novo' ? 'bg-blue-50 border-blue-400 text-blue-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                    modo === 'novo' ? 'bg-[color:var(--dv-primaria-clara)] border-[color:var(--dv-primaria)] text-[color:var(--dv-primaria-texto)]' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   Cadastrar um bolsista novo
@@ -846,7 +846,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
                   type="button"
                   onClick={() => setModo('voluntario')}
                   className={`px-3 py-2 rounded-lg text-xs font-semibold border text-left transition-colors ${
-                    modo === 'voluntario' ? 'bg-purple-50 border-purple-400 text-purple-800' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
+                    modo === 'voluntario' ? 'bg-[color:var(--dv-primaria-clara)] border-[color:var(--dv-primaria)] text-[color:var(--dv-primaria-texto)]' : 'bg-white border-gray-300 text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   Promover um voluntário já cadastrado
@@ -877,7 +877,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
                 ))}
               </select>
               {voluntarioEscolhido && (
-                <div className="mt-2 text-xs px-2.5 py-1.5 rounded-md bg-purple-50 text-purple-700 border border-purple-200">
+                <div className="mt-2 text-xs px-2.5 py-1.5 rounded-md bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)]">
                   {voluntarioEscolhido.nome_completo} passará a titular, mantendo o mesmo cadastro e documentos.
                 </div>
               )}
@@ -1015,7 +1015,7 @@ function SubstituirModal({ bolsista, orientador, voluntariosDisponiveis = [], on
             Cancelar
           </button>
           <button onClick={handleConfirm} disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50">
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-white bg-[color:var(--dv-primaria)] rounded-lg hover:bg-[color:var(--dv-primaria-hover)] transition-colors disabled:opacity-50">
             <ArrowLeftRight className="w-4 h-4" />
             {saving ? 'Enviando...' : 'Enviar solicitação'}
           </button>
@@ -1103,7 +1103,7 @@ function SubstituicaoDocsModal({ bolsista, projeto, onClose }) {
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-t border-gray-200 sticky bottom-0 bg-white">
           <StatusBadge bolsista={docs} />
           <button onClick={onClose}
-            className="px-4 py-2 text-sm font-semibold text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors">
+            className="px-4 py-2 text-sm font-semibold text-white bg-[color:var(--dv-primaria)] rounded-lg hover:bg-[color:var(--dv-primaria-hover)] transition-colors">
             {status === 'completo' ? 'Concluir' : 'Concluir e enviar depois'}
           </button>
         </div>
@@ -1152,7 +1152,7 @@ function ChecklistEnvio({ bolsistas, orientador }) {
         </div>
         <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all duration-500 ${todosProtos ? 'bg-green-500' : 'bg-blue-500'}`}
+            className={`h-full rounded-full transition-all duration-500 ${todosProtos ? 'bg-green-500' : 'bg-[color:var(--dv-primaria)]'}`}
             style={{ width: `${pct}%` }}
           />
         </div>
@@ -1373,7 +1373,7 @@ export function OrientadorBolsistas() {
           <button
             onClick={handleAdicionar}
             disabled={showNew || loading}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-semibold rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 bg-[color:var(--dv-primaria)] text-white text-sm font-semibold rounded-lg hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50 transition-colors"
           >
             <Plus className="w-4 h-4" />
             Cadastrar novo bolsista
@@ -1394,11 +1394,11 @@ export function OrientadorBolsistas() {
 
         {!loading && projeto && (
           substituicaoPermitida() ? (
-            <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-start gap-3">
-              <ArrowLeftRight className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+            <div className="rounded-xl border border-[color:var(--dv-borda)] bg-[color:var(--dv-primaria-clara)] p-4 flex items-start gap-3">
+              <ArrowLeftRight className="w-5 h-5 text-[color:var(--dv-primaria-texto)] shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-semibold text-blue-900">Precisa trocar um bolsista da equipe?</p>
-                <p className="text-xs text-blue-700 mt-0.5">
+                <p className="text-sm font-semibold text-[color:var(--dv-primaria-texto)]">Precisa trocar um bolsista da equipe?</p>
+                <p className="text-xs text-[color:var(--dv-primaria-texto)] mt-0.5">
                   Abra o card do bolsista que vai sair e clique em "Substituir bolsista". Prazo final para novas
                   substituições: <span className="font-semibold">30/09/2026</span>.
                 </p>
@@ -1426,7 +1426,7 @@ export function OrientadorBolsistas() {
         {!loading && projeto && (
           <div className="grid grid-cols-3 gap-4">
             {[
-              { label: 'Cadastrados',   value: total,      color: 'text-blue-600',  bg: 'bg-blue-50',  border: 'border-blue-200'  },
+              { label: 'Cadastrados',   value: total,      color: 'text-[color:var(--dv-primaria-texto)]',  bg: 'bg-[color:var(--dv-primaria-clara)]',  border: 'border-[color:var(--dv-borda)]'  },
               { label: 'Doc. completa', value: completos,  color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-200' },
               { label: 'Pendências',    value: pendencias, color: 'text-amber-600', bg: 'bg-amber-50', border: 'border-amber-200' },
             ].map(c => (
@@ -1460,7 +1460,7 @@ export function OrientadorBolsistas() {
             {bolsistas.length === 0 && !showNew && projeto && (
               <div className="text-center py-12 text-gray-400 text-sm">
                 <p>Nenhum bolsista cadastrado.</p>
-                <button onClick={handleAdicionar} className="mt-2 text-blue-600 hover:underline text-sm font-medium">
+                <button onClick={handleAdicionar} className="mt-2 text-[color:var(--dv-primaria-texto)] hover:underline text-sm font-medium">
                   Cadastrar o primeiro bolsista
                 </button>
               </div>
@@ -1523,7 +1523,7 @@ export function OrientadorBolsistas() {
             </p>
             <button
               onClick={() => setSolicitacaoEnviada(false)}
-              className="w-full py-2 rounded-lg text-sm font-semibold bg-blue-600 text-white hover:bg-blue-700 transition-colors"
+              className="w-full py-2 rounded-lg text-sm font-semibold bg-[color:var(--dv-primaria)] text-white hover:bg-[color:var(--dv-primaria-hover)] transition-colors"
             >
               Entendi
             </button>

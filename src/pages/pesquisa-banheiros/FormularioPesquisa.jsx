@@ -98,7 +98,7 @@ export function FormularioPesquisa() {
             </label>
             {erro && <div role="alert" className="rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">{erro}</div>}
             <button disabled={!codigo.trim() || !aceite || ocupado}
-              className="w-full py-3 rounded-md bg-[#0D1F3C] text-white font-semibold disabled:opacity-40">
+              className="w-full py-3 rounded-md bg-[color:var(--dv-marinho)] text-white font-semibold disabled:opacity-40">
               {ocupado ? 'Verificando…' : 'Começar'}
             </button>
           </form>
@@ -208,7 +208,7 @@ function Questionario({ r, setR, idx, setIdx, onEnviar, ocupado, erro, onSair })
             {aviso && <div role="alert" className="mt-4 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">{aviso}</div>}
             <div className="flex gap-2 mt-5">
               <button type="button" className={botao} onClick={() => setIdx(Math.max(0, i - 1))} disabled={i === 0}>Voltar</button>
-              <button className="flex-1 py-3 rounded-md bg-[#0D1F3C] text-white font-semibold">{!p.obrigatoria && vazio ? 'Pular' : 'Continuar'}</button>
+              <button className="flex-1 py-3 rounded-md bg-[color:var(--dv-marinho)] text-white font-semibold">{!p.obrigatoria && vazio ? 'Pular' : 'Continuar'}</button>
             </div>
           </form>
         ) : (
@@ -218,7 +218,7 @@ function Questionario({ r, setR, idx, setIdx, onEnviar, ocupado, erro, onSair })
             {erro && <div role="alert" className="mt-4 rounded-md bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-900">{erro}</div>}
             <div className="flex gap-2 mt-5">
               <button type="button" className={botao} onClick={() => setIdx(i - 1)}>Voltar</button>
-              <button onClick={onEnviar} disabled={ocupado} className="flex-1 py-3 rounded-md bg-[#0D1F3C] text-white font-semibold disabled:opacity-40">
+              <button onClick={onEnviar} disabled={ocupado} className="flex-1 py-3 rounded-md bg-[color:var(--dv-marinho)] text-white font-semibold disabled:opacity-40">
                 {ocupado ? 'Enviando…' : 'Enviar respostas'}
               </button>
             </div>

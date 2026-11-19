@@ -6,25 +6,13 @@
 @tailwind utilities;
 
 /* ---------------------------------------------------------------------------
-   Identidade DINOV só nas telas internas da Secretaria (Etapa 2).
-   O Layout da Secretaria marca <html data-tema="dinov"> enquanto está na tela.
-   As telas públicas, de orientador e de avaliador (Etapa 4) continuam como antes.
-   Quando elas forem migradas, o tema abaixo passa a valer em :root para todos.
+   Identidade DINOV v1.0 em todo o sistema (Etapa 4, 19/11/2026): o tema do kit
+   vale em :root. O kit define h1–h4 e o fundo de <html>; classes do Tailwind
+   continuam valendo sobre eles.
    --------------------------------------------------------------------------- */
 
-/* O kit define h1–h4 e o fundo de <html> para o sistema todo; fora da Secretaria
-   mantemos o comportamento anterior (especificidade baixa: classes do Tailwind
-   continuam valendo). */
-html:where(:not([data-tema="dinov"])) {
-  background: none;
-  color: initial;
-}
-html:where(:not([data-tema="dinov"])) :is(h1, h2, h3, h4) {
-  font-family: inherit;
-  color: inherit;
-}
-
 /* Tema shadcn do kit: Tokens/facitec-conecta-tema-shadcn.css (valores copiados). */
+html,
 html[data-tema="dinov"] {
   --background: 0 0% 100%;  /* #FFFFFF */
   --foreground: 209 30% 17%;  /* #1F2D3A */
@@ -57,37 +45,6 @@ html[data-tema="dinov"] {
 }
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221 83% 35%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 35%;
-    --radius: 0.5rem;
-    --sidebar-background: 221 83% 20%;
-    --sidebar-foreground: 210 40% 96%;
-    --sidebar-primary: 210 40% 98%;
-    --sidebar-primary-foreground: 221 83% 20%;
-    --sidebar-accent: 221 60% 28%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 221 60% 28%;
-    --sidebar-ring: 221 83% 50%;
-  }
-
   * {
     @apply border-border;
   }

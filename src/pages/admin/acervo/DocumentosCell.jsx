@@ -27,7 +27,7 @@ export function DocumentosCell({ edicaoId, entidadeTipo, entidadeId, docs, label
       <button
         type="button"
         onClick={() => setExpandido((v) => !v)}
-        className="text-xs font-medium text-blue-700 inline-flex items-center gap-1"
+        className="text-xs font-medium text-[color:var(--dv-primaria-texto)] inline-flex items-center gap-1"
       >
         {expandido ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
         <FileText className="w-3.5 h-3.5" />

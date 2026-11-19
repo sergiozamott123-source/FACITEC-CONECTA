@@ -53,7 +53,7 @@ function DocActions({ url }) {
         href={url}
         target="_blank"
         rel="noreferrer"
-        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-200 rounded-md hover:bg-blue-50 transition-colors"
+        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded-md hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
       >
         <Eye className="w-3.5 h-3.5" /> Visualizar
       </a>
@@ -76,7 +76,7 @@ function UploadButton({ onUpload, uploading, label, accept = ACEITOS }) {
         type="button"
         disabled={uploading}
         onClick={() => ref.current?.click()}
-        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-blue-700 border border-blue-300 rounded-md hover:bg-blue-50 disabled:opacity-50 transition-colors"
+        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded-md hover:bg-[color:var(--dv-primaria-clara)] disabled:opacity-50 transition-colors"
       >
         <Upload className="w-3.5 h-3.5" />
         {uploading ? 'Enviando...' : label ?? 'Enviar arquivo'}
@@ -196,7 +196,7 @@ export function OrientadorDocumentos() {
         {/* Meu contrato — PDF assinado, enviado pela Secretaria */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
             Meu contrato
           </h2>
 
@@ -216,7 +216,7 @@ export function OrientadorDocumentos() {
         {/* Seção 1 — Contrato */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
             Contrato de Concessão de Bolsa
           </h2>
 
@@ -255,7 +255,7 @@ export function OrientadorDocumentos() {
         {/* Seção 2 — Termos de Adesão */}
         <div className="bg-white rounded-xl border border-gray-200 p-5">
           <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-            <FileText className="w-4 h-4 text-purple-600" />
+            <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
             Termos de Adesão
           </h2>
 
@@ -273,7 +273,7 @@ export function OrientadorDocumentos() {
                       <p className="text-sm font-medium text-gray-900">{b.nome_completo}</p>
                       <div className="flex items-center gap-2 mt-0.5">
                         {b.codigo_facitec && (
-                          <span className="text-[10px] font-bold text-blue-700 bg-blue-50 border border-blue-100 px-1 py-0.5 rounded">
+                          <span className="text-[10px] font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1 py-0.5 rounded">
                             {b.codigo_facitec}
                           </span>
                         )}
@@ -345,7 +345,7 @@ export function OrientadorDocumentos() {
         {exigeVideos && (
           <div className="bg-white rounded-xl border border-gray-200 p-5">
             <h2 className="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4 text-purple-600" />
+              <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
               Vídeos de acompanhamento
             </h2>
 

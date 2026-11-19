@@ -409,7 +409,7 @@ export function DecisaoFinalRecurso() {
               >
                 <div className="flex items-center gap-2 min-w-0">
                   {r.criterio?.codigo && (
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded shrink-0">
+                    <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded shrink-0">
                       {r.criterio.codigo}
                     </span>
                   )}
@@ -421,7 +421,7 @@ export function DecisaoFinalRecurso() {
                   </span>
                   <span className={`text-xs font-semibold px-2 py-0.5 rounded border ${
                     r.decisao === 'alterada'
-                      ? 'text-blue-700 bg-blue-50 border-blue-200'
+                      ? 'text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border-[color:var(--dv-borda)]'
                       : 'text-gray-600 bg-gray-50 border-gray-200'
                   }`}>
                     {r.decisao === 'alterada'
@@ -548,7 +548,7 @@ export function DecisaoFinalRecurso() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {recurso.codigo_recurso && (
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
                 {recurso.codigo_recurso}
               </span>
             )}
@@ -598,7 +598,7 @@ export function DecisaoFinalRecurso() {
                       href={doc.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 bg-blue-50 border border-blue-200 px-2 py-1 rounded transition-colors"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[color:var(--dv-primaria-texto)] hover:text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-1 rounded transition-colors"
                     >
                       <Eye className="w-3 h-3" />
                       Visualizar
@@ -635,7 +635,7 @@ export function DecisaoFinalRecurso() {
                 {/* Cabeçalho do critério */}
                 <div className="flex items-center gap-2 flex-wrap">
                   {criterio?.codigo && (
-                    <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                    <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded">
                       {criterio.codigo}
                     </span>
                   )}
@@ -674,7 +674,7 @@ export function DecisaoFinalRecurso() {
                               Pendente
                             </span>
                           ) : votouSim ? (
-                            <span className="text-xs font-semibold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded shrink-0">
+                            <span className="text-xs font-semibold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded shrink-0">
                               SIM → {cc.nova_nota}
                             </span>
                           ) : (
@@ -692,13 +692,13 @@ export function DecisaoFinalRecurso() {
                 {(votos_sim + votos_nao) > 0 && pendentes.length === 0 && (
                   <div className="flex items-center gap-3 flex-wrap">
                     <span className="text-xs text-muted-foreground">
-                      <strong className="text-blue-700">{votos_sim} voto{votos_sim !== 1 ? 's' : ''} SIM</strong>
+                      <strong className="text-[color:var(--dv-primaria-texto)]">{votos_sim} voto{votos_sim !== 1 ? 's' : ''} SIM</strong>
                       {' · '}
                       <strong className="text-gray-600">{votos_nao} voto{votos_nao !== 1 ? 's' : ''} NÃO</strong>
                     </span>
                     <span className={`text-xs font-semibold border px-2.5 py-1 rounded-full ${
                       alterada
-                        ? 'text-blue-700 bg-blue-50 border-blue-200'
+                        ? 'text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border-[color:var(--dv-borda)]'
                         : 'text-gray-600 bg-gray-100 border-gray-300'
                     }`}>
                       {alterada ? 'Maioria: alterar nota' : 'Maioria: manter nota'}
@@ -708,7 +708,7 @@ export function DecisaoFinalRecurso() {
 
                 {/* Nota original vs nota final */}
                 {alterada && nota_calculada !== null && (
-                  <div className="flex items-center gap-6 rounded-lg bg-blue-50 border border-blue-200 px-5 py-3">
+                  <div className="flex items-center gap-6 rounded-lg bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-5 py-3">
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-0.5">Nota original</p>
                       <p className="text-2xl font-bold text-gray-500">
@@ -718,7 +718,7 @@ export function DecisaoFinalRecurso() {
                     <div className="text-2xl font-bold text-muted-foreground">→</div>
                     <div className="text-center">
                       <p className="text-xs text-muted-foreground mb-0.5">Nota final aplicada</p>
-                      <p className="text-2xl font-bold text-blue-700">{nota_calculada.toFixed(2)}</p>
+                      <p className="text-2xl font-bold text-[color:var(--dv-primaria-texto)]">{nota_calculada.toFixed(2)}</p>
                     </div>
                   </div>
                 )}

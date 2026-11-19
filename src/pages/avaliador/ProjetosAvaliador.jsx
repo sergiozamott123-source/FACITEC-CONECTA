@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase'
 
 const STATUS_CONFIG = {
   pendente:     { label: 'Pendente',  classes: 'bg-amber-50 text-amber-700 border-amber-200' },
-  em_andamento: { label: 'Rascunho', classes: 'bg-blue-50  text-blue-700  border-blue-200'  },
+  em_andamento: { label: 'Rascunho', classes: 'bg-[color:var(--dv-primaria-clara)]  text-[color:var(--dv-primaria-texto)]  border-[color:var(--dv-borda)]'  },
   concluida:    { label: 'Enviada',  classes: 'bg-green-50 text-green-700 border-green-200' },
 }
 
@@ -78,7 +78,7 @@ export function ProjetosAvaliador() {
       <header className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-blue-600">
+            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-[color:var(--dv-primaria)]">
               <ClipboardCheck className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -133,7 +133,7 @@ export function ProjetosAvaliador() {
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap mb-0.5">
                             {recurso?.codigo_recurso && (
-                              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded">
+                              <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-1.5 py-0.5 rounded">
                                 {recurso.codigo_recurso}
                               </span>
                             )}
@@ -156,14 +156,14 @@ export function ProjetosAvaliador() {
           )}
 
           {/* Boas-vindas */}
-          <div className="bg-gradient-to-r from-blue-900 to-blue-700 rounded-xl p-5 text-white">
-            <p className="text-xs font-semibold text-blue-200 uppercase tracking-wide mb-1">
+          <div className="bg-[color:var(--dv-marinho)] rounded-xl p-5 text-white">
+            <p className="text-xs font-semibold text-[color:var(--dv-texto-suave-escuro)] uppercase tracking-wide mb-1">
               FACITEC Conecta
             </p>
             <h1 className="text-xl font-bold mb-1">
               Olá, {avaliador?.nome?.split(' ')[0]}!
             </h1>
-            <p className="text-blue-200 text-sm">
+            <p className="text-[color:var(--dv-texto-suave-escuro)] text-sm">
               {avaliacoes.length} projeto(s) atribuído(s) a você
             </p>
 
@@ -177,7 +177,7 @@ export function ProjetosAvaliador() {
                 ].map((s, i) => (
                   <div key={i} className={`text-center ${i < 2 ? 'border-r border-white/20' : ''}`}>
                     <div className="text-2xl font-bold">{s.v}</div>
-                    <div className="text-xs text-blue-200">{s.l}</div>
+                    <div className="text-xs text-[color:var(--dv-texto-suave-escuro)]">{s.l}</div>
                   </div>
                 ))}
               </div>
@@ -208,7 +208,7 @@ export function ProjetosAvaliador() {
                   <button
                     key={av.id}
                     onClick={() => navigate(`/avaliador/projeto/${av.id}`)}
-                    className="w-full bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-blue-300 hover:shadow-sm transition-all"
+                    className="w-full bg-white rounded-xl border border-gray-200 p-4 text-left hover:border-[color:var(--dv-borda)] hover:shadow-sm transition-all"
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">

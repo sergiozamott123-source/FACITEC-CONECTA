@@ -393,7 +393,7 @@ export function RelatorioMensal() {
                             value={legenda || ''}
                             onChange={e => handleLegendaChange(url, e.target.value)}
                             placeholder="Descreva o que a foto mostra"
-                            className={`mt-1 w-full rounded-md border px-1.5 py-1 text-[10px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-blue-500 ${legendaOk ? 'border-gray-300' : 'border-red-400'}`}
+                            className={`mt-1 w-full rounded-md border px-1.5 py-1 text-[10px] text-gray-700 focus:outline-none focus:ring-1 focus:ring-[color:var(--dv-primaria)] ${legendaOk ? 'border-gray-300' : 'border-red-400'}`}
                           />
                           {!legendaOk && (
                             <p className="text-[9px] text-red-600 mt-0.5">Legenda obrigatória (mín. 10 caracteres)</p>
@@ -419,7 +419,7 @@ export function RelatorioMensal() {
                   type="button"
                   disabled={!podeEnviar || enviando}
                   onClick={abrirConfirmacaoEnvio}
-                  className="w-full py-2.5 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
+                  className="w-full py-2.5 rounded-md text-sm font-semibold text-white bg-[color:var(--dv-primaria)] hover:bg-[color:var(--dv-primaria-hover)] disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors"
                 >
                   Enviar relatório do ciclo {cicloInfo.ciclo.numero_ciclo}
                 </button>
@@ -443,7 +443,7 @@ export function RelatorioMensal() {
                 value={nomeAssinatura}
                 onChange={e => setNomeAssinatura(e.target.value)}
                 placeholder="Seu nome completo"
-                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
               />
             </div>
 
@@ -452,7 +452,7 @@ export function RelatorioMensal() {
                 type="checkbox"
                 checked={declaracaoAceita}
                 onChange={e => setDeclaracaoAceita(e.target.checked)}
-                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-blue-600 shrink-0 cursor-pointer"
+                className="mt-0.5 w-4 h-4 rounded border-gray-300 text-[color:var(--dv-primaria-texto)] shrink-0 cursor-pointer"
               />
               <span className="text-sm text-gray-700 leading-relaxed">
                 Declaro que as informações prestadas neste relatório são verdadeiras e de minha responsabilidade.
@@ -472,7 +472,7 @@ export function RelatorioMensal() {
                 type="button"
                 disabled={enviando || !nomeAssinatura.trim() || !declaracaoAceita}
                 onClick={handleConfirmarEnvio}
-                className="px-3 py-1.5 text-sm font-semibold text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                className="px-3 py-1.5 text-sm font-semibold text-white bg-[color:var(--dv-primaria)] rounded-md hover:bg-[color:var(--dv-primaria-hover)] disabled:opacity-50"
               >
                 {enviando ? 'Enviando...' : 'Assinar e enviar'}
               </button>
@@ -493,7 +493,7 @@ function CampoTexto({ label, value, onChange, placeholder }) {
         onChange={e => onChange(e.target.value)}
         placeholder={placeholder}
         rows={3}
-        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm text-gray-800 focus:outline-none focus:ring-2 focus:ring-[color:var(--dv-primaria)]"
       />
     </div>
   )
@@ -507,7 +507,7 @@ function UploadEvidenciaBotao({ onUpload, uploading }) {
         type="button"
         disabled={uploading}
         onClick={() => ref.current?.click()}
-        className="w-full h-20 rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors disabled:opacity-50"
+        className="w-full h-20 rounded-md border-2 border-dashed border-gray-300 flex flex-col items-center justify-center gap-1 text-gray-400 hover:border-[color:var(--dv-primaria)] hover:text-[color:var(--dv-primaria-texto)] transition-colors disabled:opacity-50"
       >
         {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImagePlus className="w-4 h-4" />}
         <span className="text-[10px] font-medium">{uploading ? 'Enviando...' : 'Adicionar'}</span>

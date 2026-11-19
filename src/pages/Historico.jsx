@@ -732,7 +732,7 @@ export function Historico() {
         </RelatorioCard>
 
         <RelatorioCard
-          icon={FileCheck2} iconBg="bg-blue-100" iconColor="text-blue-600"
+          icon={FileCheck2} iconBg="bg-[color:var(--dv-primaria-clara)]" iconColor="text-[color:var(--dv-primaria-texto)]"
           title="Relatório Mensal · Obrigações do Orientador"
           headerRight={<Badge variant="secondary" className="text-xs">{ciclos ? `${ciclos.length} ciclos` : '...'}</Badge>}
           expanded={expanded.has('mensal')} onToggle={() => toggle('mensal')}

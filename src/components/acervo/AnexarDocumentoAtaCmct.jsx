@@ -84,7 +84,7 @@ export function AnexarDocumentoAtaCmct({ reuniaoId, onUploaded, label = 'Anexar 
       <button
         type="button"
         onClick={() => fileRef.current?.click()}
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700 border border-blue-200 rounded-md px-2.5 py-1.5 hover:bg-blue-50 transition-colors"
+        className="inline-flex items-center gap-1.5 text-xs font-medium text-[color:var(--dv-primaria-texto)] border border-[color:var(--dv-borda)] rounded-md px-2.5 py-1.5 hover:bg-[color:var(--dv-primaria-clara)] transition-colors"
       >
         <Upload className="w-3.5 h-3.5" /> {label}
       </button>

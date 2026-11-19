@@ -146,7 +146,7 @@ export function VideosAcompanhamento() {
                           href={video.link_youtube}
                           target="_blank"
                           rel="noreferrer"
-                          className="ml-2 inline-flex items-center gap-1 text-xs text-blue-600 hover:underline align-middle"
+                          className="ml-2 inline-flex items-center gap-1 text-xs text-[color:var(--dv-primaria-texto)] hover:underline align-middle"
                         >
                           Abrir <ExternalLink className="w-3 h-3" />
                         </a>

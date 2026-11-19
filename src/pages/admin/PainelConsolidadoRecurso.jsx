@@ -13,7 +13,7 @@ import { supabase } from '@/lib/supabase'
 const TIPOS_DOC = ['Petição', 'Parecer jurídico', 'Decisão final', 'Outro']
 
 function tipoIcon(tipo) {
-  if (tipo === 'Petição')        return <FileText className="w-4 h-4 text-blue-500" />
+  if (tipo === 'Petição')        return <FileText className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
   if (tipo === 'Parecer jurídico') return <Scale className="w-4 h-4 text-[color:var(--dv-primaria-texto)]" />
   if (tipo === 'Decisão final')  return <CheckCircle2 className="w-4 h-4 text-green-600" />
   return <Paperclip className="w-4 h-4 text-gray-400" />
@@ -224,7 +224,7 @@ export function PainelConsolidadoRecurso() {
 
   const statusLabel = todosResponderam ? 'Aguardando decisão' : 'Em andamento'
   const statusClass = todosResponderam
-    ? 'bg-blue-50 text-blue-700 border-blue-200'
+    ? 'bg-[color:var(--dv-primaria-clara)] text-[color:var(--dv-primaria-texto)] border-[color:var(--dv-borda)]'
     : 'bg-yellow-50 text-yellow-700 border-yellow-200'
 
   return (
@@ -243,7 +243,7 @@ export function PainelConsolidadoRecurso() {
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {recurso.codigo_recurso && (
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded">
+              <span className="text-xs font-bold text-[color:var(--dv-primaria-texto)] bg-[color:var(--dv-primaria-clara)] border border-[color:var(--dv-borda)] px-2 py-0.5 rounded">
                 {recurso.codigo_recurso}
               </span>
             )}
@@ -278,7 +278,7 @@ export function PainelConsolidadoRecurso() {
             </div>
             <div className="h-2 bg-muted rounded-full overflow-hidden">
               <div
-                className="h-full bg-blue-600 rounded-full transition-all duration-500"
+                className="h-full bg-[color:var(--dv-primaria)] rounded-full transition-all duration-500"
                 style={{ width: `${pct}%` }}
               />
             </div>
@@ -314,7 +314,7 @@ export function PainelConsolidadoRecurso() {
                       <p className="text-sm font-semibold text-foreground truncate">{nome}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {cc.criterio?.codigo && (
-                          <span className="font-bold text-blue-700 mr-1">{cc.criterio.codigo}</span>
+                          <span className="font-bold text-[color:var(--dv-primaria-texto)] mr-1">{cc.criterio.codigo}</span>
                         )}
                         {cc.criterio?.nome}
                       </p>
@@ -343,7 +343,7 @@ export function PainelConsolidadoRecurso() {
                         <span className="text-muted-foreground">→</span>
                         <span>
                           Nova nota:{' '}
-                          <strong className="text-blue-700">{cc.nova_nota}</strong>
+                          <strong className="text-[color:var(--dv-primaria-texto)]">{cc.nova_nota}</strong>
                         </span>
                       </>
                     )}
@@ -357,7 +357,7 @@ export function PainelConsolidadoRecurso() {
                       </p>
                       <button
                         onClick={() => setModalJust({ nome, criterio: cc.criterio, texto: cc.justificativa })}
-                        className="text-xs text-blue-600 hover:underline mt-1"
+                        className="text-xs text-[color:var(--dv-primaria-texto)] hover:underline mt-1"
                       >
                         Ver completo
                       </button>
@@ -411,7 +411,7 @@ export function PainelConsolidadoRecurso() {
                     className="shrink-0 p-1 rounded hover:bg-muted transition-colors"
                     title="Download"
                   >
-                    <Download className="w-3.5 h-3.5 text-blue-600" />
+                    <Download className="w-3.5 h-3.5 text-[color:var(--dv-primaria-texto)]" />
                   </a>
                   <button
                     onClick={() => handleDeleteDoc(doc)}

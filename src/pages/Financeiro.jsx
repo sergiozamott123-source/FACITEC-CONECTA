@@ -890,7 +890,7 @@ export function Financeiro() {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: 'Total de Pagamentos', display: String(totalPagamentos), icon: DollarSign, color: 'text-blue-600', bg: 'bg-blue-50' },
+          { label: 'Total de Pagamentos', display: String(totalPagamentos), icon: DollarSign, color: 'text-[color:var(--dv-primaria-texto)]', bg: 'bg-[color:var(--dv-primaria-clara)]' },
           { label: 'Total Pago', display: fmt(totalPago), icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
           { label: 'A Pagar', display: fmt(totalAPagar), icon: DollarSign, color: 'text-orange-600', bg: 'bg-orange-50' },
         ].map(c => {

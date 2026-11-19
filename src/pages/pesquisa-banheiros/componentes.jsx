@@ -4,7 +4,7 @@ import { NATUREZAS, todasPerguntas } from '@/lib/pesquisaBanheiros/questionario'
 
 export function CabecalhoPesquisa({ subtitulo, direita }) {
   return (
-    <header className="bg-[#0D1F3C] text-white print:bg-white print:text-black print:border-b print:border-slate-300">
+    <header className="bg-[color:var(--dv-marinho)] text-white print:bg-white print:text-black print:border-b print:border-slate-300">
       <div className="max-w-5xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
           <div className="bg-white rounded-md px-2 py-1 shrink-0"><img src={logoCdtiv} alt="CDTIV" className="h-6 block" /></div>
