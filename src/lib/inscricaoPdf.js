@@ -1,14 +1,12 @@
 // src/lib/inscricaoPdf.js
 //
-// Exportação em PDF da ficha de inscrição (individual ou em lote), com o
-// mesmo padrão de branding FACITEC/CDTIV já estabelecido em
-// relatorioMensalPdf.js / relatorioPersonalizado.js.
+// Exportação em PDF da ficha de inscrição (individual ou em lote), no modelo
+// único A4 da Identidade Visual DINOV (documentoDinov.js).
 
-import { jsPDF } from 'jspdf'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
-const AZUL = [26, 39, 68]
-const CINZA_CLARO = [244, 246, 249]
-const CINZA_TEXTO = [90, 96, 110]
+import {
+  criarDocumento, titulo, paragrafo, secao, quadroDestaque, linhaCampo,
+  garantirEspaco, finalizar, DV, INICIO_CONTEUDO,
+} from '@/lib/documentoDinov'
 
 function eixosNomesDe(detalhe) {
   return (detalhe?.projeto_eixo ?? []).map(pe => pe.eixo_tematico?.nome).filter(Boolean)
@@ -28,179 +26,53 @@ function formatarDataHora(iso) {
   return new Date(iso).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
-// ── Contexto de página (cabeçalho, rodapé, quebra de página) ────────────────
-
-function criarContextoDoc(doc) {
-  const mL = 20, mR = 20, mT = 26, mB = 20
-  const pgW = 210, pgH = 297
-  const usableW = pgW - mL - mR
-  let pagina = 1
-
-    function cabecalho() {
-    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 19.5, pgW - mR, 19.5)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 10,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function novaPagina() {
-    rodape()
-    doc.addPage()
-    pagina++
-    cabecalho()
-    return mT
-  }
-
-  function checkPage(y, needed) {
-    return (y + needed > pgH - mB) ? novaPagina() : y
-  }
-
-  cabecalho()
-
-  return { mL, mR, mT, mB, pgW, pgH, usableW, checkPage, novaPagina, rodapeFinal: rodape }
-}
-
 // ── Desenho de uma ficha de inscrição, a partir do topo da página atual ─────
 
-function desenharFichaInscricao(doc, ctx, detalhe) {
-  const { mL, usableW, pgW } = ctx
-  let y = ctx.mT
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(15)
-  doc.setTextColor(...AZUL)
-  doc.text('FICHA DE INSCRIÇÃO', pgW / 2, y, { align: 'center' })
-  y += 6
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(
-    `Código: ${detalhe?.codigo_inscricao ?? '—'}   ·   Enviado em ${formatarDataHora(dataEnvioDe(detalhe))}`,
-    pgW / 2, y, { align: 'center' },
-  )
-  doc.setTextColor(0, 0, 0)
-  y += 10
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  const linhasTitulo = doc.splitTextToSize(detalhe?.titulo || '—', usableW - 8)
-  const lhTitulo = 4.8
-  const alturaBox = 8 + linhasTitulo.length * lhTitulo
-  y = ctx.checkPage(y, alturaBox + 4)
-
-  doc.setFillColor(...CINZA_CLARO)
-  doc.roundedRect(mL, y, usableW, alturaBox, 2, 2, 'F')
-  doc.setTextColor(...AZUL)
-  let tituloY = y + 6.5
-  linhasTitulo.forEach(linha => {
-    doc.text(linha, mL + 4, tituloY)
-    tituloY += lhTitulo
+function desenharFichaInscricao(doc, detalhe, yInicial = INICIO_CONTEUDO) {
+  let y = titulo(doc, {
+    chapeu: `Código ${detalhe?.codigo_inscricao ?? '—'} · Enviado em ${formatarDataHora(dataEnvioDe(detalhe))}`,
+    texto: 'Ficha de inscrição',
+    y: yInicial,
   })
-  doc.setTextColor(0, 0, 0)
-  y += alturaBox + 8
 
-  function secaoTitulo(texto) {
-    y = ctx.checkPage(y, 10)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(...AZUL)
-    doc.text(texto.toUpperCase(), mL, y)
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.3)
-    doc.line(mL, y + 1.5, mL + 30, y + 1.5)
-    doc.setTextColor(0, 0, 0)
-    y += 7
-  }
+  y = quadroDestaque(doc, { rotulo: 'Projeto', titulo: detalhe?.titulo || '—' }, y)
 
-  function linha(label, valor) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
-    const labelTexto = `${label}: `
-    const labelW = doc.getTextWidth(labelTexto)
-    doc.setFont('helvetica', 'normal')
-    const linhasValor = doc.splitTextToSize(valor || '—', usableW - labelW)
+  const o = detalhe?.orientador
 
-    y = ctx.checkPage(y, 4.6)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(labelTexto, mL, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setTextColor(30, 30, 30)
-    doc.text(linhasValor[0] ?? '—', mL + labelW, y)
-    y += 4.6
-    for (let i = 1; i < linhasValor.length; i++) {
-      y = ctx.checkPage(y, 4.6)
-      doc.text(linhasValor[i], mL + labelW, y)
-      y += 4.6
-    }
-    doc.setTextColor(0, 0, 0)
-  }
-
-  secaoTitulo('Proponente')
-  linha('Nome', detalhe?.orientador?.nome_completo)
-  linha('E-mail', detalhe?.orientador?.email)
-  linha('Telefone', detalhe?.orientador?.telefone)
-  linha('CPF', detalhe?.orientador?.cpf)
-  linha('Endereço', [detalhe?.orientador?.rua, detalhe?.orientador?.bairro, detalhe?.orientador?.cidade].filter(Boolean).join(', '))
+  y = secao(doc, 'Proponente', y)
+  y = linhaCampo(doc, 'Nome', o?.nome_completo, y)
+  y = linhaCampo(doc, 'E-mail', o?.email, y)
+  y = linhaCampo(doc, 'Telefone', o?.telefone, y)
+  y = linhaCampo(doc, 'CPF', o?.cpf, y)
+  y = linhaCampo(doc, 'Endereço', [o?.rua, o?.bairro, o?.cidade].filter(Boolean).join(', '), y)
   y += 3
 
-  secaoTitulo('Escola')
-  linha('Escola', detalhe?.orientador?.escola)
-  linha('Telefone', detalhe?.orientador?.telefone_escola)
-  linha('E-mail', detalhe?.orientador?.email_escola)
-  linha('Formação', detalhe?.orientador?.instituicao)
-  linha('Diploma', detalhe?.orientador?.doc_diploma_url ? 'Anexado (ver sistema)' : 'Não enviado')
+  y = secao(doc, 'Escola', y)
+  y = linhaCampo(doc, 'Escola', o?.escola, y)
+  y = linhaCampo(doc, 'Telefone', o?.telefone_escola, y)
+  y = linhaCampo(doc, 'E-mail', o?.email_escola, y)
+  y = linhaCampo(doc, 'Formação', o?.instituicao, y)
+  y = linhaCampo(doc, 'Diploma', o?.doc_diploma_url ? 'Anexado (ver sistema)' : 'Não enviado', y)
   y += 3
 
-  secaoTitulo('Projeto')
-  linha('Eixos temáticos', eixosNomesDe(detalhe).join(', '))
-  linha('Inédito', detalhe?.inedito ? 'Sim' : 'Não')
+  y = secao(doc, 'Projeto', y)
+  y = linhaCampo(doc, 'Eixos temáticos', eixosNomesDe(detalhe).join(', '), y)
+  y = linhaCampo(doc, 'Inédito', detalhe?.inedito ? 'Sim' : 'Não', y)
   if (!detalhe?.inedito) {
-    linha('Edições anteriores', detalhe?.edicoes_anteriores)
-    linha('Novidades', detalhe?.palavras_chave_livre)
+    y = linhaCampo(doc, 'Edições anteriores', detalhe?.edicoes_anteriores, y)
+    y = linhaCampo(doc, 'Novidades', detalhe?.palavras_chave_livre, y)
   }
-  linha('PDF do projeto', detalhe?.arquivo_pdf_url ? 'Anexado (ver sistema)' : 'Não enviado')
+  y = linhaCampo(doc, 'PDF do projeto', detalhe?.arquivo_pdf_url ? 'Anexado (ver sistema)' : 'Não enviado', y)
   y += 3
 
   const respostas = respostasOrdenadasDe(detalhe)
   if (respostas.length) {
-    secaoTitulo('Perguntas dissertativas')
-    respostas.forEach(r => {
-      y = ctx.checkPage(y, 10)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8.5)
-      doc.setTextColor(0, 0, 0)
-      const perguntaLinhas = doc.splitTextToSize(r.campo?.pergunta || '—', usableW)
-      perguntaLinhas.forEach(l => {
-        y = ctx.checkPage(y, 4.6)
-        doc.text(l, mL, y)
-        y += 4.6
-      })
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8.5)
-      doc.setTextColor(...CINZA_TEXTO)
-      const respostaLinhas = doc.splitTextToSize(r.resposta || '—', usableW)
-      respostaLinhas.forEach(l => {
-        y = ctx.checkPage(y, 4.6)
-        doc.text(l, mL, y)
-        y += 4.6
-      })
-      doc.setTextColor(0, 0, 0)
-      y += 3
+    y = secao(doc, 'Perguntas dissertativas', y)
+    respostas.forEach((r) => {
+      y = garantirEspaco(doc, y, 14)
+      y = paragrafo(doc, r.campo?.pergunta || '—', y, { tamanho: 9.5, estilo: 'textoSemi', alinhamento: 'left' })
+      y = paragrafo(doc, r.resposta || '—', y - 2, { tamanho: 9.5, cor: DV.base.textoSecundario })
+      y += 1
     })
   }
 }
@@ -208,20 +80,18 @@ function desenharFichaInscricao(doc, ctx, detalhe) {
 // ── API pública ───────────────────────────────────────────────────────────
 
 export function gerarPDFInscricao(detalhe) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const ctx = criarContextoDoc(doc)
-  desenharFichaInscricao(doc, ctx, detalhe)
-  ctx.rodapeFinal()
+  const doc = criarDocumento({ tituloPdf: `Ficha de inscrição ${detalhe?.codigo_inscricao ?? ''}`.trim() })
+  desenharFichaInscricao(doc, detalhe)
+  finalizar(doc, { codigo: detalhe?.codigo_inscricao })
   doc.save(`inscricao-${detalhe?.codigo_inscricao || detalhe?.id || 'sem-codigo'}.pdf`)
 }
 
 export function gerarPDFInscritosLote(lista, ano) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const ctx = criarContextoDoc(doc)
+  const doc = criarDocumento({ tituloPdf: `Fichas de inscrição — edição ${ano}` })
   lista.forEach((detalhe, idx) => {
-    if (idx > 0) ctx.novaPagina()
-    desenharFichaInscricao(doc, ctx, detalhe)
+    if (idx > 0) doc.addPage()
+    desenharFichaInscricao(doc, detalhe)
   })
-  ctx.rodapeFinal()
+  finalizar(doc)
   doc.save(`inscritos-edicao-${ano}.pdf`)
 }

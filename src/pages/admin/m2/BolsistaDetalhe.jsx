@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { jsPDF } from 'jspdf'
 import { supabase } from '@/lib/supabase'
 import { getPrograma } from '@/lib/programas'
 import { documentoAcervoService } from '@/lib/db'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
+import { construirPDFTermoAdesao } from '@/lib/termoAdesaoPdf'
 import { arquivarTermoAdesao, jaArquivado } from '@/lib/acervoArquivamento'
 import { ArquivarBotao } from '@/components/acervo/ArquivarBotao'
 import {
@@ -15,11 +14,6 @@ import {
 const BUCKET_TERMOS = 'inscricoes'
 
 // ── CONSTANTES ────────────────────────────────────────────────────────────────
-const MESES = [
-  'janeiro','fevereiro','março','abril','maio','junho',
-  'julho','agosto','setembro','outubro','novembro','dezembro',
-]
-
 const DOCS_BASE = [
   { key: 'doc_identidade_aluno',     label: 'Identidade com foto e CPF do aluno',          ref: 'Edital 13.5-e' },
   { key: 'doc_declaracao_matricula', label: 'Declaração de matrícula — Anexo IV',           ref: 'Edital 13.5-f' },
@@ -271,171 +265,20 @@ export default function BolsistaDetalhe() {
         termoGeradoEm = new Date().toISOString()
       }
 
-      const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-
-      const mL = 30, mR = 20, mT = 30, mB = 25
-      const pgW = 210, pgH = 297
-      const usableW = pgW - mL - mR
-      const lineH = 6.5
-
-      // Texto justificado com quebra de página automática
-      function addJustified(text, x, startY, maxW, lh) {
-        const lines = doc.splitTextToSize(text, maxW)
-        let curY = startY
-        lines.forEach((line, i) => {
-          if (curY + lh > pgH - mB) { doc.addPage(); curY = mT }
-          const isLast = i === lines.length - 1
-          if (isLast || !line.trim()) {
-            doc.text(line, x, curY)
-          } else {
-            const words = line.trim().split(' ')
-            if (words.length <= 1) {
-              doc.text(line, x, curY)
-            } else {
-              const totalW = words.reduce((s, w) => s + doc.getTextWidth(w), 0)
-              const space = (maxW - totalW) / (words.length - 1)
-              let wx = x
-              words.forEach(w => {
-                doc.text(w, wx, curY)
-                wx += doc.getTextWidth(w) + space
-              })
-            }
-          }
-          curY += lh
-        })
-        return curY
-      }
-
-      function checkPage(y, needed = lineH) {
-        if (y + needed > pgH - mB) { doc.addPage(); return mT }
-        return y
-      }
-
-      // ── Cabeçalho FACITEC / CDTIV ─────────────────────────────────────
-      // Mesmas logos usadas em todo documento PDF do sistema (relatório
-      // financeiro, FSPB, ficha cadastral etc.) — ver identidadeVisual.js.
-      // Coube no espaço já reservado acima do texto (mT = 30) sem mexer em
-      // mT nem na paginação do restante do documento.
-      desenharCabecalhoLogos(doc, { pgW, centroY: 7, altura: 8 })
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.text(
-        'FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC',
-        pgW / 2, mT - 14, { align: 'center' },
-      )
-      doc.text(
-        'Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV',
-        pgW / 2, mT - 8, { align: 'center' },
-      )
-      doc.setLineWidth(0.4)
-      doc.line(mL, mT - 4, pgW - mR, mT - 4)
-
-      let y = mT + 6
-
-      // ── Título centralizado bold ───────────────────────────────────────
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(12)
-
-      const linha1 = `ANEXO AO CONTRATO DE CONCESSÃO DE BOLSA Nº ${dados.numero_contrato || '___'}`
-      const linha2 = `TERMO DE ADESÃO DO ESTUDANTE BOLSISTA (${ehMenor ? 'MENOR' : 'MAIOR'} DE IDADE)`
-
-      for (const l of doc.splitTextToSize(linha1, usableW)) {
-        y = checkPage(y, lineH)
-        doc.text(l, pgW / 2, y, { align: 'center' })
-        y += lineH
-      }
-      y += 2
-      y = checkPage(y, lineH)
-      doc.text(linha2, pgW / 2, y, { align: 'center' })
-      y += lineH * 1.8
-
-      // ── Referência alinhada à direita ──────────────────────────────────
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(10)
-      y = checkPage(y, lineH)
-      doc.text(`Edital FACITEC ${dados.numero_edital || '01/2026'}`, pgW - mR, y, { align: 'right' })
-      y += lineH
-      y = checkPage(y, lineH)
-      doc.text(`Termo nº ${numeroTermo}`, pgW - mR, y, { align: 'right' })
-      y += lineH * 1.8
-
-      // ── Parágrafo de adesão ────────────────────────────────────────────
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(11)
-
-      const escolaPDF = nomeEscola || '___'
-
-      const paragrafo = ehMenor
-        ? `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, representado(a) neste ato por seu(sua) representante legal ${nomeResponsavel || '___'}, portador(a) do CPF nº ${cpfResponsavel || '___'}${docResponsavel ? ` e do documento de identidade nº ${docResponsavel}` : ''}, aluno(a) do(a) ${escolaPDF}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
-        : `Eu, ${bolsista.nome_completo || '___'}, inscrito(a) no CPF nº ${bolsista.cpf || '___'}, aluno(a) do(a) ${escolaPDF}, declaro que adiro ao projeto de pesquisa "${projeto?.titulo || '___'}", no âmbito do Edital FACITEC ${dados.numero_edital || '01/2026'}, vinculado ao Contrato nº ${dados.numero_contrato || '___'}, comprometendo-me a cumprir todos os termos e condições estabelecidos.`
-
-      y = addJustified(paragrafo, mL, y, usableW, lineH)
-      y += lineH
-
-      // ── Cláusula Primeira ──────────────────────────────────────────────
-      y += 4
-      y = checkPage(y, lineH * 2)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text('CLÁUSULA PRIMEIRA: DAS OBRIGAÇÕES DO ESTUDANTE BOLSISTA.', mL, y)
-      y += lineH * 1.2
-
-      doc.setFont('helvetica', 'normal')
-      y = addJustified(
-        'O Estudante Bolsista compromete-se a: cumprir todas as atividades previstas no plano de trabalho; apresentar os resultados do projeto, caso seja convocado(a); ter frequência mínima mensal de 75% (setenta e cinco por cento) nas atividades do projeto; manter-se em dia com as obrigações fiscais junto à Fazenda Municipal; efetuar o cadastro junto ao Banco autorizado pelo FACITEC.',
-        mL, y, usableW, lineH,
-      )
-      y += lineH
-
-      // ── Cláusula Segunda ───────────────────────────────────────────────
-      y += 4
-      y = checkPage(y, lineH * 2)
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.text('CLÁUSULA SEGUNDA: DAS PENALIDADES.', mL, y)
-      y += lineH * 1.2
-
-      doc.setFont('helvetica', 'normal')
-      y = addJustified(
-        `O descumprimento das obrigações previstas na Cláusula Primeira acarretará no desligamento do estudante bolsista do projeto e na impossibilidade de participação no Programa ${getPrograma(slug)?.nome ?? 'PIBIC Jr'} por 12 (doze) meses.`,
-        mL, y, usableW, lineH,
-      )
-      y += lineH * 2.5
-
-      // ── Linha de data ──────────────────────────────────────────────────
-      let dataStr = '_____ de __________ de _____'
-      if (dados.data_assinatura) {
-        const d = new Date(dados.data_assinatura + 'T12:00:00')
-        dataStr = `${String(d.getDate()).padStart(2, '0')} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`
-      }
-      y = checkPage(y, lineH)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(11)
-      doc.text(`Vitória, ${dataStr}.`, mL, y)
-      y += lineH * 3.5
-
-      // ── Linha de assinatura ────────────────────────────────────────────
-      y = checkPage(y, 35)
-      const cx = pgW / 2
-      doc.setDrawColor(0)
-      doc.setLineWidth(0.4)
-      doc.line(cx - 38, y, cx + 38, y)
-      y += lineH * 0.7
-
-      const sigNome  = ehMenor
-        ? (nomeResponsavel        || '___')
-        : (bolsista.nome_completo || '___')
-      const sigTitulo = ehMenor ? 'Representante Legal do Estudante' : 'Estudante Bolsista'
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
-      doc.text(sigNome, cx, y, { align: 'center' })
-      y += lineH * 0.8
-
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.text(sigTitulo, cx, y, { align: 'center' })
+      const doc = construirPDFTermoAdesao({
+        bolsista,
+        ehMenor,
+        numeroTermo,
+        numeroContrato: dados.numero_contrato,
+        numeroEdital: dados.numero_edital,
+        dataAssinatura: dados.data_assinatura,
+        tituloProjeto: projeto?.titulo,
+        nomeEscola,
+        nomeResponsavel,
+        cpfResponsavel,
+        docResponsavel,
+        nomePrograma: getPrograma(slug)?.nome,
+      })
 
       // ── Download ───────────────────────────────────────────────────────
       const nomeArquivoTermo = `Termo_${bolsista.codigo_bolsista || bolsista.id}.pdf`

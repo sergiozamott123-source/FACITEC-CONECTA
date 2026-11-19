@@ -2,14 +2,14 @@
 //
 // Solicitação de pagamento de bolsas encaminhada à Diretoria Administrativa
 // Financeira (DAF), por contrato/ciclo — apenas os beneficiários com selo
-// "liberado" entram no lote. Mesmo padrão visual (timbre FACITEC/CDTIV,
-// cores AZUL/CINZA) usado em src/lib/relatorioFinanceiro.js.
+// "liberado" entram no lote. Segue o modelo único A4 da Identidade Visual
+// DINOV (documentoDinov.js), com a página de histórico em paisagem.
 
-import { jsPDF } from 'jspdf'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
-const AZUL = [26, 39, 68]
-const CINZA_CLARO = [244, 246, 249]
-const CINZA_TEXTO = [90, 96, 110]
+import {
+  criarDocumento, titulo, paragrafo, tabela, selo, ficha, localData, assinatura,
+  garantirEspaco, adicionarPaginaPaisagem, finalizarDocumento, fonte, DV, rgb,
+  MARGEM, PAISAGEM,
+} from '@/lib/documentoDinov'
 
 function fmtMoeda(valor) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(valor ?? 0))
@@ -26,139 +26,54 @@ function fmtCnd(dataValidade) {
 }
 
 export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, numeroFspb, historico = []) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 20, mR = 20, mT = 26, mB = 20
-  const pgW = 210, pgH = 297
-  const usableW = pgW - mL - mR
-
-  let pagina = 1
-
-   function cabecalho() {
-    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 19.5, pgW - mR, 19.5)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 10,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function novaPagina() {
-    rodape()
-    doc.addPage()
-    pagina++
-    cabecalho()
-    return mT
-  }
-
-  function checkPage(y, needed) {
-    if (y + needed > pgH - mB) return novaPagina()
-    return y
-  }
-
-  cabecalho()
-  let y = mT
+  const doc = criarDocumento({ tituloPdf: 'Ficha de solicitação de pagamento de bolsa — PIBIC Jr' })
 
   // "FSPB 01/2026" já vem formatado do banco — em qualquer lugar que já diga
   // "FSPB Nº"/"FSPB nº" por extenso, usamos só o sequencial/ano para não
   // repetir "FSPB" duas vezes ("FSPB Nº FSPB 01/2026").
   const fspbCurto = numeroFspb ? numeroFspb.replace(/^FSPB\s*/i, '') : null
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(15)
-  doc.setTextColor(...AZUL)
-  doc.text('FICHA DE SOLICITAÇÃO DE PAGAMENTO DE BOLSA', pgW / 2, y, { align: 'center' })
-  y += 7
-  doc.text('PROGRAMA PIBICJR', pgW / 2, y, { align: 'center' })
-  y += 8
-  if (fspbCurto) {
-    doc.setFontSize(12)
-    doc.text(`FSPB Nº ${fspbCurto}`, pgW / 2, y, { align: 'center' })
-    y += 8
-  } else {
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(10)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text('(rascunho — ainda não enviado)', pgW / 2, y, { align: 'center' })
-    y += 7
+  let y = titulo(doc, {
+    chapeu: fspbCurto ? `FSPB nº ${fspbCurto} · Programa PIBIC Jr` : 'Programa PIBIC Jr',
+    texto: 'Ficha de solicitação de pagamento de bolsa',
+  })
+  if (!fspbCurto) {
+    selo(doc, 'Rascunho — ainda não enviado', 'atencao', MARGEM.esquerda, y - 4)
+    y += 6
   }
-  doc.setTextColor(0, 0, 0)
 
   const cicloLabel = ciclo ? `Ciclo ${ciclo.numero_ciclo} — ${ciclo.mes_referencia}` : '—'
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10.5)
   const texto = `A Secretaria Executiva do FACITEC encaminha à Diretoria Administrativa Financeira - DAF a presente solicitação${fspbCurto ? ` (FSPB nº ${fspbCurto})` : ''} de pagamento das bolsas referentes ao Processo Administrativo nº ${contrato?.numero_processo ?? '—'}, Contrato nº ${contrato?.numero_contrato ?? '—'}, relativa ao ${cicloLabel}, observadas as condições de vigência e disponibilidade orçamentária do referido contrato.`
-  const linhasTexto = doc.splitTextToSize(texto, usableW)
-  doc.text(linhasTexto, mL, y)
-  y += linhasTexto.length * 5.2 + 8
-
-  // ── Tabela de beneficiários liberados ────────────────────────────────
-  y = checkPage(y, 14)
-  const colX = { nome: mL + 2, cpf: mL + 56, tipo: mL + 90, cnd: mL + 114, valor: pgW - mR - 2 }
-
-  function cabecalhoTabela() {
-    doc.setFillColor(...AZUL)
-    doc.rect(mL, y, usableW, 8, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9)
-    doc.setTextColor(255, 255, 255)
-    doc.text('NOME', colX.nome, y + 5.5)
-    doc.text('CPF', colX.cpf, y + 5.5)
-    doc.text('TIPO', colX.tipo, y + 5.5)
-    doc.text('CND', colX.cnd, y + 5.5)
-    doc.text('VALOR', colX.valor, y + 5.5, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-    y += 8
-  }
-
-  cabecalhoTabela()
-
-  let total = 0
-  ;(beneficiariosLiberados ?? []).forEach((b, idx) => {
-    y = checkPage(y, 8)
-    if (y === mT) cabecalhoTabela()
-
-    if (idx % 2 === 1) {
-      doc.setFillColor(...CINZA_CLARO)
-      doc.rect(mL, y, usableW, 7, 'F')
-    }
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(0, 0, 0)
-    doc.text(doc.splitTextToSize(b.nome ?? '—', 52)[0], colX.nome, y + 5)
-    doc.text(b.cpf ?? '—', colX.cpf, y + 5)
-    doc.text(b.beneficiario_tipo === 'orientador' ? 'Orientador' : 'Bolsista', colX.tipo, y + 5)
-    doc.text(doc.splitTextToSize(fmtCnd(b.cndValidade), 44)[0], colX.cnd, y + 5)
-    doc.text(fmtMoeda(b.valor), colX.valor, y + 5, { align: 'right' })
-    y += 7
-    total += Number(b.valor ?? 0)
-  })
-
-  doc.setDrawColor(...CINZA_TEXTO)
-  doc.setLineWidth(0.2)
-  doc.line(mL, y, pgW - mR, y)
+  y = paragrafo(doc, texto, y)
   y += 2
 
-  y = checkPage(y, 10)
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('TOTAL DO LOTE', colX.tipo, y + 5)
-  doc.text(fmtMoeda(total), colX.valor, y + 5, { align: 'right' })
-  y += 14
+  // ── Tabela de beneficiários liberados ────────────────────────────────
+  let total = 0
+  const linhasTabela = (beneficiariosLiberados ?? []).map((b) => {
+    total += Number(b.valor ?? 0)
+    return [
+      b.nome ?? '—',
+      b.cpf ?? '—',
+      b.beneficiario_tipo === 'orientador' ? 'Orientador' : 'Bolsista',
+      fmtCnd(b.cndValidade),
+      fmtMoeda(b.valor),
+    ]
+  })
+  y = tabela(doc, [
+    { titulo: 'Nome', largura: 52 },
+    { titulo: 'CPF', largura: 32 },
+    { titulo: 'Tipo', largura: 22 },
+    { titulo: 'CND', largura: 36 },
+    { titulo: 'Valor', largura: 24, alinhar: 'right' },
+  ], linhasTabela, y)
+
+  y = garantirEspaco(doc, y - 4, 10)
+  fonte(doc, 'textoSemi', 10, DV.base.marinho)
+  doc.text('TOTAL DO LOTE', MARGEM.esquerda + 94, y + 1)
+  doc.text(fmtMoeda(total), MARGEM.esquerda + 164, y + 1, { align: 'right' })
+  y += 12
 
   // ── Situação do contrato ──────────────────────────────────────────────
-  y = checkPage(y, 34)
   const reservado = Number(contrato?.valor_global ?? contrato?.saldo?.reservado ?? 0)
   // Soma "pago" (já confirmado pela Financeira) + "comprometido" (lotes
   // anteriores já enviados à DAF via FSPB, mas ainda sem confirmação de
@@ -170,41 +85,17 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   const comprometidoAteEsteLote = comprometidoAntes + total
   const saldoRestante = reservado - comprometidoAteEsteLote
 
-  doc.setFillColor(...CINZA_CLARO)
-  doc.roundedRect(mL, y, usableW, 28, 2, 2, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(9.5)
-  doc.setTextColor(...AZUL)
-  doc.text('SITUAÇÃO DO CONTRATO', mL + 4, y + 7)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(0, 0, 0)
-  doc.text(`Reservado: ${fmtMoeda(reservado)}`, mL + 4, y + 14)
-  doc.text(`Comprometido até este lote (incluindo-o): ${fmtMoeda(comprometidoAteEsteLote)}`, mL + 4, y + 20)
-  doc.text(`Saldo restante após este pagamento: ${fmtMoeda(saldoRestante)}`, mL + 4, y + 26)
-  doc.setTextColor(0, 0, 0)
-  y += 28 + 20
+  y = garantirEspaco(doc, y, 34)
+  y = ficha(doc, [
+    ['Reservado no contrato', fmtMoeda(reservado)],
+    ['Comprometido até este lote (incluindo-o)', fmtMoeda(comprometidoAteEsteLote)],
+    ['Saldo restante após este pagamento', fmtMoeda(saldoRestante)],
+  ], y)
 
   // ── Assinatura ────────────────────────────────────────────────────────
-  y = checkPage(y, 26)
-  doc.setDrawColor(0, 0, 0)
-  doc.setLineWidth(0.3)
-  doc.line(pgW / 2 - 40, y, pgW / 2 + 40, y)
-  y += 5
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10)
-  doc.text('Sérgio Paulo Tomáz', pgW / 2, y, { align: 'center' })
-  y += 5
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.text('Secretário Executivo, FACITEC/CDTIV', pgW / 2, y, { align: 'center' })
-  y += 8
-  doc.setFontSize(8.5)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Emitido em ${new Date().toLocaleDateString('pt-BR')}`, pgW / 2, y, { align: 'center' })
-  doc.setTextColor(0, 0, 0)
-
-  rodape()
+  y = garantirEspaco(doc, y, 46)
+  y = localData(doc, y + 2)
+  assinatura(doc, { nome: 'Sérgio Paulo Tomaz', cargo: 'Secretário Executivo, FACITEC/CDTIV', y: y + 16 })
 
   // ── Página extra (paisagem) — histórico de pagamentos do contrato ───────
   // Camada adicional de transparência pedida pelo Sérgio: não substitui o
@@ -214,49 +105,20 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
   // número de colunas (uma por vaga) varia de contrato para contrato. Ver
   // claude/facitec-conecta-fase22-seguranca-pagamentos-substituicao.md.
   if (historico?.length) {
-    doc.addPage('a4', 'landscape')
-    pagina++
-    const pgWL = 297, pgHL = 210
-    const mLL = 16, mRL = 16, mTL = 26, mBL = 18
-    const usableWL = pgWL - mLL - mRL
+    let yL = adicionarPaginaPaisagem(doc)
+    const areaL = PAISAGEM.areaLargura
 
-    function cabecalhoLandscape() {
-      desenharCabecalhoLogos(doc, { pgW: pgWL, centroY: 10.5, altura: 10 })
-      doc.setDrawColor(...AZUL)
-      doc.setLineWidth(0.6)
-      doc.line(mLL, 19.5, pgWL - mRL, 19.5)
-      doc.setTextColor(0, 0, 0)
-    }
-
-    function rodapeLandscape() {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.5)
-      doc.setTextColor(...CINZA_TEXTO)
-      doc.text(
-        `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-        mLL, pgHL - 10,
-      )
-      doc.text(`Página ${pagina}`, pgWL - mRL, pgHL - 10, { align: 'right' })
-      doc.setTextColor(0, 0, 0)
-    }
-
-    cabecalhoLandscape()
-    let yL = mTL
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.setTextColor(...AZUL)
-    doc.text('HISTÓRICO DE PAGAMENTOS DO CONTRATO', pgWL / 2, yL, { align: 'center' })
-    yL += 6
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Contrato nº ${contrato?.numero_contrato ?? '—'} — todos os ciclos já pagos ou enviados à DAF até esta ficha. Informação complementar; não substitui o detalhamento do lote atual.`,
-      pgWL / 2, yL, { align: 'center', maxWidth: usableWL }
+    yL = titulo(doc, {
+      chapeu: `Contrato nº ${contrato?.numero_contrato ?? '—'}`,
+      texto: 'Histórico de pagamentos do contrato',
+      y: yL,
+    })
+    yL = paragrafo(
+      doc,
+      'Todos os ciclos já pagos ou enviados à DAF até esta ficha. Informação complementar; não substitui o detalhamento do lote atual.',
+      yL - 4,
+      { tamanho: 9, cor: DV.base.textoSecundario, alinhamento: 'left' },
     )
-    doc.setTextColor(0, 0, 0)
-    yL += 11
 
     // Colunas: uma por "vaga" (código do beneficiário sem o prefixo do
     // contrato — ex.: "BT06", "OR"), na ordem em que aparecem no histórico
@@ -271,85 +133,61 @@ export function exportarRelatorioDAF(contrato, ciclo, beneficiariosLiberados, nu
     }
 
     const colCiclo = 30
-    const colVaga = (usableWL - colCiclo) / Math.max(codigosOrdenados.length, 1)
-    const colX = codigosOrdenados.map((_, i) => mLL + colCiclo + colVaga * i)
+    const colVaga = (areaL - colCiclo) / Math.max(codigosOrdenados.length, 1)
+    const colX = codigosOrdenados.map((_, i) => MARGEM.esquerda + colCiclo + colVaga * i)
 
     function cabecalhoTabelaHistorico() {
-      doc.setFillColor(...AZUL)
-      doc.rect(mLL, yL, usableWL, 9, 'F')
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      doc.setTextColor(255, 255, 255)
-      doc.text('CICLO', mLL + 2, yL + 6)
+      doc.setFillColor(...rgb(DV.base.marinho))
+      doc.rect(MARGEM.esquerda, yL, areaL, 9, 'F')
+      fonte(doc, 'textoSemi', 8, '#FFFFFF')
+      doc.text('CICLO', MARGEM.esquerda + 2, yL + 6)
       codigosOrdenados.forEach((cod, i) => {
         doc.text(cod, colX[i] + colVaga / 2, yL + 6, { align: 'center' })
       })
-      doc.setTextColor(0, 0, 0)
       yL += 9
     }
 
     cabecalhoTabelaHistorico()
 
     const alturaLinha = 15
-    const corSubstituido = [180, 60, 40]
-    const corSubstituto = [30, 110, 60]
-
     historico.forEach((grupo, idx) => {
-      if (yL + alturaLinha > pgHL - mBL) {
-        rodapeLandscape()
-        doc.addPage('a4', 'landscape')
-        pagina++
-        cabecalhoLandscape()
-        yL = mTL
+      if (yL + alturaLinha > PAISAGEM.fimConteudo) {
+        yL = adicionarPaginaPaisagem(doc)
         cabecalhoTabelaHistorico()
       }
 
       if (idx % 2 === 1) {
-        doc.setFillColor(...CINZA_CLARO)
-        doc.rect(mLL, yL, usableWL, alturaLinha, 'F')
+        doc.setFillColor(...rgb(DV.base.fundo))
+        doc.rect(MARGEM.esquerda, yL, areaL, alturaLinha, 'F')
       }
 
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(8)
-      doc.setTextColor(0, 0, 0)
-      doc.text(`Ciclo ${grupo.numero_ciclo}`, mLL + 2, yL + 5.5)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7)
-      doc.setTextColor(...CINZA_TEXTO)
-      doc.text(grupo.mes_referencia ?? '—', mLL + 2, yL + 10.5)
-      doc.setTextColor(0, 0, 0)
+      fonte(doc, 'textoSemi', 8, DV.base.texto)
+      doc.text(`Ciclo ${grupo.numero_ciclo}`, MARGEM.esquerda + 2, yL + 5.5)
+      fonte(doc, 'texto', 7, DV.base.textoSecundario)
+      doc.text(grupo.mes_referencia ?? '—', MARGEM.esquerda + 2, yL + 10.5)
 
       codigosOrdenados.forEach((cod, i) => {
         const item = grupo.itens.find(it => (it.codigo?.split('-').pop() || it.codigo) === cod)
         const cx = colX[i] + colVaga / 2
         if (!item) {
-          doc.setFont('helvetica', 'normal')
-          doc.setFontSize(7.5)
-          doc.setTextColor(...CINZA_TEXTO)
+          fonte(doc, 'texto', 7.5, DV.base.textoSecundario)
           doc.text('—', cx, yL + 8, { align: 'center' })
-          doc.setTextColor(0, 0, 0)
           return
         }
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(7.2)
-        doc.setTextColor(0, 0, 0)
+        fonte(doc, 'texto', 7.2, DV.base.texto)
         const nomeCurto = doc.splitTextToSize(item.nome ?? '—', colVaga - 2)[0]
         doc.text(nomeCurto, cx, yL + 5, { align: 'center' })
         doc.text(fmtMoeda(item.valor), cx, yL + 9.5, { align: 'center' })
         if (item.tag) {
-          doc.setFont('helvetica', 'italic')
-          doc.setFontSize(6.3)
-          doc.setTextColor(...(item.tag === 'substituido' ? corSubstituido : corSubstituto))
+          fonte(doc, 'textoItalico', 6.3, item.tag === 'substituido' ? DV.situacao.erro.texto : DV.situacao.sucesso.texto)
           doc.text(item.tag === 'substituido' ? '(substituído)' : '(substituto)', cx, yL + 13, { align: 'center' })
-          doc.setTextColor(0, 0, 0)
         }
       })
 
       yL += alturaLinha
     })
-
-    rodapeLandscape()
   }
 
+  finalizarDocumento(doc, { codigo: numeroFspb ? `FSPB ${fspbCurto}` : undefined })
   doc.save(`Solicitacao_Pagamento_${sufixoArquivo(contrato?.numero_processo)}_Ciclo${ciclo?.numero_ciclo ?? ''}.pdf`)
 }

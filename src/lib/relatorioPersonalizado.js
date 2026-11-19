@@ -4,12 +4,15 @@
 // livremente pela Secretaria. Reaproveita o mesmo critério de "orientador
 // ativo" já usado em outras telas do Módulo 2 (codigo_orientador atribuído +
 // projeto selecionado) e a mesma identidade visual dos demais PDFs do
-// sistema (relatorioFinanceiro.js / relatorioMensalPdf.js).
+// sistema (relatorioFinanceiro.js / relatorioMensalPdf.js). O PDF segue o
+// modelo único da Identidade Visual DINOV, em A4 paisagem (documentoDinov.js).
 
-import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import { Document, Packer, Table, TableRow, TableCell, Paragraph, TextRun, WidthType, AlignmentType, ShadingType, PageOrientation } from 'docx'
 import { supabase } from '@/lib/supabase'
+import {
+  criarDocumentoPaisagem, titulo, finalizarDocumento, fonte, DV, rgb, MARGEM, PAISAGEM,
+} from '@/lib/documentoDinov'
 
 // ── CPF só com dígitos (sem pontos/traço) ────────────────────────────────
 // Os sistemas de CND da PMV exigem o CPF "limpo" para emissão de certidão,
@@ -259,107 +262,59 @@ export function exportarExcelPersonalizado(linhas, colunas, ano = '2026') {
 // ── Exportação em PDF ─────────────────────────────────────────────────────
 
 export function exportarPDFPersonalizado(linhas, colunas, ano = '2026') {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' })
-  const mL = 12, mR = 12, mT = 34, mB = 16
-  const pgW = 297, pgH = 210
-  const usableW = pgW - mL - mR
-
-  const AZUL = [26, 39, 68]
-  const CINZA_CLARO = [244, 246, 249]
-  const CINZA_TEXTO = [90, 96, 110]
-  const CINZA_LINHA = [220, 224, 230]
-
-  let pagina = 1
+  const doc = criarDocumentoPaisagem({ tituloPdf: `Relatório personalizado — edição ${ano}` })
+  const usableW = PAISAGEM.areaLargura
   const colWidth = usableW / colunas.length
-
-  function cabecalho() {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text('FUNDO DE APOIO À CIÊNCIA E TECNOLOGIA - FACITEC', pgW / 2, 10, { align: 'center' })
-    doc.setFont('helvetica', 'normal')
-    doc.text('Companhia de Desenvolvimento, Turismo e Inovação de Vitória - CDTIV', pgW / 2, 14, { align: 'center' })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 17, pgW - mR, 17)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 8,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 8, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
+  const mL = MARGEM.esquerda
 
   function cabecalhoTabela(y) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8)
+    fonte(doc, 'textoSemi', 8, '#FFFFFF')
     const labelsWrapped = colunas.map(c => doc.splitTextToSize(c.label, colWidth - 4))
     const maxLinhas = Math.max(...labelsWrapped.map(l => l.length), 1)
     const h = Math.max(8, maxLinhas * 4 + 3)
 
-    doc.setFillColor(...AZUL)
+    doc.setFillColor(...rgb(DV.base.marinho))
     doc.rect(mL, y, usableW, h, 'F')
-    doc.setTextColor(255, 255, 255)
     labelsWrapped.forEach((linhasTexto, i) => {
       doc.text(linhasTexto, mL + i * colWidth + 2, y + 5)
     })
-    doc.setTextColor(0, 0, 0)
     return y + h
   }
 
-  function novaPagina() {
-    rodape()
-    doc.addPage()
-    pagina++
-    cabecalho()
-    return cabecalhoTabela(mT)
-  }
-
-  cabecalho()
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(14)
-  doc.setTextColor(...AZUL)
-  doc.text('RELATÓRIO PERSONALIZADO', mL, mT - 12)
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Edição ${ano} · ${linhas.length} orientador(es)`, mL, mT - 6)
-  doc.setTextColor(0, 0, 0)
-
-  let y = cabecalhoTabela(mT)
+  let y = titulo(doc, {
+    chapeu: `Edição ${ano} · ${linhas.length} orientador(es)`,
+    texto: 'Relatório personalizado',
+  })
+  y = cabecalhoTabela(y - 4)
 
   linhas.forEach((linha, idx) => {
+    fonte(doc, 'texto', 8, DV.base.texto)
     const cellsWrapped = colunas.map(c => doc.splitTextToSize(String(linha[c.key] ?? '—'), colWidth - 4))
     const maxLines = Math.max(...cellsWrapped.map(c => c.length), 1)
     const rowH = Math.max(7, maxLines * 4 + 3)
 
-    if (y + rowH > pgH - mB) y = novaPagina()
+    if (y + rowH > PAISAGEM.fimConteudo) {
+      doc.addPage()
+      y = cabecalhoTabela(PAISAGEM.inicioConteudo)
+    }
 
     if (idx % 2 === 1) {
-      doc.setFillColor(...CINZA_CLARO)
+      doc.setFillColor(...rgb(DV.base.fundo))
       doc.rect(mL, y, usableW, rowH, 'F')
     }
 
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8)
-    doc.setTextColor(0, 0, 0)
+    fonte(doc, 'texto', 8, DV.base.texto)
     cellsWrapped.forEach((linhasTexto, i) => {
       doc.text(linhasTexto, mL + i * colWidth + 2, y + 4.5)
     })
 
     y += rowH
-    doc.setDrawColor(...CINZA_LINHA)
-    doc.line(mL, y, pgW - mR, y)
+    doc.setDrawColor(...rgb(DV.base.divisoria))
+    doc.setLineWidth(0.2)
+    doc.line(mL, y, mL + usableW, y)
   })
 
-  rodape()
+  finalizarDocumento(doc)
   doc.save(`Relatorio_Personalizado_${sufixoArquivo(ano)}.pdf`)
 }
 

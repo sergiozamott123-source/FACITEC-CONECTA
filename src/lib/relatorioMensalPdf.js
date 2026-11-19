@@ -1,15 +1,12 @@
 // src/lib/relatorioMensalPdf.js
 //
-// Exportação em PDF do Relatório Mensal enviado, com o mesmo padrão de
-// branding FACITEC/CDTIV já estabelecido em relatorioFinanceiro.js.
+// Exportação em PDF do Relatório Mensal enviado, no modelo único A4 da
+// Identidade Visual DINOV (documentoDinov.js).
 
-import { jsPDF } from 'jspdf'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
-const AZUL = [26, 39, 68]
-const CINZA_CLARO = [244, 246, 249]
-const CINZA_TEXTO = [90, 96, 110]
-const VERDE = [22, 130, 90]
-const VERMELHO = [178, 38, 38]
+import {
+  criarDocumento, titulo, paragrafo, secao, quadroDestaque, selo, assinatura,
+  garantirEspaco, finalizar, fonte, DV, MARGEM, AREA,
+} from '@/lib/documentoDinov'
 
 async function urlParaDataURL(url) {
   const res = await fetch(url)
@@ -28,165 +25,69 @@ async function urlParaDataURL(url) {
 // direto (gerarPDFRelatorioMensal) quanto para gerar um blob e arquivar no
 // Acervo sem passar pelo disco do usuário (gerarBlobPDFRelatorioMensal).
 async function construirPDFRelatorioMensal({ relatorio, ciclo, orientador, projetoTitulo, nomesBolsistas }) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 20, mR = 20, mT = 26, mB = 20
-  const pgW = 210, pgH = 297
-  const usableW = pgW - mL - mR
-  let pagina = 1
+  const doc = criarDocumento({ tituloPdf: `Relatório de acompanhamento mensal — ciclo ${ciclo.numero_ciclo}` })
+  const COR = DV.base
 
-  function cabecalho() {
-    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 19.5, pgW - mR, 19.5)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 10,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function novaPagina() {
-    rodape()
-    doc.addPage()
-    pagina++
-    cabecalho()
-    return mT
-  }
-
-  function checkPage(y, needed) {
-    if (y + needed > pgH - mB) return novaPagina()
-    return y
-  }
-
-  cabecalho()
-  let y = mT
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(16)
-  doc.setTextColor(...AZUL)
-  doc.text('RELATÓRIO DE ACOMPANHAMENTO MENSAL', pgW / 2, y, { align: 'center' })
-  y += 6
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Ciclo ${ciclo.numero_ciclo} · ${ciclo.mes_referencia}`, pgW / 2, y, { align: 'center' })
-  doc.setTextColor(0, 0, 0)
-  y += 10
-
-  const codigo = orientador?.codigo_facitec || orientador?.codigo_orientador || '—'
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  const projetoLinhas = doc.splitTextToSize(projetoTitulo || '—', usableW - 8)
-  const lhTitulo = 4.8
-  const alturaBox = 8 + projetoLinhas.length * lhTitulo + 8
-
-  y = checkPage(y, alturaBox + 4)
-
-  doc.setFillColor(...CINZA_CLARO)
-  doc.roundedRect(mL, y, usableW, alturaBox, 2, 2, 'F')
-
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.setTextColor(...AZUL)
-  let tituloY = y + 7
-  projetoLinhas.forEach(linha => {
-    doc.text(linha, mL + 4, tituloY)
-    tituloY += lhTitulo
+  let y = titulo(doc, {
+    chapeu: `Ciclo ${ciclo.numero_ciclo} · ${ciclo.mes_referencia}`,
+    texto: 'Relatório de acompanhamento mensal',
   })
 
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(8.5)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Orientador(a): ${orientador?.nome_completo ?? '—'}  ·  ${codigo}`, mL + 4, tituloY + 1)
+  const codigo = orientador?.codigo_facitec || orientador?.codigo_orientador || '—'
+  y = quadroDestaque(doc, {
+    rotulo: 'Projeto',
+    titulo: projetoTitulo || '—',
+    subtitulo: `Orientador(a): ${orientador?.nome_completo ?? '—'}  ·  ${codigo}`,
+  }, y)
 
   if (relatorio.enviado_em) {
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...VERDE)
-    doc.text(`Enviado em ${new Date(relatorio.enviado_em).toLocaleDateString('pt-BR')}`, pgW - mR - 4, y + 8, { align: 'right' })
-  }
-  doc.setTextColor(0, 0, 0)
-  y += alturaBox + 8
-
-  function secaoTitulo(texto) {
-    y = checkPage(y, 10)
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(9.5)
-    doc.setTextColor(...AZUL)
-    doc.text(texto.toUpperCase(), mL, y)
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.3)
-    doc.line(mL, y + 1.5, mL + 30, y + 1.5)
-    doc.setTextColor(0, 0, 0)
-    y += 7
-  }
-
-  function secaoTexto(texto) {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(30, 30, 30)
-    const linhas = doc.splitTextToSize(texto || '—', usableW)
-    linhas.forEach(linha => {
-      y = checkPage(y, 6)
-      doc.text(linha, mL, y)
-      y += 4.6
-    })
-    doc.setTextColor(0, 0, 0)
-    y += 4
+    selo(doc, `Enviado em ${new Date(relatorio.enviado_em).toLocaleDateString('pt-BR')}`, 'sucesso', MARGEM.esquerda, y - 2)
+    y += 8
   }
 
   // 1 — Frequência da equipe
-  secaoTitulo('Frequência da equipe')
+  y = secao(doc, 'Frequência da equipe', y)
   const freq = relatorio.frequencia_bolsistas ?? []
-  const colW = usableW / 2
+  const colW = AREA.largura / 2
   freq.forEach((f, i) => {
     const col = i % 2
-    if (col === 0) y = checkPage(y, 6)
-    const x = mL + col * colW
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    doc.setTextColor(30, 30, 30)
+    if (col === 0) y = garantirEspaco(doc, y, 8)
+    const x = MARGEM.esquerda + col * colW
+    fonte(doc, 'texto', 9, COR.texto)
     doc.text(nomesBolsistas[f.bolsista_id] ?? '—', x, y)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...(f.cumpriu_75_porcento ? VERDE : VERMELHO))
-    doc.text(f.cumpriu_75_porcento ? '75%+' : 'Abaixo de 75%', x + colW - 4, y, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-    if (col === 1) y += 5.5
+    const cumpriu = f.cumpriu_75_porcento
+    const texto = cumpriu ? '75%+' : 'Abaixo de 75%'
+    fonte(doc, 'textoSemi', 8, COR.texto)
+    const wSelo = doc.getTextWidth(texto) + 6
+    selo(doc, texto, cumpriu ? 'sucesso' : 'erro', x + colW - 6 - wSelo, y)
+    if (col === 1) y += 7
   })
-  if (freq.length % 2 === 1) y += 5.5
-  if (!freq.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y); y += 5.5 }
+  if (freq.length % 2 === 1) y += 7
+  if (!freq.length) { fonte(doc, 'texto', 9, COR.texto); doc.text('—', MARGEM.esquerda, y); y += 7 }
   y += 4
 
   // 2-4 — textos corridos
-  secaoTitulo('Atividades realizadas')
-  secaoTexto(relatorio.atividades_realizadas)
-  secaoTitulo('Resultados alcançados')
-  secaoTexto(relatorio.resultados_alcancados)
-  secaoTitulo('Desafios enfrentados')
-  secaoTexto(relatorio.desafios_enfrentados)
+  y = secao(doc, 'Atividades realizadas', y)
+  y = paragrafo(doc, relatorio.atividades_realizadas || '—', y, { tamanho: 10 })
+  y = secao(doc, 'Resultados alcançados', y)
+  y = paragrafo(doc, relatorio.resultados_alcancados || '—', y, { tamanho: 10 })
+  y = secao(doc, 'Desafios enfrentados', y)
+  y = paragrafo(doc, relatorio.desafios_enfrentados || '—', y, { tamanho: 10 })
 
   // 5 — Evidências
-  secaoTitulo('Evidências')
+  y = secao(doc, 'Evidências', y)
   const evidencias = (relatorio.evidencias_urls ?? []).map(e =>
     typeof e === 'string' ? { url: e, legenda: '' } : e)
   const porLinha = 3
   const gap = 4
-  const imgW = (usableW - gap * (porLinha - 1)) / porLinha
+  const imgW = (AREA.largura - gap * (porLinha - 1)) / porLinha
   const imgH = (imgW * 3) / 4
   let linhasLegendaMax = 0
   for (let i = 0; i < evidencias.length; i++) {
     const col = i % porLinha
-    if (col === 0) { y = checkPage(y, imgH + 4); linhasLegendaMax = 0 }
+    if (col === 0) { y = garantirEspaco(doc, y, imgH + 10); linhasLegendaMax = 0 }
     const { url, legenda } = evidencias[i]
-    const x = mL + col * (imgW + gap)
+    const x = MARGEM.esquerda + col * (imgW + gap)
     try {
       const { dataUrl, formato } = await urlParaDataURL(url)
       doc.addImage(dataUrl, formato, x, y, imgW, imgH, undefined, 'FAST')
@@ -194,60 +95,49 @@ async function construirPDFRelatorioMensal({ relatorio, ciclo, orientador, proje
       // evidência que falhar ao carregar é apenas omitida do PDF
     }
     if (legenda) {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8)
-      doc.setTextColor(...CINZA_TEXTO)
+      fonte(doc, 'texto', 8, COR.textoSecundario)
       const linhasLegenda = doc.splitTextToSize(legenda, imgW)
       let legendaY = y + imgH + 3.5
       linhasLegenda.forEach(linha => {
         doc.text(linha, x, legendaY)
         legendaY += 3.5
       })
-      doc.setTextColor(0, 0, 0)
       linhasLegendaMax = Math.max(linhasLegendaMax, linhasLegenda.length)
     }
     if (col === porLinha - 1 || i === evidencias.length - 1) y += imgH + (linhasLegendaMax * 3.5) + gap
   }
-  if (!evidencias.length) { doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.text('—', mL, y); y += 5.5 }
+  if (!evidencias.length) { fonte(doc, 'texto', 9, COR.texto); doc.text('—', MARGEM.esquerda, y); y += 7 }
 
   // 6 — Assinatura eletrônica (omitida se o relatório nunca chegou a ser
   // assinado — ex.: dado incompleto de alguma migração antiga)
   if (relatorio.nome_assinatura && relatorio.assinado_em) {
-    y = checkPage(y, 22)
-    y += 4
-    doc.setDrawColor(...CINZA_TEXTO)
-    doc.setLineWidth(0.2)
-    doc.line(mL, y, pgW - mR, y)
-    y += 6
+    y = garantirEspaco(doc, y + 10, 34)
+    y = assinatura(doc, {
+      nome: relatorio.nome_assinatura,
+      cargo: `Orientador(a) · ${codigo}`,
+      y,
+    })
 
     const dataAssinatura = new Date(relatorio.assinado_em)
     const dataFmt = dataAssinatura.toLocaleDateString('pt-BR')
     const horaFmt = dataAssinatura.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
     const ipTexto = relatorio.ip_assinatura ? ` (IP: ${relatorio.ip_assinatura})` : ''
-
-    doc.setFont('helvetica', 'italic')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(`Documento assinado eletronicamente por ${relatorio.nome_assinatura}`, mL, y)
-    y += 4.2
-    doc.text(`em ${dataFmt} às ${horaFmt}${ipTexto}`, mL, y)
-    y += 4.2
+    const cx = 105
+    fonte(doc, 'textoItalico', 7.5, COR.textoSecundario)
+    doc.text(
+      `Documento assinado eletronicamente por ${relatorio.nome_assinatura} em ${dataFmt} às ${horaFmt}${ipTexto}.`,
+      cx, y - 4, { align: 'center', maxWidth: 140 },
+    )
+    y += 2
 
     if (relatorio.assinatura_origem === 'reconstituida_retroativamente') {
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(7.5)
       const nota = 'Assinatura eletrônica reconstituída a partir do envio original deste relatório pelo sistema, anterior à implementação deste controle de assinatura.'
-      const linhasNota = doc.splitTextToSize(nota, usableW)
-      linhasNota.forEach(linha => {
-        y = checkPage(y, 5)
-        doc.text(linha, mL, y)
-        y += 3.6
-      })
+      fonte(doc, 'texto', 7.5, COR.textoSecundario)
+      doc.text(doc.splitTextToSize(nota, 140), cx, y, { align: 'center' })
     }
-    doc.setTextColor(0, 0, 0)
   }
 
-  rodape()
+  finalizar(doc, { codigo: `CICLO-${ciclo.numero_ciclo}` })
 
   const codigoArquivo = (orientador?.codigo_facitec || orientador?.codigo_orientador || 'orientador').replace(/\s+/g, '')
   const nomeArquivo = `relatorio-ciclo${ciclo.numero_ciclo}-${codigoArquivo}.pdf`

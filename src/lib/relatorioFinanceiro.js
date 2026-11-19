@@ -6,13 +6,16 @@
 // Duas saídas:
 //  - Excel (.xlsx): dados "crus", uma linha por bolsista, prontos para
 //    importação em outros sistemas.
-//  - PDF: relatório formal, timbrado FACITEC/CDTIV, organizado por
-//    orientador, para arquivamento/apresentação pela Secretaria Executiva.
+//  - PDF: relatório formal no modelo único A4 da Identidade Visual DINOV,
+//    organizado por orientador, para arquivamento/apresentação pela
+//    Secretaria Executiva.
 
-import { jsPDF } from 'jspdf'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
+import {
+  criarDocumento, titulo, ficha, faixaTitulo, camposEmColunas, garantirEspaco,
+  finalizar, fonte, DV, rgb, MARGEM, AREA,
+} from '@/lib/documentoDinov'
 // ── Formatação ──────────────────────────────────────────────────────────────
 
 function formatarData(iso) {
@@ -237,87 +240,22 @@ export function exportarExcelFinanceiro(linhas, ano = '2026') {
 // ── Exportação em PDF ─────────────────────────────────────────────────────
 
 export function exportarPDFFinanceiro(linhas, ano = '2026', nomePrograma = 'PIBIC Jr') {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 20, mR = 20, mT = 26, mB = 20
-  const pgW = 210, pgH = 297
-  const usableW = pgW - mL - mR
+  const doc = criarDocumento({ tituloPdf: `Relatório de dados cadastrais dos bolsistas — ${nomePrograma} ${ano}` })
+  const COMPACTO = { compacto: true }
 
-  const AZUL = [26, 39, 68]       // #1a2744 — mesma cor do header do sistema
-  const CINZA_CLARO = [244, 246, 249]
-  const CINZA_TEXTO = [90, 96, 110]
-  const VERDE = [22, 130, 90]
-
-  let pagina = 1
-
-    function cabecalho() {
-    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 19.5, pgW - mR, 19.5)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 10,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function novaPagina() {
-    rodape()
-    doc.addPage()
-    pagina++
-    cabecalho()
-    return mT
-  }
-
-  function checkPage(y, needed) {
-    if (y + needed > pgH - mB) return novaPagina()
-    return y
-  }
-
-  // ── Capa ──────────────────────────────────────────────────────────────
-  cabecalho()
-  let y = 70
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(20)
-  doc.setTextColor(...AZUL)
-  doc.text('RELATÓRIO DE DADOS CADASTRAIS', pgW / 2, y, { align: 'center' })
-  y += 9
-  doc.text('DOS BOLSISTAS', pgW / 2, y, { align: 'center' })
-  y += 14
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(12)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text(`Programa ${nomePrograma}`, pgW / 2, y, { align: 'center' })
-  y += 7
-  doc.text(`Edição ${ano}`, pgW / 2, y, { align: 'center' })
-  y += 20
+  // ── Abertura: título e resumo ─────────────────────────────────────────
+  let y = titulo(doc, {
+    chapeu: `Programa ${nomePrograma} · Edição ${ano}`,
+    texto: 'Relatório de dados cadastrais dos bolsistas',
+  })
 
   const totalBolsistas = linhas.length
   const orientadoresUnicos = new Set(linhas.map(l => l.codigo_orientador)).size
-
-  doc.setDrawColor(...CINZA_CLARO)
-  doc.setFillColor(...CINZA_CLARO)
-  doc.roundedRect(mL + 15, y, usableW - 30, 30, 3, 3, 'F')
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(11)
-  doc.setTextColor(...AZUL)
-  doc.text(`${totalBolsistas} bolsista(s)`, pgW / 2 - 30, y + 13, { align: 'center' })
-  doc.text(`${orientadoresUnicos} orientador(es)`, pgW / 2 + 30, y + 13, { align: 'center' })
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(9)
-  doc.setTextColor(...CINZA_TEXTO)
-  doc.text('Finalidade: cadastramento junto à Gerência Financeira', pgW / 2, y + 23, { align: 'center' })
-  doc.setTextColor(0, 0, 0)
-
-  y = novaPagina()
+  y = ficha(doc, [
+    ['Bolsistas', totalBolsistas],
+    ['Orientadores', orientadoresUnicos],
+    ['Finalidade', 'Cadastramento junto à Gerência Financeira'],
+  ], y)
 
   // ── Corpo — agrupado por orientador ──────────────────────────────────
   const porOrientador = {}
@@ -333,95 +271,57 @@ export function exportarPDFFinanceiro(linhas, ano = '2026', nomePrograma = 'PIBI
     const grupo = porOrientador[codigo]
     const { orientador, projeto, numero_contrato } = grupo[0]
 
-    y = checkPage(y, 22)
-    doc.setFillColor(...AZUL)
-    doc.rect(mL, y, usableW, 16, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10.5)
-    doc.setTextColor(255, 255, 255)
-    doc.text(`${orientador}  ·  ${codigo}`, mL + 4, y + 6.5)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(8.5)
-    const projetoLinha = `${projeto}${numero_contrato ? `  ·  Contrato nº ${numero_contrato}` : ''}`
-    doc.text(doc.splitTextToSize(projetoLinha, usableW - 8)[0], mL + 4, y + 12.5)
-    doc.setTextColor(0, 0, 0)
-    y += 16 + 5
+    y = faixaTitulo(doc, {
+      titulo: `${orientador}  ·  ${codigo}`,
+      subtitulo: `${projeto}${numero_contrato ? `  ·  Contrato nº ${numero_contrato}` : ''}`,
+    }, y)
 
-    grupo.forEach((b, idx) => {
+    grupo.forEach((b) => {
       const temBancarios = !!(b.banco_responsavel || b.agencia_responsavel || b.conta_responsavel)
-      const linhasCampos = 4 + (b.menor_idade === 'Sim' ? 2 : 0) + (temBancarios ? 1 : 0)
-      const lh = 4.6
-      const passoLinha = lh + 3.5
-      const alturaEstimativa = 6 + 3 + linhasCampos * passoLinha + 5 // nome + espaço + linhas + respiro final
+      const alturaEstimativa = 18 + 2 * 10.5 + 10.5 + 10.5 + (b.menor_idade === 'Sim' ? 21 : 0) + (temBancarios ? 10.5 : 0)
+      y = garantirEspaco(doc, y, alturaEstimativa)
 
-      y = checkPage(y, alturaEstimativa + 4)
+      fonte(doc, 'titulo', 10, DV.base.marinho)
+      doc.text(`${b.nome_completo}`, MARGEM.esquerda, y)
+      fonte(doc, 'texto', 8.5, DV.base.textoSecundario)
+      doc.text(
+        `${b.codigo_bolsista}  ·  ${b.tipo}${b.menor_idade === 'Sim' ? '  ·  Menor de idade' : ''}`,
+        MARGEM.esquerda + AREA.largura, y, { align: 'right' },
+      )
+      y += 5
 
-      doc.setFillColor(...CINZA_CLARO)
-      doc.roundedRect(mL, y, usableW, alturaEstimativa, 2, 2, 'F')
-
-      const px = mL + 4
-      let py = y + 6
-
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
-      doc.setTextColor(...AZUL)
-      doc.text(`${b.nome_completo}`, px, py)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(8.5)
-      doc.setTextColor(...CINZA_TEXTO)
-      doc.text(`${b.codigo_bolsista}  ·  ${b.tipo}${b.menor_idade === 'Sim' ? '  ·  Menor de idade' : ''}`, pgW - mR - 4, py, { align: 'right' })
-      py += 6
-
-      const colEsqX = px
-      const colDirX = mL + usableW / 2 + 4
-
-      function campo(x, yy, label, valor) {
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(7.5)
-        doc.setTextColor(...CINZA_TEXTO)
-        doc.text(label, x, yy)
-        doc.setFont('helvetica', 'normal')
-        doc.setFontSize(8.5)
-        doc.setTextColor(0, 0, 0)
-        doc.text(valor || '—', x, yy + 3.6)
-      }
-
-      campo(colEsqX, py, 'CPF', b.cpf)
-      campo(colDirX, py, 'RG', b.rg)
-      py += passoLinha
-
-      campo(colEsqX, py, 'DATA DE NASCIMENTO', b.data_nascimento)
-      campo(colDirX, py, 'ESCOLA', b.escola)
-      py += passoLinha
-
-      campo(colEsqX, py, 'ENDEREÇO', b.endereco)
-      py += passoLinha
-
-      campo(colEsqX, py, 'TELEFONE', b.telefone)
-      campo(colDirX, py, 'E-MAIL', b.email)
-      py += passoLinha
+      y = camposEmColunas(doc, [['CPF', b.cpf], ['RG', b.rg]], y, COMPACTO)
+      y = camposEmColunas(doc, [['Data de nascimento', b.data_nascimento], ['Escola', b.escola]], y, COMPACTO)
+      y = camposEmColunas(doc, [['Endereço', b.endereco]], y, COMPACTO)
+      y = camposEmColunas(doc, [['Telefone', b.telefone], ['E-mail', b.email]], y, COMPACTO)
 
       if (b.menor_idade === 'Sim') {
-        campo(colEsqX, py, 'RESPONSÁVEL', `${b.nome_responsavel || '—'} (${b.vinculo_responsavel || '—'})`)
-        campo(colDirX, py, 'CPF DO RESPONSÁVEL', b.cpf_responsavel)
-        py += passoLinha
-        campo(colEsqX, py, 'TELEFONE DO RESPONSÁVEL', b.telefone_responsavel)
-        campo(colDirX, py, 'E-MAIL DO RESPONSÁVEL', b.email_responsavel)
-        py += passoLinha
+        y = camposEmColunas(doc, [
+          ['Responsável', `${b.nome_responsavel || '—'} (${b.vinculo_responsavel || '—'})`],
+          ['CPF do responsável', b.cpf_responsavel],
+        ], y, COMPACTO)
+        y = camposEmColunas(doc, [
+          ['Telefone do responsável', b.telefone_responsavel],
+          ['E-mail do responsável', b.email_responsavel],
+        ], y, COMPACTO)
       }
 
       if (temBancarios) {
-        campo(colEsqX, py, 'DADOS BANCÁRIOS', `${b.banco_responsavel || '—'}  ·  Ag. ${b.agencia_responsavel || '—'}  ·  Conta ${b.conta_responsavel || '—'}`)
-        py += passoLinha
+        y = camposEmColunas(doc, [[
+          'Dados bancários',
+          `${b.banco_responsavel || '—'}  ·  Ag. ${b.agencia_responsavel || '—'}  ·  Conta ${b.conta_responsavel || '—'}`,
+        ]], y, COMPACTO)
       }
 
-      doc.setTextColor(0, 0, 0)
-      y += alturaEstimativa + 4
+      doc.setDrawColor(...rgb(DV.base.divisoria))
+      doc.setLineWidth(0.2)
+      doc.line(MARGEM.esquerda, y, MARGEM.esquerda + AREA.largura, y)
+      y += 6
     })
 
-    y += 4
+    y += 2
   })
 
-  rodape()
+  finalizar(doc)
   doc.save(`Relatorio_Financeiro_${sufixoArquivo(linhas, ano)}.pdf`)
 }

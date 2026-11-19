@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase } from '@/lib/supabase'
+import { htmlDocumentoDinov, escaparHtml } from '@/lib/documentoHtmlDinov'
 
 const TIPOS_DOC = ['Petição', 'Parecer jurídico', 'Decisão final', 'Outro']
 
@@ -174,37 +175,32 @@ export function PainelConsolidadoRecurso() {
 
       return `
         <tr>
-          <td>${nome}</td>
-          <td>${criterio}</td>
-          <td style="text-align:center">${notaOrig}</td>
-          <td>${resposta}</td>
-          <td style="white-space:pre-wrap">${cc.justificativa ?? '—'}</td>
+          <td>${escaparHtml(nome)}</td>
+          <td>${escaparHtml(criterio)}</td>
+          <td style="text-align:center">${escaparHtml(notaOrig)}</td>
+          <td>${escaparHtml(resposta)}</td>
+          <td style="white-space:pre-wrap">${escaparHtml(cc.justificativa ?? '—')}</td>
         </tr>`
     }).join('')
 
-    const html = `<!DOCTYPE html>
-<html><head><meta charset="UTF-8">
-<title>Relatório — ${recurso?.codigo_recurso ?? 'Recurso'}</title>
-<style>
-  body{font-family:Arial,sans-serif;padding:2rem;font-size:12px;color:#111}
-  h1{font-size:15px;margin:0 0 4px}
-  .sub{font-size:12px;color:#555;margin:0 0 1.5rem}
-  table{width:100%;border-collapse:collapse;margin-top:1rem}
-  th{background:#f0f0f0;text-align:left;padding:6px 8px;border:1px solid #ccc}
-  td{padding:6px 8px;border:1px solid #ccc;vertical-align:top}
-  .meta{font-size:11px;color:#777;margin-bottom:1rem}
-</style></head><body>
-<h1>Relatório de Convocação — ${recurso?.codigo_recurso ?? ''}</h1>
-<p class="sub">Projeto: ${recurso?.projeto?.titulo ?? '—'} · Candidato: ${recurso?.orientador?.nome_completo ?? '—'}</p>
-<p class="meta">Gerado em: ${new Date().toLocaleString('pt-BR')}</p>
+    // Modelo único A4 da Identidade Visual DINOV, em HTML (documentoHtmlDinov.js)
+    const codigoRec = recurso?.codigo_recurso ?? ''
+    const html = htmlDocumentoDinov({
+      tituloJanela: `Relatório — ${codigoRec || 'Recurso'}`,
+      chapeu: `Recurso ${codigoRec || '—'}`,
+      titulo: 'Relatório de convocação dos avaliadores',
+      codigo: codigoRec || undefined,
+      corpo: `
+<p class="meta"><strong>Projeto:</strong> ${escaparHtml(recurso?.projeto?.titulo ?? '—')}<br>
+<strong>Candidato:</strong> ${escaparHtml(recurso?.orientador?.nome_completo ?? '—')}</p>
 <table>
   <thead><tr>
     <th>Avaliador</th><th>Critério</th>
     <th>Nota orig.</th><th>Resposta</th><th>Justificativa</th>
   </tr></thead>
   <tbody>${linhas}</tbody>
-</table>
-</body></html>`
+</table>`,
+    })
 
     const win = window.open('', '_blank')
     win.document.write(html)

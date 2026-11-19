@@ -24,8 +24,10 @@
 // existe. Quando um documento não foi anexado, o quadradinho mostra um
 // aviso em vez de quebrar a geração da ficha.
 
-import { jsPDF } from 'jspdf'
-import { desenharCabecalhoLogos } from '@/lib/identidadeVisual'
+import {
+  criarDocumento, titulo, secao, quadroDestaque, camposEmColunas, finalizar,
+  fonte, DV, rgb, MARGEM, AREA, INICIO_CONTEUDO,
+} from '@/lib/documentoDinov'
 import { converterDocumentoParaImagem } from '@/lib/documentoImagem'
 
 // Decide quais documentos de identidade mostrar para o bolsista (ou, quando
@@ -47,93 +49,27 @@ function listarDocumentosIdentidade(linha, { responsavel = false } = {}) {
   return docs.length ? docs : [{ label: `Identidade do ${quem}`, url: null }]
 }
 
+// A ficha cabe numa página por bolsista (a dos documentos vem em seguida):
+// por isso os campos usam o espaçamento compacto.
+const COMPACTO = { compacto: true }
+
 export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
   if (!linhas?.length) return
 
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 20, mR = 20, mT = 26
-  const pgW = 210, pgH = 297
-  const usableW = pgW - mL - mR
-
-  const AZUL = [26, 39, 68]
-  const CINZA_CLARO = [244, 246, 249]
-  const CINZA_TEXTO = [90, 96, 110]
-
-  let pagina = 1
-
-  function cabecalho() {
-    desenharCabecalhoLogos(doc, { pgW, centroY: 10.5, altura: 10 })
-    doc.setDrawColor(...AZUL)
-    doc.setLineWidth(0.6)
-    doc.line(mL, 19.5, pgW - mR, 19.5)
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function rodape() {
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `Gerado em ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR')} · FACITEC CONECTA`,
-      mL, pgH - 10,
-    )
-    doc.text(`Página ${pagina}`, pgW - mR, pgH - 10, { align: 'right' })
-    doc.setTextColor(0, 0, 0)
-  }
-
-  function tituloSecao(y, texto) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(10)
-    doc.setTextColor(...AZUL)
-    doc.text(texto.toUpperCase(), mL, y)
-    doc.setDrawColor(...CINZA_CLARO)
-    doc.setLineWidth(0.4)
-    doc.line(mL, y + 2.5, pgW - mR, y + 2.5)
-    doc.setTextColor(0, 0, 0)
-    return y + 10
-  }
-
-  // Desenha um campo (rótulo + valor) e devolve quantas linhas o valor
-  // ocupou — usado por `linha()` para saber o quanto empurrar a próxima
-  // linha/seção para baixo, já que campos como endereço/projeto podem
-  // quebrar em 2-3 linhas dependendo do cadastro de cada bolsista.
-  function campo(x, y, label, valor, largura) {
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(7.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(label, x, y)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(10)
-    doc.setTextColor(0, 0, 0)
-    const linhasTexto = doc.splitTextToSize(valor || '—', largura)
-    doc.text(linhasTexto, x, y + 5.5)
-    return linhasTexto.length
-  }
-
-  // Desenha uma "linha" com 1-2 campos lado a lado e devolve o y da próxima
-  // linha, já ajustado à maior quantidade de linhas de texto entre eles.
-  const ALTURA_LINHA_TEXTO = 4.2
-  function linha(y, pares, gapDepois = 3) {
-    const maxLinhas = Math.max(...pares.map(p => campo(p.x, y, p.label, p.valor, p.largura)))
-    return y + 5.5 + maxLinhas * ALTURA_LINHA_TEXTO + gapDepois
-  }
-
-  const colEsqX = mL
-  const colDirX = mL + usableW / 2 + 6
-  const colLargura = usableW / 2 - 6
+  const doc = criarDocumento({ tituloPdf: `Ficha cadastral do bolsista — edição ${ano}` })
 
   // Desenha o retângulo com a imagem do documento (ou um aviso, quando
   // `resultado` é null porque o documento não existe ou não pôde ser
-  // carregado) — usado na seção "Documentos anexados", abaixo. O documento
-  // é ampliado ao máximo dentro de DOC_W x DOC_H mantendo sua proporção
-  // original, para ficar grande o bastante para conferência (nome, número,
-  // foto) sem distorcer a imagem.
-  const DOC_W = 78
+  // carregado) — usado na página "Documentos de identidade", abaixo. O
+  // documento é ampliado ao máximo dentro de DOC_W x DOC_H mantendo sua
+  // proporção original, para ficar grande o bastante para conferência
+  // (nome, número, foto) sem distorcer a imagem.
+  const DOC_W = 76
   const DOC_H = 95
-  const GAP_DOC_X = 14
+  const GAP_DOC_X = AREA.largura - 2 * DOC_W
   const GAP_DOC_Y = 14
   function quadradoDocumento(x, y, label, resultado) {
-    doc.setDrawColor(...CINZA_CLARO)
+    doc.setDrawColor(...rgb(DV.base.borda))
     doc.setLineWidth(0.3)
     if (resultado?.canvas) {
       const escala = Math.min(DOC_W / resultado.largura, DOC_H / resultado.altura)
@@ -142,117 +78,59 @@ export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
       doc.roundedRect(x, y, DOC_W, DOC_H, 2, 2, 'S')
       doc.addImage(resultado.canvas, 'JPEG', x + (DOC_W - w) / 2, y + (DOC_H - h) / 2, w, h)
     } else {
-      doc.setFillColor(...CINZA_CLARO)
+      doc.setFillColor(...rgb(DV.base.marinhoClaro))
       doc.roundedRect(x, y, DOC_W, DOC_H, 2, 2, 'FD')
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.setTextColor(...CINZA_TEXTO)
+      fonte(doc, 'texto', 9, DV.base.textoSecundario)
       doc.text('Documento', x + DOC_W / 2, y + DOC_H / 2 - 3, { align: 'center' })
       doc.text('não anexado', x + DOC_W / 2, y + DOC_H / 2 + 3, { align: 'center' })
-      doc.setTextColor(0, 0, 0)
     }
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(8.5)
-    doc.setTextColor(...CINZA_TEXTO)
+    fonte(doc, 'textoSemi', 8.5, DV.base.textoSecundario)
     doc.text(label, x + DOC_W / 2, y + DOC_H + 5.5, { align: 'center' })
-    doc.setTextColor(0, 0, 0)
   }
 
   for (const [idx, b] of linhas.entries()) {
-    if (idx > 0) {
-      rodape()
-      doc.addPage()
-      pagina++
-    }
-    cabecalho()
+    if (idx > 0) doc.addPage()
 
-    let y = mT + 6
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(17)
-    doc.setTextColor(...AZUL)
-    doc.text('FICHA CADASTRAL DO BOLSISTA', pgW / 2, y, { align: 'center' })
-    y += 6.5
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9.5)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(`Edição ${ano} · Finalidade: cadastramento junto à Gerência Financeira`, pgW / 2, y, { align: 'center' })
-    doc.setTextColor(0, 0, 0)
-    y += 12
+    let y = titulo(doc, {
+      chapeu: `Edição ${ano} · Cadastramento junto à Gerência Financeira`,
+      texto: 'Ficha cadastral do bolsista',
+    })
 
     // ── Nome em destaque ────────────────────────────────────────────────
-    doc.setDrawColor(...CINZA_CLARO)
-    doc.setFillColor(...CINZA_CLARO)
-    doc.roundedRect(mL, y, usableW, 18, 2, 2, 'F')
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(13)
-    doc.setTextColor(...AZUL)
-    doc.text(b.nome_completo || '—', mL + 5, y + 8)
-    doc.setFont('helvetica', 'normal')
-    doc.setFontSize(9)
-    doc.setTextColor(...CINZA_TEXTO)
-    doc.text(
-      `${b.codigo_bolsista || '—'}  ·  ${b.tipo || '—'}${b.menor_idade === 'Sim' ? '  ·  Menor de idade' : ''}`,
-      mL + 5, y + 14.5,
-    )
-    doc.setTextColor(0, 0, 0)
-    y += 18 + 5
+    y = quadroDestaque(doc, {
+      rotulo: `${b.codigo_bolsista || '—'}  ·  ${b.tipo || '—'}${b.menor_idade === 'Sim' ? '  ·  Menor de idade' : ''}`,
+      titulo: b.nome_completo || '—',
+    }, y)
 
     // ── Identificação ───────────────────────────────────────────────────
-    y = tituloSecao(y, 'Identificação')
-    y = linha(y, [
-      { x: colEsqX, label: 'CPF', valor: b.cpf, largura: colLargura },
-      { x: colDirX, label: 'RG', valor: b.rg, largura: colLargura },
-    ])
-    y = linha(y, [
-      { x: colEsqX, label: 'DATA DE NASCIMENTO', valor: b.data_nascimento, largura: colLargura },
-      { x: colDirX, label: 'ESCOLA', valor: b.escola, largura: colLargura },
-    ], 5)
+    y = secao(doc, 'Identificação', y)
+    y = camposEmColunas(doc, [['CPF', b.cpf], ['RG', b.rg]], y, COMPACTO)
+    y = camposEmColunas(doc, [['Data de nascimento', b.data_nascimento], ['Escola', b.escola]], y, COMPACTO)
 
     // ── Contato ─────────────────────────────────────────────────────────
-    y = tituloSecao(y, 'Contato')
-    y = linha(y, [
-      { x: colEsqX, label: 'TELEFONE', valor: b.telefone, largura: colLargura },
-      { x: colDirX, label: 'E-MAIL', valor: b.email, largura: colLargura },
-    ], 5)
+    y = secao(doc, 'Contato', y + 2)
+    y = camposEmColunas(doc, [['Telefone', b.telefone], ['E-mail', b.email]], y, COMPACTO)
 
     // ── Endereço ────────────────────────────────────────────────────────
-    y = tituloSecao(y, 'Endereço')
-    y = linha(y, [
-      { x: colEsqX, label: 'ENDEREÇO COMPLETO', valor: b.endereco, largura: usableW },
-    ], 5)
+    y = secao(doc, 'Endereço', y + 2)
+    y = camposEmColunas(doc, [['Endereço completo', b.endereco]], y, COMPACTO)
 
     // ── Responsável ─────────────────────────────────────────────────────
     // Só existe (e só faz sentido mostrar) para bolsistas menores de idade —
     // para os demais, a seção inteira é omitida, em vez de imprimir um
     // "Responsável: —" vazio numa ficha que vai para fora da instituição.
     if (b.menor_idade === 'Sim') {
-      y = tituloSecao(y, 'Responsável')
-      y = linha(y, [
-        { x: colEsqX, label: 'NOME', valor: b.nome_responsavel, largura: colLargura },
-        { x: colDirX, label: 'VÍNCULO', valor: b.vinculo_responsavel, largura: colLargura },
-      ])
-      y = linha(y, [
-        { x: colEsqX, label: 'CPF', valor: b.cpf_responsavel, largura: colLargura },
-        { x: colDirX, label: 'RG', valor: b.rg_responsavel, largura: colLargura },
-      ])
-      y = linha(y, [
-        { x: colEsqX, label: 'TELEFONE', valor: b.telefone_responsavel, largura: colLargura },
-        { x: colDirX, label: 'E-MAIL', valor: b.email_responsavel, largura: colLargura },
-      ], 5)
+      y = secao(doc, 'Responsável', y + 2)
+      y = camposEmColunas(doc, [['Nome', b.nome_responsavel], ['Vínculo', b.vinculo_responsavel]], y, COMPACTO)
+      y = camposEmColunas(doc, [['CPF', b.cpf_responsavel], ['RG', b.rg_responsavel]], y, COMPACTO)
+      y = camposEmColunas(doc, [['Telefone', b.telefone_responsavel], ['E-mail', b.email_responsavel]], y, COMPACTO)
     }
 
     // ── Vínculo institucional ───────────────────────────────────────────
-    y = tituloSecao(y, 'Vínculo institucional')
-    y = linha(y, [
-      { x: colEsqX, label: 'ORIENTADOR(A)', valor: b.orientador, largura: colLargura },
-      { x: colDirX, label: 'CÓDIGO DO ORIENTADOR', valor: b.codigo_orientador, largura: colLargura },
-    ])
-    y = linha(y, [
-      { x: colEsqX, label: 'PROJETO', valor: b.projeto, largura: usableW },
-    ])
-    y = linha(y, [
-      { x: colEsqX, label: 'Nº DO CONTRATO', valor: b.numero_contrato, largura: colLargura },
-    ], 5)
+    y = secao(doc, 'Vínculo institucional', y + 2)
+    y = camposEmColunas(doc, [['Orientador(a)', b.orientador], ['Código do orientador', b.codigo_orientador]], y, COMPACTO)
+    y = camposEmColunas(doc, [['Projeto', b.projeto]], y, COMPACTO)
+    y = camposEmColunas(doc, [['Nº do contrato', b.numero_contrato]], y, COMPACTO)
 
     // ── Documentos anexados ──────────────────────────────────────────────
     // Busca as imagens (ou converte a 1ª página do PDF) em paralelo, para
@@ -266,32 +144,20 @@ export async function exportarFichaCadastralPDF(linhas, ano = '2026') {
     // Os documentos ganham página própria (em vez de dividir espaço com o
     // texto): assim cada imagem pode ser exibida bem maior, grande o
     // suficiente para conferir CPF, RG e foto sem precisar dar zoom.
-    rodape()
     doc.addPage()
-    pagina++
-    cabecalho()
-    y = mT + 8
-
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(11.5)
-    doc.setTextColor(...AZUL)
-    doc.text(`Documentos de identidade — ${b.nome_completo || '—'}`, mL, y)
-    doc.setTextColor(0, 0, 0)
-    y += 10
+    y = secao(doc, `Documentos de identidade — ${b.nome_completo || '—'}`, INICIO_CONTEUDO) + 2
 
     const colunasGrid = 2
-    const larguraGrid = colunasGrid * DOC_W + (colunasGrid - 1) * GAP_DOC_X
-    const inicioGridX = mL + (usableW - larguraGrid) / 2
     todosDocumentos.forEach((docInfo, i) => {
       const col = i % colunasGrid
       const lin = Math.floor(i / colunasGrid)
-      const x = inicioGridX + col * (DOC_W + GAP_DOC_X)
+      const x = MARGEM.esquerda + col * (DOC_W + GAP_DOC_X)
       const yLinha = y + lin * (DOC_H + GAP_DOC_Y)
       quadradoDocumento(x, yLinha, docInfo.label, resultadosImagens[i])
     })
   }
 
-  rodape()
+  finalizar(doc)
 
   const sufixo = linhas.length === 1
     ? (linhas[0].codigo_bolsista || 'bolsista')

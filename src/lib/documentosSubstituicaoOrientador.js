@@ -17,12 +17,14 @@
 // substituto, assinaturas) fica com reticências para completar à mão,
 // igual ao padrão dos anexos em papel já usados pela CCAD.
 
-import { jsPDF } from 'jspdf'
 import { Document, Packer, Paragraph, TextRun, ImageRun, AlignmentType } from 'docx'
 import {
   LOGO_CDTIV_BYTES, LOGO_FACITEC_BYTES, LOGO_CDTIV_ASPECTO, LOGO_FACITEC_ASPECTO,
-  desenharCabecalhoLogos,
 } from '@/lib/identidadeVisual'
+import {
+  criarDocumento, titulo, paragrafo, secao, selo, linhaCampo, assinatura,
+  finalizar, garantirEspaco, fonte, DV, MARGEM,
+} from '@/lib/documentoDinov'
 
 function dotted(n) {
   return '…'.repeat(n)
@@ -80,58 +82,44 @@ const MARGENS = { top: 1100, bottom: 900, left: 1300, right: 1300 }
 // reticências para os dados que já temos.
 
 export function gerarSolicitacaoDesligamentoPdf({ orientador, projeto, numeroEdital, nomeSubstituto, cpfSubstituto, motivo }) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 25, mR = 25
-  const pgW = 210
+  // Modelo único A4 da Identidade Visual DINOV (documentoDinov.js).
+  const doc = criarDocumento({ tituloPdf: 'Solicitação de desligamento de projeto PIBIC Jr' })
 
-  desenharCabecalhoLogos(doc, { pgW, centroY: 16, altura: 12 })
-  doc.setTextColor(0, 0, 0)
+  let y = titulo(doc, {
+    chapeu: `Edital FACITEC nº ${campo(numeroEdital, 10)} · Item 16.2`,
+    texto: 'Solicitação de desligamento de projeto PIBIC Jr',
+  })
 
-  let y = 36
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  doc.text('SOLICITAÇÃO DE DESLIGAMENTO DE PROJETO PIBIC JR', pgW / 2, y, { align: 'center', maxWidth: pgW - mL - mR })
-  y += 14
+  y = paragrafo(doc, 'À', y, { alinhamento: 'left' })
+  y = paragrafo(doc, 'Secretaria Executiva/CMCT-FACITEC', y - 4, { alinhamento: 'left', estilo: 'textoSemi' })
+  y = paragrafo(doc, 'Prezado(a) Senhor(a),', y, { alinhamento: 'left' })
 
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(10.5)
-  doc.text('À', mL, y)
-  y += 6
-  doc.text('Secretaria Executiva/CMCT-FACITEC', mL, y)
-  y += 10
-
-  doc.setFont('helvetica', 'normal')
-  doc.text('Prezado(a) Senhor(a),', mL, y)
-  y += 10
-
-  const usableW = pgW - mL - mR
-  doc.setFontSize(10.5)
-
-  function paragrafo(texto, espacoDepois = 9) {
-    const linhas = doc.splitTextToSize(texto, usableW)
-    doc.text(linhas, mL, y, { lineHeightFactor: 1.4 })
-    y += linhas.length * 5.3 + espacoDepois
-  }
-
-  paragrafo(
+  y = paragrafo(
+    doc,
     `Eu, ${campo(orientador?.nome_completo, 55)}, CPF nº ${campo(orientador?.cpf, 18)}, RG/CI nº ${campo(orientador?.rg, 16)}, responsável pela orientação do projeto “${campo(projeto?.titulo, 45)}”, SOLICITO O MEU DESLIGAMENTO do projeto, com base no item 16.2 do Edital FACITEC nº ${campo(numeroEdital, 10)}.`,
+    y,
   )
-  paragrafo(
+  y = paragrafo(
+    doc,
     `Diante da possibilidade de o FACITEC continuar oferecendo apoio ao meu projeto, INDICO o(a) professor(a) ${campo(nomeSubstituto, 45)}, CPF nº ${campo(cpfSubstituto, 18)}, para me substituir na orientação, uma vez que o(a) mesmo(a) reúne os requisitos necessários para dar continuidade ao projeto.`,
+    y,
   )
-  paragrafo(`Esclareço que o motivo do meu desligamento é: ${campo(motivo, 0) || dotted(55)}`)
+  y = paragrafo(doc, `Esclareço que o motivo do meu desligamento é: ${campo(motivo, 0) || dotted(55)}`, y)
+  y = paragrafo(doc, 'Certo da compreensão de V.Sª,', y, { alinhamento: 'left' })
 
-  doc.text('Certo da compreensão de V.Sª,', mL, y)
-  y += 14
-  doc.text(`Vitória, ${dataExtensoHoje()}.`, pgW - mR, y, { align: 'right' })
-  y += 16
-  doc.text('Atenciosamente,', mL, y)
-  y += 20
-  doc.setLineWidth(0.3)
-  doc.line(mL, y, mL + 70, y)
-  y += 5
-  doc.text(campo(orientador?.nome_completo, 0) || 'Nome completo do(a) orientador(a) que solicita o desligamento', mL, y)
+  y = garantirEspaco(doc, y + 4, 56)
+  fonte(doc, 'texto', 11, DV.base.texto)
+  doc.text(`Vitória, ${dataExtensoHoje()}.`, MARGEM.esquerda, y)
+  y += 10
+  y = paragrafo(doc, 'Atenciosamente,', y, { alinhamento: 'left' })
 
+  assinatura(doc, {
+    nome: campo(orientador?.nome_completo, 0) || 'Nome completo do(a) orientador(a)',
+    cargo: 'Orientador(a) que solicita o desligamento',
+    y: y + 18,
+  })
+
+  finalizar(doc, { codigo: 'DESLIGAMENTO-ORIENTADOR' })
   doc.save('Solicitacao_Desligamento_Orientador.pdf')
 }
 
@@ -257,94 +245,77 @@ export async function baixarDeclaracaoAceitacao(dados) {
 // jurídica/administrativa do documento final.
 
 export function gerarTermoAditivoPdf({ projeto, orientadorSaiu, orientadorEntrou, numeroEdital, numeroContrato }) {
-  const doc = new jsPDF({ unit: 'mm', format: 'a4' })
-  const mL = 25, mR = 25
-  const pgW = 210
-  const usableW = pgW - mL - mR
+  // Modelo único A4 da Identidade Visual DINOV; minuta leva o selo "Atenção".
+  const doc = criarDocumento({ tituloPdf: 'Minuta de termo aditivo — substituição de orientador' })
 
-  desenharCabecalhoLogos(doc, { pgW, centroY: 16, altura: 12 })
-  doc.setTextColor(0, 0, 0)
+  let y = titulo(doc, {
+    chapeu: `Minuta · Edital FACITEC nº ${campo(numeroEdital, 10)}`,
+    texto: 'Termo aditivo ao contrato de concessão de apoio financeiro',
+  })
+  selo(doc, 'MINUTA gerada pelo sistema — revisar antes de enviar para assinatura (ZapSign)', 'atencao', MARGEM.esquerda, y - 4)
+  y += 6
 
-  let y = 34
-  doc.setFont('helvetica', 'bold')
-  doc.setFontSize(13)
-  doc.text('TERMO ADITIVO AO CONTRATO DE CONCESSÃO DE APOIO FINANCEIRO', pgW / 2, y, { align: 'center', maxWidth: usableW })
-  y += 8
-  doc.setFont('helvetica', 'italic')
-  doc.setFontSize(9)
-  doc.setTextColor(150, 60, 0)
-  doc.text('MINUTA gerada automaticamente pelo sistema — revisar antes de enviar para assinatura (ZapSign)', pgW / 2, y, { align: 'center', maxWidth: usableW })
-  doc.setTextColor(0, 0, 0)
-  y += 12
-
-  doc.setFont('helvetica', 'normal')
-  doc.setFontSize(10.5)
-
-  function paragrafo(texto, espacoDepois = 8) {
-    const linhas = doc.splitTextToSize(texto, usableW)
-    doc.text(linhas, mL, y, { lineHeightFactor: 1.4, align: 'justify', maxWidth: usableW })
-    y += linhas.length * 5.3 + espacoDepois
-  }
-
-  paragrafo(
+  y = paragrafo(
+    doc,
     `TERMO ADITIVO ao Contrato de Concessão de Apoio Financeiro nº ${campo(numeroContrato, 10)}, referente ao projeto “${campo(projeto?.titulo, 60)}”, Edital FACITEC nº ${campo(numeroEdital, 10)}, celebrado entre a Companhia de Desenvolvimento, Turismo e Inovação de Vitória – CDTIV, na qualidade de gestora do Fundo de Apoio à Ciência, Tecnologia e Inovação de Vitória – FACITEC, e o(a) orientador(a) do projeto, nos termos do item 16.2 do Edital vigente.`,
-  )
-  paragrafo(
-    `CLÁUSULA PRIMEIRA — DO OBJETO. O presente Termo tem por objeto formalizar a SUBSTITUIÇÃO do(a) orientador(a) responsável pelo projeto acima identificado, que passa da seguinte forma:`,
+    y,
   )
 
-  doc.setFont('helvetica', 'bold')
-  doc.text('Orientador(a) que se desliga:', mL, y)
-  y += 6
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Nome: ${campo(orientadorSaiu?.nome_completo, 55)}`, mL, y); y += 5.5
-  doc.text(`CPF: ${campo(orientadorSaiu?.cpf, 18)}`, mL, y); y += 10
-
-  doc.setFont('helvetica', 'bold')
-  doc.text('Orientador(a) substituto(a):', mL, y)
-  y += 6
-  doc.setFont('helvetica', 'normal')
-  doc.text(`Nome: ${campo(orientadorEntrou?.nome_completo, 55)}`, mL, y); y += 5.5
-  doc.text(`CPF: ${campo(orientadorEntrou?.cpf, 18)}`, mL, y); y += 12
-
-  paragrafo(
-    'CLÁUSULA SEGUNDA — DA VIGÊNCIA DAS DEMAIS CLÁUSULAS. Permanecem inalteradas e em pleno vigor todas as demais cláusulas e condições do Contrato de Concessão de Apoio Financeiro original, no que não contrariarem o disposto neste Termo Aditivo.',
-  )
-  paragrafo(
-    'E por estarem assim justas e contratadas, firmam o presente Termo Aditivo, em duas vias de igual teor, juntamente com as testemunhas abaixo.',
-    16,
+  y = secao(doc, 'Cláusula primeira — Do objeto', y + 2)
+  y = paragrafo(
+    doc,
+    'O presente Termo tem por objeto formalizar a SUBSTITUIÇÃO do(a) orientador(a) responsável pelo projeto acima identificado, que passa da seguinte forma:',
+    y,
   )
 
-  doc.text(`Vitória, ${dataExtensoHoje()}.`, pgW - mR, y, { align: 'right' })
-  y += 16
-
-  const assinaturas = [
-    'Diretor(a) Presidente da CDTIV',
-    'Diretor(a) Administrativo-Financeiro(a) da CDTIV',
-    campo(orientadorEntrou?.nome_completo, 0) || 'Orientador(a) substituto(a)',
-  ]
-  for (const label of assinaturas) {
-    if (y > 260) { doc.addPage(); y = 30 }
-    doc.setLineWidth(0.3)
-    doc.line(mL, y, mL + 80, y)
-    y += 5
-    doc.setFontSize(9.5)
-    doc.text(label, mL, y)
-    doc.setFontSize(10.5)
-    y += 14
-  }
-
+  y = garantirEspaco(doc, y, 40)
+  fonte(doc, 'textoSemi', 10, DV.base.marinho)
+  doc.text('Orientador(a) que se desliga', MARGEM.esquerda, y)
+  y += 5.5
+  y = linhaCampo(doc, 'Nome', campo(orientadorSaiu?.nome_completo, 55), y)
+  y = linhaCampo(doc, 'CPF', campo(orientadorSaiu?.cpf, 18), y)
+  y += 3
+  fonte(doc, 'textoSemi', 10, DV.base.marinho)
+  doc.text('Orientador(a) substituto(a)', MARGEM.esquerda, y)
+  y += 5.5
+  y = linhaCampo(doc, 'Nome', campo(orientadorEntrou?.nome_completo, 55), y)
+  y = linhaCampo(doc, 'CPF', campo(orientadorEntrou?.cpf, 18), y)
   y += 2
-  doc.setFontSize(9.5)
-  doc.text('Testemunhas:', mL, y)
-  y += 10
-  for (let i = 0; i < 2; i++) {
-    if (y > 265) { doc.addPage(); y = 30 }
-    doc.line(mL, y, mL + 80, y)
-    y += 5
-    doc.text(`Nome: ${dotted(30)}    CPF: ${dotted(18)}`, mL, y)
-    y += 14
+
+  y = secao(doc, 'Cláusula segunda — Da vigência das demais cláusulas', y)
+  y = paragrafo(
+    doc,
+    'Permanecem inalteradas e em pleno vigor todas as demais cláusulas e condições do Contrato de Concessão de Apoio Financeiro original, no que não contrariarem o disposto neste Termo Aditivo.',
+    y,
+  )
+  y = paragrafo(
+    doc,
+    'E por estarem assim justas e contratadas, firmam o presente Termo Aditivo, em duas vias de igual teor, juntamente com as testemunhas abaixo.',
+    y,
+  )
+
+  y = garantirEspaco(doc, y + 4, 40)
+  fonte(doc, 'texto', 11, DV.base.texto)
+  doc.text(`Vitória, ${dataExtensoHoje()}.`, MARGEM.esquerda, y)
+  y += 6
+
+  const assinantes = [
+    ['Diretor(a) Presidente da CDTIV', 'Companhia de Desenvolvimento, Turismo e Inovação de Vitória'],
+    ['Diretor(a) Administrativo-Financeiro(a) da CDTIV', 'Companhia de Desenvolvimento, Turismo e Inovação de Vitória'],
+    [campo(orientadorEntrou?.nome_completo, 0) || 'Orientador(a) substituto(a)', 'Orientador(a) substituto(a)'],
+  ]
+  for (const [nome, cargo] of assinantes) {
+    y = assinatura(doc, { nome, cargo, y: y + 16 })
   }
 
+  y = garantirEspaco(doc, y + 2, 20)
+  fonte(doc, 'textoSemi', 10, DV.base.marinho)
+  doc.text('Testemunhas', MARGEM.esquerda, y)
+  y += 4
+  for (let i = 1; i <= 2; i++) {
+    y = assinatura(doc, { nome: `Testemunha ${i}`, cargo: `Nome: ${dotted(30)}   CPF: ${dotted(18)}`, y: y + 16 })
+  }
+
+  finalizar(doc, { codigo: 'MINUTA-TERMO-ADITIVO' })
   doc.save(`Minuta_Termo_Aditivo_${(orientadorEntrou?.nome_completo || 'substituicao').split(' ')[0]}.pdf`)
 }

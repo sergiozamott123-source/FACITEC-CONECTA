@@ -7,8 +7,8 @@ import { Modal } from '@/components/common/Modal'
 import { ErrorAlert, LoadingState } from '@/components/common/FormField'
 import { supabase, supabaseUrl, supabaseAnonKey } from '@/lib/supabase'
 import { getProgramaByProgramaId } from '@/lib/programas'
-import logoFacitec from '@/assets/facitec_logo_cropped.png'
-import logoCdtiv from '@/assets/logo-cdtiv.jpg.jpg'
+import { htmlDocumentoDinov } from '@/lib/documentoHtmlDinov'
+import { DV } from '@/lib/identidade/identidadeDinovTokens.js'
 
 const TIPO_DOC = {
   recurso_interposto: 'Recurso interposto',
@@ -328,33 +328,14 @@ export function DecisaoFinalRecurso() {
       }
       <p>3) Determinar a publicação desta decisão no endereço eletrônico oficial do Fundo FACITEC (facitecnews.com.br), de forma consolidada com os demais resultados, para que produza seus regulares efeitos jurídicos e administrativos.</p>`
 
-    const html = `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <title>Decisão Final — ${esc(codigoRecurso)}</title>
-  <style>
-    @page { size: A4; margin: 2.5cm 3cm; }
-    body { font-family: Arial, sans-serif; font-size: 12pt; color: #000; line-height: 1.7; margin: 2.5rem 3rem; }
-    h1 { font-size: 12pt; font-weight: bold; text-transform: uppercase; text-align: center; margin: 4px 0; line-height: 1.5; }
-    h2 { font-size: 12pt; font-weight: bold; text-transform: uppercase; margin: 28px 0 14px; }
-    p { margin: 0 0 14px; text-align: justify; }
-    .cabecalho { text-align: center; margin-bottom: 36px; border-bottom: 2px solid #000; padding-bottom: 20px; }
-    .assinatura { margin-top: 64px; text-align: center; }
-    .assinatura .data { margin-bottom: 52px; }
-    .assinatura .linha { border-top: 1px solid #000; width: 320px; margin: 0 auto 8px; }
-    .assinatura p { margin: 3px 0; text-align: center; }
-    @media print { body { margin: 0; } }
-  </style>
-</head>
-<body>
-
-  <div class="cabecalho">
-    <h1>COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA – CDTIV</h1>
-    <h1>CONSELHO MUNICIPAL DE CIÊNCIA E TECNOLOGIA – CMCT</h1>
-    <h1>PROCESSO ADMINISTRATIVO N.º ${esc(numProcesso)}</h1>
-    <h1>EDITAL FACITEC N.º ${esc(numEdital)} – ${esc(siglaPrograma)}</h1>
-    <h1>RECURSO ADMINISTRATIVO – PROPOSTA ${esc(tituloProjeto)}</h1>
+    // Modelo único A4 da Identidade Visual DINOV, em HTML (documentoHtmlDinov.js)
+    const corpo = `
+  <div class="identificacao">
+    <p>COMPANHIA DE DESENVOLVIMENTO, TURISMO E INOVAÇÃO DE VITÓRIA – CDTIV</p>
+    <p>CONSELHO MUNICIPAL DE CIÊNCIA E TECNOLOGIA – CMCT</p>
+    <p>PROCESSO ADMINISTRATIVO N.º ${esc(numProcesso)}</p>
+    <p>EDITAL FACITEC N.º ${esc(numEdital)} – ${esc(siglaPrograma)}</p>
+    <p>RECURSO ADMINISTRATIVO – PROPOSTA ${esc(tituloProjeto)}</p>
   </div>
 
   <h2>SEÇÃO I – RELATÓRIO</h2>
@@ -371,13 +352,21 @@ export function DecisaoFinalRecurso() {
   <div class="assinatura">
     <p class="data">Vitória/ES, ${dataHoje}.</p>
     <div class="linha"></div>
-    <p><strong>${esc(presidenteNome)}</strong></p>
-    <p>Diretor Presidente da CDTIV</p>
-    <p>Presidente do Conselho Municipal de Ciência e Tecnologia – CMCT</p>
-  </div>
+    <p class="nome">${esc(presidenteNome)}</p>
+    <p class="cargo">Diretor Presidente da CDTIV</p>
+    <p class="cargo">Presidente do Conselho Municipal de Ciência e Tecnologia – CMCT</p>
+  </div>`
 
-</body>
-</html>`
+    const html = htmlDocumentoDinov({
+      tituloJanela: `Decisão Final — ${codigoRecurso}`,
+      chapeu: `Recurso ${codigoRecurso}`,
+      titulo: 'Decisão final do recurso administrativo',
+      codigo: codigoRecurso,
+      corpo,
+      css: `
+  .identificacao { background: ${DV.base.marinhoClaro}; border-left: 1.6mm solid ${DV.base.marinho}; padding: 3mm 5mm; margin-bottom: 4mm; }
+  .identificacao p { margin: 0.8mm 0; text-align: left; font-size: 9pt; font-weight: 600; color: ${DV.base.marinho}; }`,
+    })
 
     const win = window.open('', '_blank')
     win.document.write(html)
