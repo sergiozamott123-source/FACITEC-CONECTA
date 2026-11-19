@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import { usePortalOrientador } from '@/contexts/PortalOrientadorContext'
 import { AguardandoAprovacaoSubstituicao } from '@/components/AguardandoAprovacaoSubstituicao'
+import { AcessoEncerradoOrientador } from '@/components/AcessoEncerradoOrientador'
 
 export function RequireAcessoOrientador({ children }) {
   const { orientador, loading } = usePortalOrientador()
@@ -21,6 +22,12 @@ export function RequireAcessoOrientador({ children }) {
   // 04/11/2026, a pedido de Sérgio).
   if (orientador.status === 'pendente_documentacao_substituicao') {
     return <AguardandoAprovacaoSubstituicao />
+  }
+
+  // Orientador que foi substituído no projeto: perde o acesso ao portal
+  // (decisão de 19/11/2026, a pedido de Sérgio; antes mantinha consulta).
+  if (orientador.status === 'substituido') {
+    return <AcessoEncerradoOrientador />
   }
 
   return children
